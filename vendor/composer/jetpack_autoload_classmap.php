@@ -6,6 +6,102 @@ $vendorDir = dirname(__DIR__);
 $baseDir   = dirname($vendorDir);
 
 return array(
+	'AAFM\\Tests\\Abilities\\CatalogTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/CatalogTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\CommentsReadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/CommentsReadTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\CommentsWriteTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/CommentsWriteTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\MediaReadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/MediaReadTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\MediaWriteTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/MediaWriteTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\PagesReadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/PagesReadTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\PagesWriteTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/PagesWriteTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\PostsReadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/PostsReadTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\PostsWriteTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/PostsWriteTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\ReadsCatalogTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/ReadsCatalogTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\RegisterWrapperTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/RegisterWrapperTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\SecurityRegressionTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/SecurityRegressionTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\ServerToolsTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/ServerToolsTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\StructureReadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/StructureReadTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\TermsReadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/TermsReadTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\TermsWriteTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/TermsWriteTest.php'
+	),
+	'AAFM\\Tests\\Abilities\\UsersReadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/abilities/UsersReadTest.php'
+	),
+	'AAFM\\Tests\\Admin\\AbilitiesSaveTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/admin/AbilitiesSaveTest.php'
+	),
+	'AAFM\\Tests\\Admin\\ActivityTabTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/admin/ActivityTabTest.php'
+	),
+	'AAFM\\Tests\\Admin\\ConnectionTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/admin/ConnectionTest.php'
+	),
+	'AAFM\\Tests\\Audit\\LogTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/audit/LogTest.php'
+	),
+	'AAFM\\Tests\\Audit\\UninstallTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/audit/UninstallTest.php'
+	),
+	'AAFM\\Tests\\Coexistence\\AdapterLoadTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/coexistence/AdapterLoadTest.php'
+	),
+	'AAFM\\Tests\\Coexistence\\CoexistenceTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/coexistence/CoexistenceTest.php'
+	),
 	'AAFM\\Tests\\TestCase' => array(
 		'version' => 'dev-main',
 		'path'    => $baseDir . '/tests/TestCase.php'
@@ -13,6 +109,22 @@ return array(
 	'AAFM\\Tests\\Unit\\HarnessTest' => array(
 		'version' => 'dev-main',
 		'path'    => $baseDir . '/tests/unit/HarnessTest.php'
+	),
+	'AAFM\\Tests\\Unit\\HelpersTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/unit/HelpersTest.php'
+	),
+	'AAFM\\Tests\\Unit\\MetadataTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/unit/MetadataTest.php'
+	),
+	'AAFM\\Tests\\Unit\\RegistryTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/unit/RegistryTest.php'
+	),
+	'AAFM\\Tests\\Unit\\ToolNameTest' => array(
+		'version' => 'dev-main',
+		'path'    => $baseDir . '/tests/unit/ToolNameTest.php'
 	),
 	'Autoloader' => array(
 		'version' => '5.0.19',

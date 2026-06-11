@@ -3,7 +3,7 @@
         'name' => 'unaibamir/agent-abilities-for-mcp',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'd595d2788fcc067832aa38aab5c13299053757d4',
+        'reference' => '38b2f750028bd29fb63fd74b5980a968c7062a2e',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'unaibamir/agent-abilities-for-mcp' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'd595d2788fcc067832aa38aab5c13299053757d4',
+            'reference' => '38b2f750028bd29fb63fd74b5980a968c7062a2e',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
