@@ -156,4 +156,91 @@ final class CommentsReadTest extends TestCase {
 		$this->assertGreaterThanOrEqual( 1, count( $out['comments'] ) );
 		$this->assertStringContainsString( 'PENDING_SECRET_BODY', (string) $json );
 	}
+
+	/**
+	 * Phase 3 review P1: get-comments leaked approved comment bodies on non-public
+	 * posts. A read-only caller passing the id of a private/draft post must be
+	 * DENIED before any of that post's approved comment bodies are returned —
+	 * get-comments needs the same per-object visibility gate the post itself has.
+	 */
+	public function test_get_comments_denies_subscriber_on_non_public_post(): void {
+		$post = self::factory()->post->create( array( 'post_status' => 'private' ) );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $post,
+				'comment_approved' => '1',
+				'comment_content'  => 'SECRET_PRIVATE_COMMENT_BODY',
+			)
+		);
+
+		// A subscriber cannot read the private post, so cannot read its comments.
+		$this->acting_as( 'subscriber' );
+		$this->assertFalse(
+			wp_get_ability( 'aafm/get-comments' )->check_permissions( array( 'post_id' => $post ) )
+		);
+
+		// The denial is audited by the registration wrapper, like every other deny.
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/get-comments', $abilities );
+	}
+
+	/**
+	 * A draft post is non-public too: the same gate must deny a low-privilege
+	 * caller passing a draft id, and the secret body must never be returned even
+	 * if execute were somehow reached.
+	 */
+	public function test_get_comments_denies_subscriber_on_draft_post(): void {
+		$post = self::factory()->post->create( array( 'post_status' => 'draft' ) );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $post,
+				'comment_approved' => '1',
+				'comment_content'  => 'SECRET_DRAFT_COMMENT_BODY',
+			)
+		);
+
+		$this->acting_as( 'subscriber' );
+		$this->assertFalse(
+			wp_get_ability( 'aafm/get-comments' )->check_permissions( array( 'post_id' => $post ) )
+		);
+	}
+
+	/**
+	 * The gate must not over-correct: approved comments on a PUBLIC post stay
+	 * readable for any logged-in caller, and an editor (who can read the private
+	 * post) is allowed to read its comments.
+	 */
+	public function test_get_comments_still_allows_public_post_and_capable_caller(): void {
+		$public = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $public,
+				'comment_approved' => '1',
+				'comment_content'  => 'PUBLIC_VISIBLE_BODY',
+			)
+		);
+		$private = self::factory()->post->create( array( 'post_status' => 'private' ) );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $private,
+				'comment_approved' => '1',
+				'comment_content'  => 'PRIVATE_VISIBLE_TO_EDITOR',
+			)
+		);
+
+		// Subscriber: allowed on the public post, and actually sees the body.
+		$this->acting_as( 'subscriber' );
+		$this->assertTrue(
+			wp_get_ability( 'aafm/get-comments' )->check_permissions( array( 'post_id' => $public ) )
+		);
+		$out = wp_get_ability( 'aafm/get-comments' )->execute( array( 'post_id' => $public ) );
+		$this->assertStringContainsString( 'PUBLIC_VISIBLE_BODY', (string) wp_json_encode( $out ) );
+
+		// Editor can read the private post, so is allowed its comments too.
+		$this->acting_as( 'editor' );
+		$this->assertTrue(
+			wp_get_ability( 'aafm/get-comments' )->check_permissions( array( 'post_id' => $private ) )
+		);
+	}
 }

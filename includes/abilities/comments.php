@@ -74,7 +74,7 @@ function aafm_args_get_comments(): array {
 			),
 		),
 		'execute_callback'    => 'aafm_exec_get_comments',
-		'permission_callback' => 'aafm_perm_read',
+		'permission_callback' => 'aafm_perm_get_comments',
 		'meta'                => array(
 			'annotations' => array(
 				'readonly'    => true,
@@ -82,6 +82,44 @@ function aafm_args_get_comments(): array {
 			),
 		),
 	);
+}
+
+/**
+ * Permission for aafm/get-comments: per-object post visibility.
+ *
+ * A comment is only as visible as the post it belongs to. Approved comments on a
+ * public, non-password-protected post are readable by any logged-in caller; for
+ * every other post (draft, private, scheduled, pending, password-protected, or
+ * unknown) the caller must be able to read the post itself. This closes the gap
+ * where a low-privilege agent could pass a hidden post's id and read its approved
+ * comment bodies and author names.
+ *
+ * @param array<string,mixed> $input Input.
+ * @return bool
+ */
+function aafm_perm_get_comments( array $input ): bool {
+	$post_id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+
+	// No post targeted: the whole-site approved listing is readable by any logged-in
+	// caller and only ever returns approved bodies.
+	if ( $post_id <= 0 ) {
+		return current_user_can( 'read' );
+	}
+
+	$post = get_post( $post_id );
+	if ( ! $post instanceof WP_Post ) {
+		// Default-deny on a missing post so the ability can't probe for ids.
+		return false;
+	}
+
+	$status_object = get_post_status_object( (string) get_post_status( $post ) );
+	$is_public     = null !== $status_object && ! empty( $status_object->public );
+
+	if ( $is_public && '' === (string) $post->post_password ) {
+		return current_user_can( 'read' );
+	}
+
+	return current_user_can( 'read_post', $post_id );
 }
 
 /**
