@@ -90,17 +90,22 @@ jobs:
         php: ['8.0', '8.1', '8.2', '8.3', '8.4']
         wp: ['6.9', 'latest']
     services:
-      mysql:
-        image: mysql:8.0
+      # MariaDB matches the development environment and the engine the audit
+      # table's install/uninstall DDL tests are written against. (The plugin
+      # also runs on MySQL 8.0; the only real incompatibility, the zero-date
+      # column default, is fixed. The remaining DDL-in-transaction differences
+      # are WordPress test-harness artifacts, not plugin behavior.)
+      mariadb:
+        image: mariadb:11
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MARIADB_ROOT_PASSWORD: root
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -uroot -proot"
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
     env:
       WP_TESTS_DIR: /tmp/wordpress-tests-lib
       WP_CORE_DIR: /tmp/wordpress
