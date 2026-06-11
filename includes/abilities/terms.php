@@ -131,16 +131,30 @@ function aafm_exec_get_terms( array $input ) {
 }
 
 /**
- * Permission for term writes: manage_categories.
+ * Permission for term writes: the target taxonomy's own manage_terms cap.
  *
- * The standard WordPress cap that gates term management — the same cap WP itself
- * requires before editing categories/tags. A low-privilege caller (subscriber,
- * author, contributor) is denied and the denial is audited by the wrapper.
+ * WordPress maps each taxonomy to its own primitive (category -> manage_categories,
+ * post_tag -> manage_post_tags, and likewise for custom public taxonomies), and
+ * wp_insert_term / wp_update_term do no internal capability check. So the gate has
+ * to resolve the taxonomy named in the input and check its real manage_terms cap —
+ * a hardcoded manage_categories would let someone who can only manage categories
+ * write tags on a config that decouples those caps. The taxonomy is validated
+ * against the public allow-list first; an unknown/internal one is denied outright.
+ * A low-privilege caller is denied and the denial is audited by the wrapper.
  *
+ * @param array<string,mixed> $input Ability input (taxonomy defaults to category).
  * @return bool
  */
-function aafm_perm_manage_terms(): bool {
-	return current_user_can( 'manage_categories' );
+function aafm_perm_manage_terms( array $input ): bool {
+	$taxonomy = aafm_validate_taxonomy( isset( $input['taxonomy'] ) ? (string) $input['taxonomy'] : 'category' );
+	if ( is_wp_error( $taxonomy ) ) {
+		return false;
+	}
+	$tax_object = get_taxonomy( $taxonomy );
+	if ( ! $tax_object instanceof WP_Taxonomy ) {
+		return false;
+	}
+	return current_user_can( $tax_object->cap->manage_terms );
 }
 
 /**
@@ -168,7 +182,7 @@ function aafm_term_write_result( WP_Term $term ): array {
 function aafm_args_create_term(): array {
 	return array(
 		'label'               => __( 'Create term', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create a term in a public taxonomy (requires manage_categories).', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Create a term in a public taxonomy (requires that taxonomy\'s manage_terms capability).', 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

@@ -64,6 +64,38 @@ final class TermsWriteTest extends TestCase {
 		$this->assertTrue( wp_get_ability( 'aafm/create-term' )->check_permissions( array() ) );
 	}
 
+	public function test_create_term_gates_on_the_target_taxonomy_own_cap(): void {
+		// A public taxonomy can declare its own manage_terms cap, decoupled from
+		// manage_categories. (For the built-in post_tag, core's map_meta_cap folds
+		// manage_post_tags back into manage_categories, so they can't be separated;
+		// a custom taxonomy is where the distinction is real.) wp_insert_term does no
+		// internal cap check, so the gate must resolve the named taxonomy's real
+		// manage_terms cap rather than hardcoding manage_categories — otherwise an
+		// actor who can only manage categories could write into the custom taxonomy.
+		register_taxonomy(
+			'aafm_genre',
+			'post',
+			array(
+				'public'       => true,
+				'show_in_rest' => true,
+				'capabilities' => array( 'manage_terms' => 'manage_aafm_genres' ),
+			)
+		);
+
+		$user_id = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		$user    = get_userdata( $user_id );
+		$user->add_cap( 'manage_categories' );
+		wp_set_current_user( $user_id );
+
+		$ability = wp_get_ability( 'aafm/create-term' );
+		// Can manage categories...
+		$this->assertTrue( $ability->check_permissions( array( 'taxonomy' => 'category' ) ) );
+		// ...but lacks manage_aafm_genres, so the custom-taxonomy write is denied.
+		$this->assertFalse( $ability->check_permissions( array( 'taxonomy' => 'aafm_genre' ) ) );
+
+		unregister_taxonomy( 'aafm_genre' );
+	}
+
 	public function test_low_priv_create_term_denial_is_audited(): void {
 		// A subscriber lacks manage_categories: denied, and the denial is audited.
 		$this->acting_as( 'subscriber' );
