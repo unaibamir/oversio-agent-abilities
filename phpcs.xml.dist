@@ -67,4 +67,10 @@
 	<rule ref="WordPress.DB.DirectDatabaseQuery">
 		<exclude-pattern>*/tests/*</exclude-pattern>
 	</rule>
+
+	<!-- Tests simulate the Abilities API init actions by pushing onto $wp_current_filter,
+	     the documented idiom used by core's own ability test trait. -->
+	<rule ref="WordPress.WP.GlobalVariablesOverride">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
 </ruleset>
