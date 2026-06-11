@@ -39,6 +39,29 @@ function aafm_register_categories(): void {
 }
 
 /**
+ * Remember (or read) an ability's undecorated permission callback.
+ *
+ * Acts as a tiny static store keyed by ability name. Passing a callable records it;
+ * passing null returns the stored callback for that name (or null if unknown). This
+ * lets the MCP tools/list filter test a connection's visibility without going through
+ * the audited permission decorator, which would log a denial on every hidden tool.
+ *
+ * @param string        $name     Ability name.
+ * @param callable|null $callback Callback to store, or null to read.
+ * @return callable|null Stored callback when reading; null otherwise.
+ */
+function aafm_remember_raw_permission( string $name, ?callable $callback = null ): ?callable {
+	static $store = array();
+
+	if ( null !== $callback ) {
+		$store[ $name ] = $callback;
+		return null;
+	}
+
+	return $store[ $name ] ?? null;
+}
+
+/**
  * Register an ability with a guaranteed permission callback and full audit logging.
  *
  * Refuses to register without a callable permission_callback. Decorates the permission
@@ -66,6 +89,11 @@ function aafm_register_ability_with_log( string $name, array $args ) {
 
 	$original_permission = $args['permission_callback'];
 	$original_execute    = $args['execute_callback'];
+
+	// Stash the undecorated permission callback so list-time capability checks
+	// (e.g. the MCP tools/list filter) can test visibility WITHOUT writing a
+	// denied audit row for every tool a connection happens not to be able to call.
+	aafm_remember_raw_permission( $name, $original_permission );
 
 	$principal = static function (): array {
 		$user = wp_get_current_user();

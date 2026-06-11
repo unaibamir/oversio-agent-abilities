@@ -20,6 +20,11 @@ final class ServerToolsTest extends TestCase {
 		aafm_install_activity_log();
 		aafm_clear_activity_log();
 
+		// Contribute registry entries for the fixtures so aafm_get_enabled_abilities()
+		// and the tools/list filter can map tool names back to abilities (the same way
+		// real Phase 3/4 domain files do via the aafm_abilities_registry filter).
+		add_filter( 'aafm_abilities_registry', array( $this, 'register_fixture_registry' ) );
+
 		// Categories first, inside their gated init action (idempotent).
 		$this->in_action( 'wp_abilities_api_categories_init', 'aafm_register_categories' );
 
@@ -66,6 +71,30 @@ final class ServerToolsTest extends TestCase {
 		);
 
 		update_option( 'aafm_enabled_abilities', array( 'aafm/pub-read', 'aafm/admin-write' ) );
+	}
+
+	/**
+	 * Contribute the two fixtures to the static registry.
+	 *
+	 * @param array<string,array<string,mixed>> $registry Registry.
+	 * @return array<string,array<string,mixed>>
+	 */
+	public function register_fixture_registry( array $registry ): array {
+		$registry['aafm/pub-read']    = array(
+			'label'        => 'Pub Read',
+			'description'  => 'Anyone may read.',
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'args_builder' => '__return_empty_array',
+		);
+		$registry['aafm/admin-write'] = array(
+			'label'        => 'Admin Write',
+			'description'  => 'Admin only.',
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'args_builder' => '__return_empty_array',
+		);
+		return $registry;
 	}
 
 	/**
@@ -121,5 +150,80 @@ final class ServerToolsTest extends TestCase {
 	public function test_transport_gate_allows_authenticated(): void {
 		$this->acting_as( 'subscriber' );
 		$this->assertTrue( aafm_transport_permission_callback( new \WP_REST_Request() ) );
+	}
+
+	public function test_raw_permission_check_does_not_log_denials(): void {
+		// aafm_user_can_call_ability uses the UNDECORATED callback, so a failing check
+		// must NOT write a denied audit row (avoids flooding the log during tools/list).
+		$this->acting_as( 'subscriber' );
+		$this->assertFalse( aafm_user_can_call_ability( 'aafm/admin-write', array() ) );
+		$this->assertTrue( aafm_user_can_call_ability( 'aafm/pub-read', array() ) );
+
+		$denied = aafm_query_activity( array( 'status' => 'denied' ) );
+		$this->assertCount( 0, (array) $denied );
+	}
+
+	public function test_tools_list_filter_hides_uncallable_tools_for_subscriber(): void {
+		$this->acting_as( 'subscriber' );
+		$tools = array(
+			$this->tool_dto( aafm_mcp_tool_name( 'aafm/pub-read' ) ),
+			$this->tool_dto( aafm_mcp_tool_name( 'aafm/admin-write' ) ),
+		);
+		$names = $this->tool_names( aafm_filter_mcp_tools_list( $tools ) );
+		$this->assertContains( 'aafm-pub-read', $names );
+		$this->assertNotContains( 'aafm-admin-write', $names );
+	}
+
+	public function test_tools_list_filter_keeps_all_tools_for_admin(): void {
+		$this->acting_as( 'administrator' );
+		$tools = array(
+			$this->tool_dto( aafm_mcp_tool_name( 'aafm/pub-read' ) ),
+			$this->tool_dto( aafm_mcp_tool_name( 'aafm/admin-write' ) ),
+		);
+		$names = $this->tool_names( aafm_filter_mcp_tools_list( $tools ) );
+		$this->assertContains( 'aafm-pub-read', $names );
+		$this->assertContains( 'aafm-admin-write', $names );
+	}
+
+	public function test_tools_list_filter_leaves_unknown_tools_untouched(): void {
+		$this->acting_as( 'subscriber' );
+		$tools = array( $this->tool_dto( 'some-other-plugin-tool' ) );
+		$names = $this->tool_names( aafm_filter_mcp_tools_list( $tools ) );
+		$this->assertContains( 'some-other-plugin-tool', $names );
+	}
+
+	/**
+	 * Minimal Tool DTO stub exposing getName(), matching the adapter's DTO contract.
+	 *
+	 * @param string $name Sanitized MCP tool name.
+	 * @return object
+	 */
+	private function tool_dto( string $name ): object {
+		return new class( $name ) {
+			/**
+			 * Stub Tool DTO.
+			 *
+			 * @param string $name Tool name.
+			 */
+			public function __construct( private string $name ) {}
+
+			public function getName(): string { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid -- mirrors the adapter DTO accessor.
+				return $this->name;
+			}
+		};
+	}
+
+	/**
+	 * Pluck getName() from a list of Tool DTO stubs.
+	 *
+	 * @param mixed $tools Filtered tools.
+	 * @return array<int,string>
+	 */
+	private function tool_names( $tools ): array {
+		$names = array();
+		foreach ( (array) $tools as $tool ) {
+			$names[] = $tool->getName();
+		}
+		return $names;
 	}
 }
