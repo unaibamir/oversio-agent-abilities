@@ -10,6 +10,7 @@ parameters:
 		- uninstall.php
 	bootstrapFiles:
 		- vendor/autoload.php
+		- tests/phpstan-bootstrap.php
 	scanDirectories:
 		- vendor/wordpress/mcp-adapter
 	excludePaths:
