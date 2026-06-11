@@ -24,3 +24,11 @@ defined( 'ABSPATH' ) || exit;
 function aafm_mcp_tool_name( string $ability_name ): string {
 	return str_replace( '/', '-', trim( $ability_name ) );
 }
+
+/**
+ * Placeholder — the real server registrar is implemented in Task 2.3.
+ *
+ * @param mixed $adapter Adapter instance.
+ * @return void
+ */
+function aafm_register_mcp_server( $adapter ): void {}
