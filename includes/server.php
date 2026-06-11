@@ -145,6 +145,13 @@ function aafm_transport_permission_callback( $request ) {
  * @return void
  */
 function aafm_register_mcp_server( $adapter ): void {
+	// Idempotent: the adapter keeps one server per ID and emits an incorrect-usage notice
+	// if asked to create a duplicate. Bail if ours already exists so a re-entrant init
+	// (or a diagnostics route lookup that re-fires rest_api_init) never trips that notice.
+	if ( null !== $adapter->get_server( 'aafm-server' ) ) {
+		return;
+	}
+
 	$tools = aafm_build_server_tools( aafm_get_enabled_abilities() );
 
 	// Per-connection capability gate at request time (the user is anonymous here; see

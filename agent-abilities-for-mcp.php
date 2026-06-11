@@ -56,12 +56,15 @@ function aafm_bootstrap() {
 	add_action( 'wp_abilities_api_categories_init', 'aafm_register_categories' );
 	add_action( 'wp_abilities_api_init', 'aafm_register_enabled_abilities' );
 
+	require_once AAFM_PLUGIN_DIR . 'includes/admin/connection.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/page.php';
 	if ( is_admin() ) {
 		add_action( 'admin_menu', 'aafm_register_admin_menu' );
 		add_action( 'admin_enqueue_scripts', 'aafm_enqueue_admin_assets' );
 		add_action( 'wp_ajax_aafm_save_abilities', 'aafm_ajax_save_abilities' );
 		add_action( 'wp_ajax_aafm_clear_log', 'aafm_ajax_clear_log' );
+		add_action( 'wp_ajax_aafm_create_agent_user', 'aafm_ajax_create_agent_user' );
+		add_action( 'wp_ajax_aafm_test_connection', 'aafm_ajax_test_connection' );
 	}
 
 	aafm_init_mcp();

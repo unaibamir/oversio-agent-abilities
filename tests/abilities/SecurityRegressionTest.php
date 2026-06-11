@@ -286,8 +286,14 @@ final class SecurityRegressionTest extends TestCase {
 		$dir   = dirname( __DIR__, 2 ) . '/includes';
 		$files = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir ) );
 
-		// Code-exec and remote-fetch primitives must never appear in our source.
-		$banned = '/\b(eval|create_function|assert|download_url|wp_remote_get|wp_remote_post|curl_exec)\s*\(/';
+		// Code-exec primitives must NEVER appear anywhere in our source.
+		$banned_exec = '/\b(eval|create_function|assert|download_url|curl_exec)\s*\(/';
+		// Remote-fetch primitives must never appear in the agent-exposed surface (an
+		// agent could otherwise be steered into SSRF). They are permitted ONLY in the
+		// admin Connection tab's reachability probe, which is gated behind manage_options +
+		// a nonce, targets this site's own endpoint, and is never reachable by an MCP agent.
+		$banned_fetch  = '/\b(wp_remote_get|wp_remote_post|wp_remote_request)\s*\(/';
+		$fetch_allowed = 'includes/admin/connection.php';
 
 		foreach ( $files as $file ) {
 			if ( 'php' !== $file->getExtension() ) {
@@ -295,12 +301,22 @@ final class SecurityRegressionTest extends TestCase {
 			}
 			// Reading our own bundled source for a static scan — not a remote fetch.
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$src = (string) file_get_contents( $file->getPathname() );
+			$src  = (string) file_get_contents( $file->getPathname() );
+			$path = str_replace( '\\', '/', $file->getPathname() );
+
 			$this->assertDoesNotMatchRegularExpression(
-				$banned,
+				$banned_exec,
 				$src,
-				'Dangerous primitive in ' . $file->getFilename()
+				'Code-exec primitive in ' . $file->getFilename()
 			);
+
+			if ( ! str_ends_with( $path, $fetch_allowed ) ) {
+				$this->assertDoesNotMatchRegularExpression(
+					$banned_fetch,
+					$src,
+					'Remote-fetch primitive in ' . $file->getFilename() . ' (only the admin reachability probe may use one)'
+				);
+			}
 		}
 	}
 

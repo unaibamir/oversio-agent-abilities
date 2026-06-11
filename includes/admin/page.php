@@ -191,15 +191,7 @@ function aafm_render_abilities_tab(): void {
 	echo '</form>';
 }
 
-// Temporary stubs — replaced by their real implementations in Tasks 5.2 (connection) and 5.3 (activity).
-if ( ! function_exists( 'aafm_render_connection_tab' ) ) {
-	/**
-	 * Placeholder for the Connection tab (implemented in Task 5.2).
-	 *
-	 * @return void
-	 */
-	function aafm_render_connection_tab(): void {}
-}
+// Temporary stub — replaced by the real implementation in Task 5.3 (Activity Log tab).
 if ( ! function_exists( 'aafm_render_activity_tab' ) ) {
 	/**
 	 * Placeholder for the Activity Log tab (implemented in Task 5.3).
