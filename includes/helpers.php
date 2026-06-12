@@ -10,7 +10,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Validate a post type against the public/queryable allow-list.
+ * Validate a post type against the eligibility floor AND the default-deny allowlist.
  *
  * @param string $type Requested post type.
  * @return string|WP_Error Sanitized type, or error if not allowed.
@@ -18,21 +18,18 @@ defined( 'ABSPATH' ) || exit;
 function aafm_validate_post_type( string $type ) {
 	$type = sanitize_key( $type );
 
-	// post and page are built-in but are our shipped, supported content types.
-	if ( in_array( $type, array( 'post', 'page' ), true ) ) {
-		return $type;
+	// The hard floor (public, non-internal) runs first and is independent of the allowlist —
+	// it rejects attachment/revision/internal types even if one is forced into the option.
+	if ( ! aafm_post_type_is_eligible( $type ) ) {
+		return new WP_Error( 'aafm_invalid_post_type', __( 'Unsupported post type.', 'agent-abilities-for-mcp' ) );
 	}
 
-	// Everything else must be a registered, public, NON-internal content type.
-	// Resolve the object and read its booleans — get_post_types( ['public'=>true] )
-	// wrongly includes the built-in `attachment` type, which has its own redacted
-	// media path and must never be reachable through the content abilities.
-	$obj = get_post_type_object( $type );
-	if ( $obj instanceof WP_Post_Type && true === $obj->public && false === $obj->_builtin ) {
-		return $type;
+	// Then default-deny: only types the operator has explicitly exposed (post/page always-on).
+	if ( ! in_array( $type, aafm_allowed_post_types(), true ) ) {
+		return new WP_Error( 'aafm_post_type_not_allowed', __( 'This content type is not exposed to agents.', 'agent-abilities-for-mcp' ) );
 	}
 
-	return new WP_Error( 'aafm_invalid_post_type', __( 'Unsupported post type.', 'agent-abilities-for-mcp' ) );
+	return $type;
 }
 
 /**

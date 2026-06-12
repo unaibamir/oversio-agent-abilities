@@ -81,6 +81,22 @@ final class HelpersTest extends TestCase {
 		$this->assertSame( array( 'post', 'page' ), $allowed );
 	}
 
+	public function test_validate_denies_eligible_cpt_until_allowlisted(): void {
+		register_post_type( 'aafm_book', array( 'public' => true, 'label' => 'Books' ) );
+		delete_option( 'aafm_allowed_post_types' );
+		// Eligible but not opted in → denied.
+		$this->assertInstanceOf( WP_Error::class, aafm_validate_post_type( 'aafm_book' ) );
+		// Opted in → passes.
+		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
+		$this->assertSame( 'aafm_book', aafm_validate_post_type( 'aafm_book' ) );
+	}
+
+	public function test_validate_floor_beats_a_forced_ineligible_allowlist_entry(): void {
+		// Even if attachment is jammed into the option, the floor in validate rejects it.
+		update_option( 'aafm_allowed_post_types', array( 'attachment' ) );
+		$this->assertInstanceOf( WP_Error::class, aafm_validate_post_type( 'attachment' ) );
+	}
+
 	public function test_taxonomy_allowlist(): void {
 		$this->assertSame( 'category', aafm_validate_taxonomy( 'category' ) );
 		$this->assertInstanceOf( WP_Error::class, aafm_validate_taxonomy( 'nav_menu' ) );
