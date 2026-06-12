@@ -98,6 +98,96 @@ function aafm_allowed_post_types(): array {
 }
 
 /**
+ * Resolve a post type's cap object and whether it uses core's meta-cap mapping.
+ *
+ * The Tier-1 cap keys (edit_post, delete_post, publish_posts, read_private_posts) are
+ * guaranteed present on ->cap across every registration style. `mapped` reflects
+ * map_meta_cap: when false, per-object edit_post/delete_post checks degrade to a bare
+ * singular primitive with no author/status containment — the footgun the write gates refuse.
+ *
+ * @param string $type Post type slug.
+ * @return array{object: ?WP_Post_Type, mapped: bool}
+ */
+function aafm_type_caps( string $type ): array {
+	$obj = get_post_type_object( $type );
+	return array(
+		'object' => $obj instanceof WP_Post_Type ? $obj : null,
+		'mapped' => $obj instanceof WP_Post_Type && (bool) $obj->map_meta_cap,
+	);
+}
+
+/**
+ * Whether the current user may READ a single object of its type through the content abilities.
+ *
+ * Type must clear the floor AND the allowlist. Public-status objects use the cap-free fast
+ * path (matches the list reads). A non-public status is readable only on a map_meta_cap type,
+ * via that type's own per-object edit cap; non-mapped non-public reads are denied.
+ *
+ * @param WP_Post $post Target object.
+ * @return bool
+ */
+function aafm_can_read_post_object( WP_Post $post ): bool {
+	if ( is_wp_error( aafm_validate_post_type( $post->post_type ) ) ) {
+		return false;
+	}
+	if ( in_array( $post->post_status, get_post_stati( array( 'public' => true ) ), true ) ) {
+		return true;
+	}
+	$caps = aafm_type_caps( $post->post_type );
+	if ( ! $caps['mapped'] || ! $caps['object'] instanceof WP_Post_Type ) {
+		return false;
+	}
+	return current_user_can( (string) $caps['object']->cap->edit_post, $post->ID );
+}
+
+/**
+ * Whether the current user may EDIT a single object through the content abilities.
+ *
+ * Type must clear the floor AND the allowlist AND be map_meta_cap===true (Q5 write-safety).
+ * For a non-mapped type the write is refused outright rather than trusting a degraded
+ * per-object cap that can fail OPEN. For post/page (mapped) this resolves to today's
+ * current_user_can( 'edit_post'/'edit_page', $id ) — zero behaviour change.
+ *
+ * @param WP_Post $post Target object.
+ * @return bool
+ */
+function aafm_can_edit_post_object( WP_Post $post ): bool {
+	$caps = aafm_writable_type_caps( $post );
+	return null !== $caps && current_user_can( (string) $caps->cap->edit_post, $post->ID );
+}
+
+/**
+ * Whether the current user may TRASH a single object through the content abilities.
+ *
+ * Same floor + allowlist + map_meta_cap gate as edit; uses the type's own delete cap.
+ *
+ * @param WP_Post $post Target object.
+ * @return bool
+ */
+function aafm_can_delete_post_object( WP_Post $post ): bool {
+	$caps = aafm_writable_type_caps( $post );
+	return null !== $caps && current_user_can( (string) $caps->cap->delete_post, $post->ID );
+}
+
+/**
+ * Shared write-eligibility resolver: returns the cap object only when the post's type is
+ * exposed (floor + allowlist) AND map_meta_cap===true. Null means "refuse the write".
+ *
+ * @param WP_Post $post Target object.
+ * @return WP_Post_Type|null
+ */
+function aafm_writable_type_caps( WP_Post $post ): ?WP_Post_Type {
+	if ( is_wp_error( aafm_validate_post_type( $post->post_type ) ) ) {
+		return null;
+	}
+	$caps = aafm_type_caps( $post->post_type );
+	if ( ! $caps['mapped'] || ! $caps['object'] instanceof WP_Post_Type ) {
+		return null;
+	}
+	return $caps['object'];
+}
+
+/**
  * Validate a taxonomy against the public allow-list.
  *
  * @param string $taxonomy Requested taxonomy.
