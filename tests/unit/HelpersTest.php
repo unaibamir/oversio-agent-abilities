@@ -55,6 +55,32 @@ final class HelpersTest extends TestCase {
 		$this->assertNotContains( 'revision', $eligible );
 	}
 
+	public function test_allowlist_defaults_to_post_and_page_only(): void {
+		delete_option( 'aafm_allowed_post_types' );
+		$allowed = aafm_allowed_post_types();
+		$this->assertContains( 'post', $allowed );
+		$this->assertContains( 'page', $allowed );
+		$this->assertCount( 2, $allowed );
+	}
+
+	public function test_allowlist_adds_opted_in_eligible_type(): void {
+		register_post_type( 'aafm_book', array( 'public' => true, 'label' => 'Books' ) );
+		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
+		$allowed = aafm_allowed_post_types();
+		$this->assertContains( 'aafm_book', $allowed );
+		$this->assertContains( 'post', $allowed ); // post/page always forced on.
+	}
+
+	public function test_allowlist_floor_strips_injected_ineligible_types(): void {
+		// A junk option write (or a rogue filter) must never get attachment/revision through.
+		update_option( 'aafm_allowed_post_types', array( 'attachment', 'revision', 'totally_fake' ) );
+		$allowed = aafm_allowed_post_types();
+		$this->assertNotContains( 'attachment', $allowed );
+		$this->assertNotContains( 'revision', $allowed );
+		$this->assertNotContains( 'totally_fake', $allowed );
+		$this->assertSame( array( 'post', 'page' ), $allowed );
+	}
+
 	public function test_taxonomy_allowlist(): void {
 		$this->assertSame( 'category', aafm_validate_taxonomy( 'category' ) );
 		$this->assertInstanceOf( WP_Error::class, aafm_validate_taxonomy( 'nav_menu' ) );

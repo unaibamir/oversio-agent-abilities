@@ -71,6 +71,36 @@ function aafm_eligible_post_types(): array {
 }
 
 /**
+ * The default-deny post-type allowlist: post/page always-on, every other eligible type
+ * opt-in via the aafm_allowed_post_types option (admin selector) or the matching filter.
+ *
+ * The eligibility floor is applied AFTER the option read AND after the filter, so neither
+ * a junk option value nor a rogue filter can slip an ineligible type (attachment, revision,
+ * a private CPT) into the exposed set. post/page are merged in unconditionally to preserve
+ * the shipped, reviewed surface.
+ *
+ * @return list<string>
+ */
+function aafm_allowed_post_types(): array {
+	$stored = get_option( 'aafm_allowed_post_types', array() );
+	$stored = is_array( $stored ) ? array_map( 'sanitize_key', $stored ) : array();
+
+	$allowed = array_merge( array( 'post', 'page' ), $stored );
+	$allowed = array_values( array_unique( array_filter( $allowed, 'aafm_post_type_is_eligible' ) ) );
+
+	/**
+	 * Filters the post types exposed to AI agents.
+	 *
+	 * Values are re-floored after this filter, so adding an ineligible type is a no-op.
+	 *
+	 * @param list<string> $allowed Eligible, exposed post-type slugs.
+	 */
+	$allowed = apply_filters( 'aafm_allowed_post_types', $allowed );
+
+	return array_values( array_filter( array_map( 'sanitize_key', (array) $allowed ), 'aafm_post_type_is_eligible' ) );
+}
+
+/**
  * Validate a taxonomy against the public allow-list.
  *
  * @param string $taxonomy Requested taxonomy.
