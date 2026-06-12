@@ -52,7 +52,7 @@ function aafm_build_server_tools( array $enabled ): array {
 		// the user is anonymous here, so this is a no-op and the request-time filter does the
 		// real work — belt and suspenders, never advertising more than the catalog.
 		if ( is_user_logged_in() ) {
-			if ( ! aafm_user_can_call_ability( $name, array() ) ) {
+			if ( ! aafm_user_can_discover_ability( $name ) ) {
 				continue;
 			}
 		}
@@ -81,13 +81,95 @@ function aafm_user_can_call_ability( string $ability_name, array $input = array(
 }
 
 /**
+ * An object-INDEPENDENT discovery predicate for abilities whose execute-time
+ * permission_callback needs a specific object id from the input.
+ *
+ * The tools/list visibility check runs with empty input, but several abilities gate
+ * on a per-object capability (e.g. edit_post( $id )) that is always false when no id is
+ * present. With empty input those tools would be hidden even from a fully capable user,
+ * so they become undiscoverable and the agent can never call them. This map returns a
+ * coarse, id-free "can this user use this kind of tool at all" check used ONLY for
+ * discovery; the per-object permission_callback is left untouched and still runs as the
+ * hard EXECUTE-time gate (and still denies + audits on objects the user can't act on).
+ *
+ * Returns null for abilities that have no per-object branch — those fall back to the
+ * normal empty-input callable check, which is already correct for them.
+ *
+ * Page caps are derived from the 'page' post-type object so the mapping stays correct
+ * if the page caps are ever remapped, rather than hardcoding 'edit_pages'/'delete_pages'.
+ *
+ * @param string $name Ability name, e.g. "aafm/update-post".
+ * @return callable():bool|null Discovery predicate, or null when no override is needed.
+ */
+function aafm_ability_list_permission( string $name ): ?callable {
+	switch ( $name ) {
+		// Single-item reads: as discoverable as their list siblings get-posts/get-pages,
+		// which gate on the generic 'read' capability.
+		case 'aafm/get-post':
+		case 'aafm/get-page':
+			return static fn(): bool => current_user_can( 'read' );
+
+		// Post writes: the floor cap that the per-object edit_post()/delete_post() refine.
+		case 'aafm/update-post':
+		case 'aafm/set-featured-image':
+			return static fn(): bool => current_user_can( 'edit_posts' );
+		case 'aafm/trash-post':
+			return static fn(): bool => current_user_can( 'delete_posts' );
+
+		// Page writes: derive edit_pages/delete_pages from the page post-type object.
+		case 'aafm/update-page':
+			return static function (): bool {
+				$pto = get_post_type_object( 'page' );
+				return $pto instanceof WP_Post_Type && current_user_can( $pto->cap->edit_posts );
+			};
+		case 'aafm/trash-page':
+			return static function (): bool {
+				$pto = get_post_type_object( 'page' );
+				return $pto instanceof WP_Post_Type && current_user_can( $pto->cap->delete_posts );
+			};
+
+		// Comment moderation: the site-wide floor cap the per-object edit_comment() refines.
+		case 'aafm/moderate-comment':
+			return static fn(): bool => current_user_can( 'moderate_comments' );
+
+		default:
+			return null;
+	}
+}
+
+/**
+ * Whether the current user may DISCOVER (see in tools/list) a given ability.
+ *
+ * Discovery is deliberately decoupled from per-object EXECUTE authorization. For abilities
+ * with a per-object permission branch this uses the coarse, id-free predicate from
+ * aafm_ability_list_permission() so a capable user can actually see the tool. For every
+ * other ability it falls back to the real callback with empty input, which is the correct
+ * object-independent check for the general-cap abilities (create-post, get-posts, …).
+ *
+ * Discovery never grants execution: each ability's permission_callback still runs at
+ * execute time and still denies (and audits) on any specific object the user can't touch.
+ *
+ * @param string $ability_name Ability name, e.g. "aafm/update-post".
+ * @return bool
+ */
+function aafm_user_can_discover_ability( string $ability_name ): bool {
+	$list_permission = aafm_ability_list_permission( $ability_name );
+	if ( null !== $list_permission ) {
+		return true === $list_permission();
+	}
+	return aafm_user_can_call_ability( $ability_name, array() );
+}
+
+/**
  * Per-connection capability gate for tools/list, applied at request time.
  *
  * The adapter does NOT permission-filter tools/list itself (Phase 0.5.2); it exposes the
  * `mcp_adapter_tools_list` filter (since 0.5.0) which fires while the JSON-RPC method is
  * dispatched — by then the Application Password user IS resolved. We drop any Tool DTO whose
- * backing ability the current user cannot call, so a connection only ever sees tools it could
- * actually invoke. Non-AAFM tools (no matching enabled ability) are left untouched.
+ * backing ability the current user cannot DISCOVER (an object-independent check), so a
+ * connection only sees tools it could plausibly use, while the per-object permission_callback
+ * still re-checks the specific object at execute time. Non-AAFM tools (no matching enabled
+ * ability) are left untouched.
  *
  * @param mixed $tools  Array of Tool DTOs from the adapter.
  * @param mixed $server Adapter server instance (unused).
@@ -109,9 +191,12 @@ function aafm_filter_mcp_tools_list( $tools, $server = null ) {
 	foreach ( $tools as $tool ) {
 		$tool_name = is_object( $tool ) && method_exists( $tool, 'getName' ) ? (string) $tool->getName() : '';
 
-		// Only gate tools that belong to one of our enabled abilities.
+		// Only gate tools that belong to one of our enabled abilities. Discovery is
+		// decoupled from per-object execute authorization (see aafm_user_can_discover_ability):
+		// a capable user must SEE per-object tools (update-post, trash-post, …) even though the
+		// real permission_callback still re-checks the specific object at execute time.
 		if ( isset( $enabled_by_tool_name[ $tool_name ] ) ) {
-			if ( ! aafm_user_can_call_ability( $enabled_by_tool_name[ $tool_name ], array() ) ) {
+			if ( ! aafm_user_can_discover_ability( $enabled_by_tool_name[ $tool_name ] ) ) {
 				continue;
 			}
 		}
