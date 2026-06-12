@@ -61,8 +61,22 @@ final class CptGovernanceTest extends TestCase {
 	}
 
 	public function test_redaction_returns_exactly_nine_keys_for_a_cpt(): void {
-		register_post_type( 'aafm_book', array( 'public' => true, 'map_meta_cap' => true, 'capability_type' => 'post', 'label' => 'Books' ) );
-		$id = self::factory()->post->create( array( 'post_type' => 'aafm_book', 'post_status' => 'publish', 'post_title' => 'A Book' ) );
+		register_post_type(
+			'aafm_book',
+			array(
+				'public'          => true,
+				'map_meta_cap'    => true,
+				'capability_type' => 'post',
+				'label'           => 'Books',
+			)
+		);
+		$id = self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_book',
+				'post_status' => 'publish',
+				'post_title'  => 'A Book',
+			)
+		);
 		update_post_meta( $id, '_price', '9999' );
 		update_post_meta( $id, 'isbn', '123-secret' );
 
@@ -79,9 +93,20 @@ final class CptGovernanceTest extends TestCase {
 	}
 
 	public function test_non_allowlisted_cpt_read_is_denied(): void {
-		register_post_type( 'aafm_book', array( 'public' => true, 'label' => 'Books' ) );
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
 		$this->acting_as( 'administrator' );
-		$id = self::factory()->post->create( array( 'post_type' => 'aafm_book', 'post_status' => 'publish' ) );
+		$id = self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_book',
+				'post_status' => 'publish',
+			)
+		);
 		delete_option( 'aafm_allowed_post_types' );
 		$this->assertFalse( aafm_perm_get_post( array( 'post_id' => $id ) ) );
 	}
@@ -96,17 +121,37 @@ final class CptGovernanceTest extends TestCase {
 	}
 
 	public function test_private_cpt_forced_into_the_option_is_still_denied(): void {
-		register_post_type( 'aafm_priv', array( 'public' => false, 'label' => 'Priv' ) );
+		register_post_type(
+			'aafm_priv',
+			array(
+				'public' => false,
+				'label'  => 'Priv',
+			)
+		);
 		update_option( 'aafm_allowed_post_types', array( 'aafm_priv' ) );
 		$this->assertInstanceOf( WP_Error::class, aafm_validate_post_type( 'aafm_priv' ) );
 	}
 
 	public function test_map_meta_cap_false_write_is_refused_even_with_singular_caps(): void {
-		register_post_type( 'aafm_unmapped', array( 'public' => true, 'map_meta_cap' => false, 'capability_type' => array( 'aafm_unmapped', 'aafm_unmappeds' ), 'label' => 'Unmapped' ) );
+		register_post_type(
+			'aafm_unmapped',
+			array(
+				'public'          => true,
+				'map_meta_cap'    => false,
+				'capability_type' => array( 'aafm_unmapped', 'aafm_unmappeds' ),
+				'label'           => 'Unmapped',
+			)
+		);
 		update_option( 'aafm_allowed_post_types', array( 'aafm_unmapped' ) );
 
 		$owner = self::factory()->user->create( array( 'role' => 'author' ) );
-		$obj   = self::factory()->post->create( array( 'post_type' => 'aafm_unmapped', 'post_status' => 'draft', 'post_author' => $owner ) );
+		$obj   = self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_unmapped',
+				'post_status' => 'draft',
+				'post_author' => $owner,
+			)
+		);
 
 		$agent = self::factory()->user->create( array( 'role' => 'author' ) );
 		$role  = get_role( 'author' );
