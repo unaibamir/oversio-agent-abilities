@@ -59,4 +59,22 @@ final class CptGovernanceTest extends TestCase {
 		$this->assertTrue( aafm_perm_trash_post( array( 'post_id' => $post ) ) );
 		$this->assertTrue( aafm_perm_get_post( array( 'post_id' => $page ) ) );
 	}
+
+	public function test_redaction_returns_exactly_nine_keys_for_a_cpt(): void {
+		register_post_type( 'aafm_book', array( 'public' => true, 'map_meta_cap' => true, 'capability_type' => 'post', 'label' => 'Books' ) );
+		$id = self::factory()->post->create( array( 'post_type' => 'aafm_book', 'post_status' => 'publish', 'post_title' => 'A Book' ) );
+		update_post_meta( $id, '_price', '9999' );
+		update_post_meta( $id, 'isbn', '123-secret' );
+
+		$out  = aafm_redact_post( get_post( $id ) );
+		$keys = array_keys( $out );
+		sort( $keys );
+		$this->assertSame(
+			array( 'author_id', 'date_gmt', 'excerpt', 'id', 'link', 'modified_gmt', 'slug', 'status', 'title', 'type' ),
+			$keys
+		);
+		$json = wp_json_encode( $out );
+		$this->assertStringNotContainsString( '9999', $json );
+		$this->assertStringNotContainsString( '123-secret', $json );
+	}
 }
