@@ -233,4 +233,22 @@
 		margin-inline-start: 8px;
 		color: #646970;
 	}
+
+	.aafm-notice {
+		border-left: 4px solid;
+		padding-block: 8px;
+		padding-inline: 12px;
+		margin-block: 8px;
+		background: #fff;
+
+		&.aafm-notice-warning {
+			border-color: #dba617;
+			background: #fcf9e8;
+		}
+
+		&.aafm-notice-info {
+			border-color: #72aee6;
+			background: #f0f6fc;
+		}
+	}
 }

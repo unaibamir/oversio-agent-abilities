@@ -270,8 +270,9 @@ function aafm_render_abilities_tab(): void {
 			$is_active ? '' : ' hidden'
 		);
 
-		// Future: the Content panel gains a "which post types are exposed" allowlist selector
-		// here once parameterized post-type abilities land (see note 14, Option A).
+		if ( 'content' === $slug ) {
+			aafm_render_post_types_selector();
+		}
 
 		foreach ( $groups as $group => $heading ) {
 			$rows = array();
@@ -308,6 +309,63 @@ function aafm_render_abilities_tab(): void {
 
 	// Future: per-connection / per-client ability allowlist scoping is a separate roadmapped
 	// feature — it would filter $enabled per principal here rather than at render time.
+}
+
+/**
+ * Render the "Exposed content types" opt-in selector inside the Content sub-tab.
+ *
+ * Lists every eligible (public, non-internal) CPT except post/page (always-on). Each row
+ * names the exact fields the agent can read and flags read-only (non map_meta_cap) types,
+ * so the operator opts in informed. Saved via the aafm_save_post_types AJAX action; the
+ * stored option is always re-floored on read, so the UI is a convenience, not the gate.
+ *
+ * @return void
+ */
+function aafm_render_post_types_selector(): void {
+	$eligible = array_values( array_diff( aafm_eligible_post_types(), array( 'post', 'page' ) ) );
+	$allowed  = aafm_allowed_post_types();
+
+	echo '<h3>' . esc_html__( 'Exposed content types', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<p class="description">' . esc_html__( 'Posts and pages are always available. Any custom content type is off until you turn it on here. The agent can read only these fields of an exposed type: title, slug, excerpt, status, link, dates, author id.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	if ( empty( $eligible ) ) {
+		echo '<p class="aafm-notice aafm-notice-info">' . esc_html__( 'No custom content types on this site are eligible to expose. Only public, non-internal types can be offered here.', 'agent-abilities-for-mcp' ) . '</p>';
+		return;
+	}
+
+	echo '<form id="aafm-post-types-form" class="aafm-post-types">';
+	wp_nonce_field( 'aafm_admin', 'aafm_post_types_nonce' );
+	echo '<table class="widefat striped aafm-post-types-table"><thead><tr>';
+	echo '<th>' . esc_html__( 'Expose', 'agent-abilities-for-mcp' ) . '</th>';
+	echo '<th>' . esc_html__( 'Type', 'agent-abilities-for-mcp' ) . '</th>';
+	echo '<th>' . esc_html__( 'Writes', 'agent-abilities-for-mcp' ) . '</th>';
+	echo '<th>' . esc_html__( 'REST', 'agent-abilities-for-mcp' ) . '</th>';
+	echo '</tr></thead><tbody>';
+
+	foreach ( $eligible as $type ) {
+		$obj    = get_post_type_object( $type );
+		$label  = $obj instanceof WP_Post_Type ? $obj->labels->singular_name : $type;
+		$caps   = aafm_type_caps( $type );
+		$mapped = $caps['mapped'];
+		$rest   = $obj instanceof WP_Post_Type && $obj->show_in_rest;
+
+		printf(
+			'<tr><td><label><input type="checkbox" name="aafm_post_types[]" value="%1$s" %2$s></label></td><td><strong>%3$s</strong> <code>%4$s</code></td><td>%5$s</td><td>%6$s</td></tr>',
+			esc_attr( $type ),
+			checked( in_array( $type, $allowed, true ), true, false ),
+			esc_html( (string) $label ),
+			esc_html( $type ),
+			$mapped
+				? esc_html__( 'Allowed', 'agent-abilities-for-mcp' )
+				: '<span class="aafm-badge aafm-badge-read">' . esc_html__( 'read-only — writes need map_meta_cap', 'agent-abilities-for-mcp' ) . '</span>',
+			$rest ? esc_html__( 'yes', 'agent-abilities-for-mcp' ) : esc_html__( 'no', 'agent-abilities-for-mcp' )
+		);
+	}
+
+	echo '</tbody></table>';
+	echo '<p class="aafm-notice aafm-notice-warning">' . esc_html__( 'Exposed types are still gated by that type\'s capabilities and your low-privilege agent user. Only expose types whose title, slug, and excerpt are not sensitive — for example, a type that stores a person\'s name in the title would make that name readable.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Save content types', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-post-types-status" aria-live="polite"></span></p>';
+	echo '</form>';
 }
 
 /**
