@@ -506,6 +506,14 @@ function aafm_exec_update_post( array $input ) {
 		if ( is_wp_error( $status ) ) {
 			return $status;
 		}
+		// Mirror the create-path force-draft guard: when the operator has force-draft on,
+		// an explicit request for a public status is coerced to 'draft'. This only fires on
+		// an explicit public-status request — an edit-only update with no 'status' field never
+		// reaches here, so force-draft can never retro-unpublish an already-published post.
+		$public_statuses = array_values( get_post_stati( array( 'public' => true ) ) );
+		if ( aafm_force_draft() && in_array( $status, $public_statuses, true ) ) {
+			$status = 'draft';
+		}
 		$postarr['post_status'] = $status;
 	}
 
