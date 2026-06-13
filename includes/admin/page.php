@@ -387,9 +387,9 @@ function aafm_render_abilities_tab(): void {
 			echo '</tbody></table>';
 		}
 
-		// Rendered after the ability tables so the Content panel's own closing </div> is not
-		// pre-empted — the meta selector wraps its controls in a <div>, and the panel-structure
-		// test reads up to the first </div> after the panel opens.
+		// Rendered after the ability tables as a layout choice — the meta selector belongs below
+		// the abilities it governs. No test depends on this placement: the panel-structure test
+		// slices to the next subject panel (or the form's save status), not a bare </div>.
 		if ( 'content' === $slug ) {
 			aafm_render_meta_keys_selector();
 		}
