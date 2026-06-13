@@ -29,6 +29,14 @@ function aafm_register_revisions_definitions( array $registry ): array {
 		'subject'      => 'content',
 		'args_builder' => 'aafm_args_list_revisions',
 	);
+	$registry['aafm/get-revision']   = array(
+		'label'        => __( 'Get revision', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Get a single revision of a post the agent can edit (metadata only — no body content).', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'content',
+		'args_builder' => 'aafm_args_get_revision',
+	);
 	return $registry;
 }
 
@@ -133,4 +141,80 @@ function aafm_exec_list_revisions( array $input ) {
 		'revisions' => $rows,
 		'total'     => count( $all ),
 	);
+}
+
+/**
+ * Args for aafm/get-revision.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_get_revision(): array {
+	return array(
+		'label'               => __( 'Get revision', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Get a single revision of a post the agent can edit (metadata only — no body content).', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'post_id'     => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'revision_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'post_id', 'revision_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'revision' => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_get_revision',
+		'permission_callback' => 'aafm_perm_get_revision',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/get-revision: parent editable AND the revision genuinely
+ * belongs to that parent.
+ *
+ * @param array<string,mixed> $input Ability input.
+ * @return bool
+ */
+function aafm_perm_get_revision( array $input ): bool {
+	if ( ! aafm_revision_parent_editable( $input ) ) {
+		return false;
+	}
+	$revision_id = isset( $input['revision_id'] ) ? absint( $input['revision_id'] ) : 0;
+	$post_id     = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+	return ! is_wp_error( aafm_validate_revision( $revision_id, $post_id ) );
+}
+
+/**
+ * Execute aafm/get-revision.
+ *
+ * Returns the single revision reduced to the metadata-only shape by
+ * aafm_redact_revision(). The validator guarantees the revision belongs to the
+ * named parent before anything is returned.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_get_revision( array $input ) {
+	$revision = aafm_validate_revision( absint( $input['revision_id'] ?? 0 ), absint( $input['post_id'] ?? 0 ) );
+	if ( is_wp_error( $revision ) ) {
+		return aafm_generic_error();
+	}
+	return array( 'revision' => aafm_redact_revision( $revision ) );
 }

@@ -51,4 +51,49 @@ final class RevisionsTest extends TestCase {
 		wp_set_current_user( $other );
 		$this->assertFalse( aafm_perm_list_revisions( array( 'post_id' => $pid ) ) );
 	}
+
+	public function test_get_revision_enforces_parent(): void {
+		$author = self::factory()->user->create( array( 'role' => 'author' ) );
+		wp_set_current_user( $author );
+		$a = self::factory()->post->create(
+			array(
+				'post_author'  => $author,
+				'post_content' => 'a1',
+			)
+		);
+		wp_update_post(
+			array(
+				'ID'           => $a,
+				'post_content' => 'a2',
+			)
+		);
+		$revs = wp_get_post_revisions( $a );
+		$rev  = array_shift( $revs );
+
+		$this->assertTrue(
+			aafm_perm_get_revision(
+				array(
+					'post_id'     => $a,
+					'revision_id' => (int) $rev->ID,
+				)
+			)
+		);
+		$out = aafm_exec_get_revision(
+			array(
+				'post_id'     => $a,
+				'revision_id' => (int) $rev->ID,
+			)
+		);
+		$this->assertSame( $a, $out['revision']['post_id'] );
+
+		$b = self::factory()->post->create( array( 'post_author' => $author ) );
+		$this->assertFalse(
+			aafm_perm_get_revision(
+				array(
+					'post_id'     => $b,
+					'revision_id' => (int) $rev->ID,
+				)
+			)
+		);
+	}
 }
