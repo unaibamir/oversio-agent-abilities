@@ -134,9 +134,14 @@ final class PostTypesSaveTest extends TestCase {
 
 		$entry = reset( $ours );
 		$this->assertStringContainsString(
-			'No custom field',
+			"read and change those keys' values",
 			(string) $entry['policy_text'],
-			'Suggested text must state that post meta is never exposed.'
+			'Suggested text must disclose that exposed meta keys are readable and writable by agents.'
+		);
+		$this->assertStringContainsString(
+			'meta',
+			strtolower( (string) $entry['policy_text'] ),
+			'Suggested text must mention meta exposure.'
 		);
 	}
 }

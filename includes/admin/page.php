@@ -198,7 +198,7 @@ function aafm_register_privacy_policy_content(): void {
 		return;
 	}
 	$content = wp_kses_post(
-		'<p>' . __( 'When an administrator exposes a content type to AI agents through Agent Abilities for MCP, an authenticated agent can read that type\'s title, slug, excerpt, status, permalink, publish/modified dates, and author id. No custom field (post meta) values are ever exposed. Only expose content types whose title, slug, and excerpt do not contain personal data.', 'agent-abilities-for-mcp' ) . '</p>'
+		'<p>' . __( 'When an administrator exposes a content type to AI agents through Agent Abilities for MCP, an authenticated agent can read that type\'s title, slug, excerpt, status, permalink, publish/modified dates, and author id. If an administrator also exposes specific meta keys, an agent can read and change those keys\' values on any post it is allowed to edit. Protected keys (those prefixed with an underscore) and authentication-related keys can never be exposed. Only expose content types and meta keys whose values do not hold personal data.', 'agent-abilities-for-mcp' ) . '</p>'
 	);
 	wp_add_privacy_policy_content( __( 'Agent Abilities for MCP', 'agent-abilities-for-mcp' ), $content );
 }
