@@ -207,4 +207,56 @@ final class PostMetaTest extends TestCase {
 			$this->assertArrayHasKey( 'value', $second );
 		}
 	}
+
+	public function test_delete_meta_removes_key(): void {
+		update_option( 'aafm_allowed_meta_keys', array( 'subtitle' ) );
+		$author = self::factory()->user->create( array( 'role' => 'author' ) );
+		wp_set_current_user( $author );
+		$id = self::factory()->post->create( array( 'post_author' => $author ) );
+		update_post_meta( $id, 'subtitle', 'gone' );
+		$this->assertSame(
+			array( 'deleted' => true ),
+			aafm_exec_delete_post_meta(
+				array(
+					'post_id'  => $id,
+					'meta_key' => 'subtitle',
+				)
+			)
+		);
+		$this->assertSame( '', get_post_meta( $id, 'subtitle', true ) );
+	}
+
+	public function test_delete_meta_gates_block_and_other_author(): void {
+		update_option( 'aafm_allowed_meta_keys', array( 'subtitle' ) );
+		$owner = self::factory()->user->create( array( 'role' => 'author' ) );
+		$other = self::factory()->user->create( array( 'role' => 'author' ) );
+		$id    = self::factory()->post->create( array( 'post_author' => $owner ) );
+		update_post_meta( $id, 'subtitle', 'x' );
+		wp_set_current_user( $other );
+		$this->assertFalse(
+			aafm_perm_delete_post_meta(
+				array(
+					'post_id'  => $id,
+					'meta_key' => 'subtitle',
+				)
+			)
+		);
+		wp_set_current_user( $owner );
+		$this->assertFalse(
+			aafm_perm_delete_post_meta(
+				array(
+					'post_id'  => $id,
+					'meta_key' => '_edit_lock',
+				)
+			)
+		);
+		$this->assertFalse(
+			aafm_perm_delete_post_meta(
+				array(
+					'post_id'  => $id,
+					'meta_key' => 'unlisted',
+				)
+			)
+		);
+	}
 }

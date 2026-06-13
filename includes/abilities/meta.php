@@ -36,6 +36,14 @@ function aafm_register_meta_definitions( array $registry ): array {
 		'subject'      => 'content',
 		'args_builder' => 'aafm_args_update_post_meta',
 	);
+	$registry['aafm/delete-post-meta'] = array(
+		'label'        => __( 'Delete post meta', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Delete an allowlisted meta key from a post the agent can edit. Removes all values of that key.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'destructive',
+		'subject'      => 'content',
+		'args_builder' => 'aafm_args_delete_post_meta',
+	);
 	return $registry;
 }
 
@@ -230,4 +238,76 @@ function aafm_exec_update_post_meta( array $input ) {
 		'meta_key' => $key,
 		'value'    => $value,
 	);
+}
+
+/**
+ * Args for aafm/delete-post-meta.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_delete_post_meta(): array {
+	return array(
+		'label'               => __( 'Delete post meta', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Delete an allowlisted meta key from a post the agent can edit. Removes all values of that key.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'post_id'  => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'meta_key' => array(
+					'type'      => 'string',
+					'minLength' => 1,
+				),
+			),
+			'required'             => array( 'post_id', 'meta_key' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'deleted' => array( 'type' => 'boolean' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_delete_post_meta',
+		'permission_callback' => 'aafm_perm_delete_post_meta',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => true,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/delete-post-meta: the shared per-object + per-key gate.
+ *
+ * @param array<string,mixed> $input Ability input.
+ * @return bool
+ */
+function aafm_perm_delete_post_meta( array $input ): bool {
+	return aafm_can_access_post_meta( $input );
+}
+
+/**
+ * Execute aafm/delete-post-meta.
+ *
+ * Re-validates the key (defence in depth — the permission callback already gated it),
+ * then removes every value of that key. delete_post_meta() with no value arg deletes
+ * all values of the key, which is the intended destructive behaviour here.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_delete_post_meta( array $input ) {
+	$id  = absint( $input['post_id'] );
+	$key = aafm_validate_meta_key( isset( $input['meta_key'] ) ? (string) $input['meta_key'] : '' );
+	if ( is_wp_error( $key ) || ! get_post( $id ) instanceof WP_Post ) {
+		return aafm_generic_error();
+	}
+	delete_post_meta( $id, $key );
+	return array( 'deleted' => true );
 }
