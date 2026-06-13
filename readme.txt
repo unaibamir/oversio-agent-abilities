@@ -14,7 +14,7 @@ Give an AI agent scoped, audited access to your WordPress site over the Model Co
 
 Give an AI agent access to your WordPress site without handing it the keys. Agent Abilities for MCP connects agents over the Model Context Protocol as a WordPress user you choose — point it at a dedicated low-privilege account and it can only ever do what that account is allowed to do. Everything is off until you turn it on, and every action is logged. No admin-equivalent key, no custom transport, no custom OAuth — it is built on the WordPress Abilities API and the official MCP Adapter.
 
-Twenty-four core abilities cover reading and (optionally) writing posts, pages, terms, comments, media, and site structure. You decide, per ability, what an agent can touch.
+Thirty-one core abilities cover reading and, when you allow it, writing posts, pages, terms, comments, media, post meta, and site structure, plus revision history and a search that spans every post type at once. You decide, per ability, what an agent can touch.
 
 Highlights:
 
@@ -23,6 +23,7 @@ Highlights:
 * Two-layer capability gating — a connection only sees the tools its user can call, and every call re-checks the user's capability before it runs.
 * Honest audit log — every call is recorded, including denied attempts, with the principal and the argument keys (never the values).
 * Safe by construction — no arbitrary option or meta access, no URL fetch, no user creation, no code execution. Deletes go to Trash, not gone. Uploads are decoded from inline data, sniffed by their real bytes against an image allow-list, and never fetched from a URL.
+* Optional safety controls — switch on a per-minute rate limit, an IP allowlist, a force-to-draft mode, or a title-length cap. All four stay off until you set them.
 * Guided setup — create the agent user, copy a client config, and run a connection check from one screen.
 
 == Installation ==
@@ -41,11 +42,11 @@ No. The agent authenticates as whatever WordPress user you bind it to. Point it 
 
 = What can an agent actually do? =
 
-Only the abilities you have enabled, and only within the bound user's capabilities. The catalog is reads and guarded writes over posts, pages, terms, comments, media, and site structure. There is no ability to change options arbitrarily, create users, change roles, fetch a remote URL, or run code. An agent can only write post meta for keys an administrator has explicitly allowlisted, and protected, underscore-prefixed, and authentication keys can never be allowlisted. Deletes move content to Trash so they are recoverable.
+Only the abilities you have enabled, and only within the bound user's capabilities. The catalog is reads and guarded writes over posts, pages, terms, comments, media, post meta, and site structure, plus revision history and a search that spans every post type at once. There is no ability to change options arbitrarily, create users, change roles, fetch a remote URL, or run code. An agent can only write post meta for keys an administrator has explicitly allowlisted, and protected, underscore-prefixed, and authentication keys can never be allowlisted. Deletes move content to Trash so they are recoverable.
 
 = Which AI clients work? =
 
-Any MCP client that can reach a WordPress REST endpoint with an Application Password. Claude Desktop, Claude Code, Cursor, and Windsurf connect through the @automattic/mcp-wordpress-remote proxy. ChatGPT and Gemini remote connectors expect streamable HTTP/SSE, which the underlying adapter does not yet serve natively.
+Any MCP client that can reach a WordPress REST endpoint with an Application Password. Claude Desktop, Claude Code, Cursor, Windsurf, and Gemini CLI all connect through the @automattic/mcp-wordpress-remote proxy. The hosted ChatGPT and Gemini apps want a streamable HTTP/SSE remote connector, which the underlying adapter does not serve natively yet.
 
 = I'm on Windows and the config won't start. =
 
@@ -70,4 +71,4 @@ Every ability call — started, succeeded, errored, or denied — with the actin
 == Changelog ==
 
 = 1.0.0 =
-* Initial release: 24 governed core abilities, least-privilege Application Password auth, per-connection tool filtering, two-layer capability gating, an audit log that records denials, and a guided connection wizard with diagnostics.
+* Initial release: 31 governed core abilities (reads and guarded writes across posts, pages, terms, comments, media, post meta, revisions, and search), least-privilege Application Password auth, per-connection tool filtering, two-layer capability gating, optional safety controls (rate limit, IP allowlist, force-draft, title-length cap), an audit log that records denials, and a guided connection wizard with diagnostics.
