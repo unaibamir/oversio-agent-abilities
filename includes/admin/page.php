@@ -387,6 +387,13 @@ function aafm_render_abilities_tab(): void {
 			echo '</tbody></table>';
 		}
 
+		// Rendered after the ability tables so the Content panel's own closing </div> is not
+		// pre-empted — the meta selector wraps its controls in a <div>, and the panel-structure
+		// test reads up to the first </div> after the panel opens.
+		if ( 'content' === $slug ) {
+			aafm_render_meta_keys_selector();
+		}
+
 		echo '</div>';
 	}
 
@@ -450,6 +457,51 @@ function aafm_render_post_types_selector(): void {
 	echo '</tbody></table>';
 	echo '<p class="aafm-notice aafm-notice-warning">' . esc_html__( 'Exposed types are still gated by that type\'s capabilities and your low-privilege agent user. Only expose types whose title, slug, and excerpt are not sensitive — for example, a type that stores a person\'s name in the title would make that name readable.', 'agent-abilities-for-mcp' ) . '</p>';
 	echo '<p><button type="button" id="aafm-post-types-save" class="button button-primary">' . esc_html__( 'Save content types', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-post-types-status" aria-live="polite"></span></p>';
+	echo '</div>';
+}
+
+/**
+ * Render the "Exposed meta keys" opt-in selector inside the Content sub-tab.
+ *
+ * One key per line in the textarea is the allowlist; chips below offer the meta keys
+ * actually detected on the exposed types as one-click adds. Saved via the
+ * aafm_save_meta_keys AJAX action; the stored allowlist is always re-floored against the
+ * hard-block on read, so this UI is a convenience, not the gate. It mirrors the post-types
+ * selector exactly: a plain <div> (never a nested <form>) with a type="button" save, so the
+ * one outer abilities <form> is never closed early.
+ *
+ * @return void
+ */
+function aafm_render_meta_keys_selector(): void {
+	$allowed  = aafm_allowed_meta_keys();
+	$detected = aafm_detected_meta_keys();
+
+	echo '<h3>' . esc_html__( 'Exposed meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<p class="description">' . esc_html__( 'One meta key per line. These are the only meta keys an agent can read or write on a post it can already edit. Everything else stays hidden.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '<p class="aafm-notice aafm-notice-warning">' . esc_html__( 'Meta can hold private data. Only expose keys whose values are safe for an agent to read and write. Protected keys (anything starting with an underscore) and authentication keys are blocked for good and can\'t be added.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	echo '<div id="aafm-meta-keys-form" class="aafm-meta-keys">';
+	printf(
+		'<textarea name="aafm_meta_keys" rows="6" class="large-text code">%s</textarea>',
+		esc_textarea( implode( "\n", $allowed ) )
+	);
+
+	echo '<p class="description">' . esc_html__( 'Detected on your exposed types', 'agent-abilities-for-mcp' ) . '</p>';
+	if ( empty( $detected ) ) {
+		echo '<p class="description">' . esc_html__( 'Nothing detected yet on the types you expose.', 'agent-abilities-for-mcp' ) . '</p>';
+	} else {
+		echo '<div class="aafm-meta-chips">';
+		foreach ( $detected as $key ) {
+			printf(
+				'<button type="button" class="button aafm-meta-chip" data-key="%1$s">%2$s</button>',
+				esc_attr( $key ),
+				esc_html( $key )
+			);
+		}
+		echo '</div>';
+	}
+
+	echo '<p><button type="button" id="aafm-meta-keys-save" class="button button-primary">' . esc_html__( 'Save meta keys', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-meta-keys-status" aria-live="polite"></span></p>';
 	echo '</div>';
 }
 

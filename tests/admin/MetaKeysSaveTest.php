@@ -29,4 +29,17 @@ final class MetaKeysSaveTest extends TestCase {
 		$this->assertContains( 'subtitle', $keys );
 		$this->assertNotContains( '_edit_lock', $keys );
 	}
+
+	public function test_meta_selector_is_nested_form_safe(): void {
+		$id = self::factory()->post->create();
+		update_post_meta( $id, 'subtitle', 'x' );
+		ob_start();
+		aafm_render_abilities_tab();
+		$html = ob_get_clean();
+		$this->assertSame( 1, substr_count( $html, '<form' ) );
+		$this->assertStringContainsString( 'id="aafm-meta-keys-form"', $html );
+		$this->assertStringContainsString( 'name="aafm_meta_keys"', $html );
+		$this->assertStringContainsString( 'id="aafm-meta-keys-save"', $html );
+		$this->assertStringContainsString( 'aafm-meta-chip', $html );
+	}
 }
