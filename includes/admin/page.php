@@ -43,8 +43,31 @@ function aafm_enqueue_admin_assets( string $hook ): void {
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'aafm_admin' ),
 			'i18n'    => array(
-				'quickstartsShow' => __( 'Show config for a specific client', 'agent-abilities-for-mcp' ),
-				'quickstartsHide' => __( 'Hide client configs', 'agent-abilities-for-mcp' ),
+				'quickstartsShow'   => __( 'Show config for a specific client', 'agent-abilities-for-mcp' ),
+				'quickstartsHide'   => __( 'Hide client configs', 'agent-abilities-for-mcp' ),
+				'saving'            => __( 'Saving…', 'agent-abilities-for-mcp' ),
+				'saved'             => __( 'Saved', 'agent-abilities-for-mcp' ),
+				'errorSaving'       => __( 'Error saving', 'agent-abilities-for-mcp' ),
+				'creating'          => __( 'Creating…', 'agent-abilities-for-mcp' ),
+				'checking'          => __( 'Checking…', 'agent-abilities-for-mcp' ),
+				'cleared'           => __( 'Cleared', 'agent-abilities-for-mcp' ),
+				'error'             => __( 'Error', 'agent-abilities-for-mcp' ),
+				'requestFailed'     => __( 'Request failed.', 'agent-abilities-for-mcp' ),
+				'settingsNotSaved'  => __( 'Could not save — your previous settings are still in effect.', 'agent-abilities-for-mcp' ),
+				'allowlistEmptied'  => __( 'Saved, but every line was dropped as invalid. The allowlist is now empty, so connections from anywhere are allowed.', 'agent-abilities-for-mcp' ),
+				/* translators: %d: number of allowlist lines that were dropped as invalid. */
+				'allowlistDropped'  => __( 'Saved. Dropped %d line(s) that were not a valid IP or range — check the allowlist.', 'agent-abilities-for-mcp' ),
+				/* translators: %d: the new agent user's numeric ID. */
+				'userCreated'       => __( 'Created user #%d. Now create its Application Password under Users → Profile.', 'agent-abilities-for-mcp' ),
+				/* translators: 1: HTTP status code, 2: number of tools visible in the admin view. */
+				'connectionOk'      => __( 'Reachable (HTTP %1$s) — %2$s tool(s) in your admin view.', 'agent-abilities-for-mcp' ),
+				/* translators: %s: HTTP status code returned by the endpoint. */
+				'connectionNoTools' => __( 'Endpoint answered HTTP %s but did not return a tool list.', 'agent-abilities-for-mcp' ),
+				/* translators: %s: error message returned by the server. */
+				'errorWithMessage'  => __( 'Error: %s', 'agent-abilities-for-mcp' ),
+				'errorUnknown'      => __( 'unknown', 'agent-abilities-for-mcp' ),
+				'copyCopied'        => __( 'Copied', 'agent-abilities-for-mcp' ),
+				'copyFallback'      => __( 'Press Ctrl+C', 'agent-abilities-for-mcp' ),
 			),
 		)
 	);
@@ -56,14 +79,14 @@ function aafm_enqueue_admin_assets( string $hook ): void {
  * The result is intersected with the live registry, so a stale, unknown, or smuggled
  * key can never enable anything — only abilities that actually exist are honored.
  *
- * @param array<string,mixed> $posted The raw $_POST payload (slashes handled here).
+ * @param array<string,mixed> $posted The $_POST payload, already unslashed by the caller.
  * @return array<int,string>
  */
 function aafm_sanitize_enabled_input( array $posted ): array {
 	$known   = array_keys( aafm_get_abilities_registry() );
 	$enabled = array();
 	if ( isset( $posted['aafm_abilities'] ) && is_array( $posted['aafm_abilities'] ) ) {
-		foreach ( wp_unslash( $posted['aafm_abilities'] ) as $name ) {
+		foreach ( $posted['aafm_abilities'] as $name ) {
 			$enabled[] = sanitize_text_field( (string) $name );
 		}
 	}
@@ -92,13 +115,13 @@ function aafm_ajax_save_abilities(): void {
  * intentionally dropped here rather than persisted. Every remaining value must clear the
  * eligibility floor, so attachment, revision, private CPTs, and junk can never be stored.
  *
- * @param array<string,mixed> $posted Raw $_POST payload (slashes handled here).
+ * @param array<string,mixed> $posted The $_POST payload, already unslashed by the caller.
  * @return list<string>
  */
 function aafm_sanitize_allowed_post_types_input( array $posted ): array {
 	$types = array();
 	if ( isset( $posted['aafm_post_types'] ) && is_array( $posted['aafm_post_types'] ) ) {
-		foreach ( wp_unslash( $posted['aafm_post_types'] ) as $type ) {
+		foreach ( $posted['aafm_post_types'] as $type ) {
 			$types[] = sanitize_key( (string) $type );
 		}
 	}
@@ -834,7 +857,7 @@ function aafm_render_help_tab(): void {
 			. '<li><strong>' . esc_html__( 'Windsurf:', 'agent-abilities-for-mcp' ) . '</strong> ' . esc_html__( 'add it under its MCP / plugins config (mcp_config.json) and refresh the server list.', 'agent-abilities-for-mcp' ) . '</li>'
 			. '</ul>'
 			. '<p>' . esc_html__( 'Copy the config straight from Connection → Step 2 — do not hand-build it. On Windows, use that tab\'s "Windows" view (it wraps the launcher in cmd /c); for a local or staging site, it adds the certificate handling. Both are covered in the Connecting section above.', 'agent-abilities-for-mcp' ) . '</p>'
-			. '<p><strong>' . esc_html__( 'ChatGPT and Gemini are not supported in this release.', 'agent-abilities-for-mcp' ) . '</strong> ' . esc_html__( 'Their remote connectors expect a native streamable HTTP/SSE MCP transport, which the bundled adapter does not serve yet — they cannot use the proxy the way the clients above do.', 'agent-abilities-for-mcp' ) . '</p>',
+			. '<p><strong>' . esc_html__( 'The hosted ChatGPT and Gemini apps cannot connect in this release.', 'agent-abilities-for-mcp' ) . '</strong> ' . esc_html__( 'Their web connectors expect a native streamable HTTP/SSE MCP transport, which the bundled adapter does not serve yet, so they cannot reach the proxy the way the clients above do. Gemini CLI is the exception: it runs as a proxy client, like Claude Code, so it works today, and the Connection tab has a ready-made quickstart for it.', 'agent-abilities-for-mcp' ) . '</p>',
 			$inline
 		)
 	);
@@ -850,6 +873,7 @@ function aafm_render_help_tab(): void {
 			. '<li><strong>' . esc_html__( 'Two locks on every ability.', 'agent-abilities-for-mcp' ) . '</strong> ' . esc_html__( 'An ability works only if you explicitly enabled it on the Abilities tab AND the agent user\'s capabilities allow it. The default is nothing enabled — the agent starts with zero abilities until you turn them on.', 'agent-abilities-for-mcp' ) . '</li>'
 			. '<li><strong>' . esc_html__( 'Deletes are trash, not destroy.', 'agent-abilities-for-mcp' ) . '</strong> ' . esc_html__( 'Delete-style abilities move content to the Trash, where you can restore it; they do not permanently erase it.', 'agent-abilities-for-mcp' ) . '</li>'
 			. '<li><strong>' . esc_html__( 'Everything is logged, values are not.', 'agent-abilities-for-mcp' ) . '</strong> ' . esc_html__( 'Every call — including denied ones — is recorded on the Activity Log tab with the argument KEYS only, never the values. You can see what was attempted without leaking what was in it.', 'agent-abilities-for-mcp' ) . '</li>'
+			. '<li><strong>' . esc_html__( 'Optional extra guardrails.', 'agent-abilities-for-mcp' ) . '</strong> ' . esc_html__( 'The Settings tab adds a per-minute rate limit, an IP allowlist, a force-to-draft switch, and a maximum title length. All four are off by default, so you turn on only the ones you want.', 'agent-abilities-for-mcp' ) . '</li>'
 			. '</ul>',
 			$inline
 		)
@@ -869,7 +893,8 @@ function aafm_render_help_tab(): void {
 	aafm_render_help_entry(
 		__( 'Is there rate limiting?', 'agent-abilities-for-mcp' ),
 		wp_kses(
-			'<p>' . esc_html__( 'Not in this release. Until it lands, bind the agent to a low-privilege user and enable only the abilities you actually need — that keeps the blast radius small regardless of call volume.', 'agent-abilities-for-mcp' ) . '</p>',
+			'<p>' . esc_html__( 'Yes. The Settings tab has a "Rate limit (per minute)" field. Set it to a number and each connection can make at most that many agent calls per minute; set it to 0 to turn the limit off. The cap is counted per agent user, so two connections do not eat into each other\'s budget.', 'agent-abilities-for-mcp' ) . '</p>'
+			. '<p>' . esc_html__( 'Calls that go over the limit are denied, and each denial is written to the Activity Log like any other blocked call, so you can see when a connection is hitting the ceiling.', 'agent-abilities-for-mcp' ) . '</p>',
 			$inline
 		)
 	);

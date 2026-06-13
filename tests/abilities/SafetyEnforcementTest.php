@@ -226,6 +226,84 @@ final class SafetyEnforcementTest extends TestCase {
 		$this->assertSame( 'publish', $out['post']['status'] );
 	}
 
+	public function test_force_draft_overrides_update_post_to_publish(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_force_draft', '1' );
+		$id  = self::factory()->post->create(
+			array(
+				'post_status' => 'draft',
+				'post_author' => $uid,
+			)
+		);
+		$out = aafm_exec_update_post(
+			array(
+				'post_id' => $id,
+				'status'  => 'publish',
+			)
+		);
+		$this->assertSame( 'draft', $out['post']['status'] );
+	}
+
+	public function test_force_draft_overrides_update_page_to_publish(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_force_draft', '1' );
+		$pid = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'draft',
+				'post_author' => $uid,
+			)
+		);
+		$out = aafm_exec_update_page(
+			array(
+				'page_id' => $pid,
+				'status'  => 'publish',
+			)
+		);
+		$this->assertSame( 'draft', $out['post']['status'] );
+	}
+
+	public function test_force_draft_off_update_to_publish_still_publishes(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_force_draft', '0' ); // OFF (default) — update may publish.
+		$id  = self::factory()->post->create(
+			array(
+				'post_status' => 'draft',
+				'post_author' => $uid,
+			)
+		);
+		$out = aafm_exec_update_post(
+			array(
+				'post_id' => $id,
+				'status'  => 'publish',
+			)
+		);
+		$this->assertSame( 'publish', $out['post']['status'] );
+	}
+
+	public function test_force_draft_on_update_without_status_does_not_unpublish(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_force_draft', '1' );
+		$id = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_author' => $uid,
+			)
+		);
+		// No 'status' in the input — force-draft must not retro-unpublish an edit-only update.
+		$out = aafm_exec_update_post(
+			array(
+				'post_id' => $id,
+				'content' => 'Edited body only.',
+			)
+		);
+		$this->assertSame( 'publish', $out['post']['status'] );
+	}
+
 	public function test_max_title_blocks_create_and_update(): void {
 		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		wp_set_current_user( $uid );

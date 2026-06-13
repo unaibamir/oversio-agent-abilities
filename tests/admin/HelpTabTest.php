@@ -51,6 +51,11 @@ final class HelpTabTest extends TestCase {
 		$this->assertStringContainsString( 'NODE_EXTRA_CA_CERTS', $html );
 		$this->assertStringContainsString( 'cmd /c', $html );
 		$this->assertStringContainsString( '@automattic/mcp-wordpress-remote', $html );
+
+		// The rate-limit answer points at the shipped Settings control, not the old "not yet" copy.
+		$this->assertStringNotContainsString( 'Not in this release', $html );
+		$this->assertStringContainsString( 'Rate limit (per minute)', $html );
+		$this->assertStringContainsString( 'per agent user', $html );
 	}
 
 	public function test_help_tab_documents_the_waf_cdn_unreachable_cluster(): void {
@@ -102,8 +107,10 @@ final class HelpTabTest extends TestCase {
 		$this->assertStringContainsString( 'Cursor:', $html );
 		$this->assertStringContainsString( 'Windsurf:', $html );
 		$this->assertStringContainsString( 'claude_desktop_config.json', $html );
-		// ChatGPT and Gemini are explicitly called out as unsupported (accurate to this release).
-		$this->assertStringContainsString( 'ChatGPT and Gemini are not supported', $html );
+		// The hosted ChatGPT/Gemini apps are called out as the ones that can't connect,
+		// while Gemini CLI is noted as a working proxy client (accurate to this release).
+		$this->assertStringContainsString( 'hosted ChatGPT and Gemini apps cannot connect', $html );
+		$this->assertStringContainsString( 'Gemini CLI', $html );
 	}
 
 	public function test_help_tab_documents_plain_language_security_model(): void {
