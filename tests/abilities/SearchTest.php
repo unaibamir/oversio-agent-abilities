@@ -13,12 +13,6 @@ namespace AAFM\Tests\Abilities;
 use AAFM\Tests\TestCase;
 use WP_Error;
 
-// Task 3 wires search.php into the plugin bootstrap's require list. Until then, load the
-// ability file here so its global aafm_* functions resolve for this suite.
-if ( ! function_exists( 'aafm_exec_search_content' ) ) {
-	require_once dirname( __DIR__, 2 ) . '/includes/abilities/search.php';
-}
-
 final class SearchTest extends TestCase {
 
 	public function test_search_spans_allowlisted_types_redacted(): void {
@@ -67,6 +61,54 @@ final class SearchTest extends TestCase {
 				)
 			)
 		);
+	}
+
+	public function test_search_private_status_contains_per_type_read_cap(): void {
+		// A CPT with its own capability set: editors get read_private_posts but NOT
+		// read_private_books, so a private search must drop the book hit it can't read.
+		register_post_type(
+			'aafm_book',
+			array(
+				'public'          => true,
+				'label'           => 'Books',
+				'capability_type' => array( 'book', 'books' ),
+				'map_meta_cap'    => true,
+			)
+		);
+		// Allowlist both so the containment filter has a type to KEEP (post) and one to DROP (book).
+		update_option( 'aafm_allowed_post_types', array( 'post', 'aafm_book' ) );
+
+		$editor = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $editor );
+		$this->assertTrue( current_user_can( 'read_private_posts' ), 'Editor must hold the post-level FLOOR cap.' );
+		$this->assertFalse( current_user_can( 'read_private_books' ), 'Editor must NOT hold the per-type book cap.' );
+
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'post',
+				'post_title'  => 'QUOKKA secret post',
+				'post_status' => 'private',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_book',
+				'post_title'  => 'QUOKKA secret book',
+				'post_status' => 'private',
+			)
+		);
+
+		$out   = aafm_exec_search_content(
+			array(
+				'search' => 'QUOKKA',
+				'status' => 'private',
+			)
+		);
+		$types = array_column( $out['results'], 'type' );
+		$this->assertContains( 'post', $types );
+		$this->assertNotContains( 'aafm_book', $types );
+		// total comes from found_posts AFTER the containment narrowing — no private-count leak.
+		$this->assertSame( 1, $out['total'] );
 	}
 
 	public function test_search_post_types_narrows_and_cannot_widen(): void {
