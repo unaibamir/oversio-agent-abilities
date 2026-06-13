@@ -82,4 +82,10 @@ final class SearchTest extends TestCase {
 		$this->assertSame( 'reads', $registry['aafm/search-content']['group'] );
 		$this->assertSame( 'read', $registry['aafm/search-content']['risk'] );
 	}
+
+	public function test_search_ability_registered_as_read(): void {
+		$reg = aafm_get_abilities_registry();
+		$this->assertArrayHasKey( 'aafm/search-content', $reg );
+		$this->assertSame( 'reads', $reg['aafm/search-content']['group'] );
+	}
 }
