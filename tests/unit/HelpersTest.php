@@ -98,14 +98,26 @@ final class HelpersTest extends TestCase {
 	}
 
 	public function test_resolve_search_types_defaults_to_full_allowlist(): void {
-		register_post_type( 'aafm_book', array( 'public' => true, 'label' => 'Books' ) );
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
 		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
 		$this->assertSame( aafm_allowed_post_types(), aafm_resolve_search_post_types( array() ) );
 	}
 
 	public function test_resolve_search_types_intersects_with_allowlist(): void {
-		register_post_type( 'aafm_book', array( 'public' => true, 'label' => 'Books' ) );
-		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) ); // → ['post','page','aafm_book'].
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
+		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) ); // Allowlist resolves to post + page + aafm_book.
 		$this->assertSame( array( 'aafm_book', 'page' ), aafm_resolve_search_post_types( array( 'aafm_book', 'attachment', 'page' ) ) );
 		$this->assertSame( array(), aafm_resolve_search_post_types( array( 'nonexistent' ) ) );
 	}

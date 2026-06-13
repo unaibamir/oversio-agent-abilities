@@ -101,7 +101,7 @@ function aafm_allowed_post_types(): array {
  * Resolve the post types a cross-type search may touch: the requested set intersected with
  * the exposed allowlist (never wider). An empty/omitted request means the whole allowlist.
  *
- * @param list<string> $requested Caller-supplied post types (may be empty).
+ * @param array<int, string> $requested Caller-supplied post types (may be empty).
  * @return list<string>
  */
 function aafm_resolve_search_post_types( array $requested ): array {

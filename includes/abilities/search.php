@@ -135,8 +135,8 @@ function aafm_exec_search_content( array $input ) {
 		}
 	}
 
-	$paging = aafm_paginate_args( $input, 50 );
-	$query  = new WP_Query(
+	$paging  = aafm_paginate_args( $input, 50 );
+	$query   = new WP_Query(
 		array(
 			'post_type'        => $types,
 			'post_status'      => $status,

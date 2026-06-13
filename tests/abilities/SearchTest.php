@@ -22,10 +22,30 @@ if ( ! function_exists( 'aafm_exec_search_content' ) ) {
 final class SearchTest extends TestCase {
 
 	public function test_search_spans_allowlisted_types_redacted(): void {
-		register_post_type( 'aafm_book', array( 'public' => true, 'label' => 'Books', 'capability_type' => 'post', 'map_meta_cap' => true ) );
+		register_post_type(
+			'aafm_book',
+			array(
+				'public'          => true,
+				'label'           => 'Books',
+				'capability_type' => 'post',
+				'map_meta_cap'    => true,
+			)
+		);
 		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
-		self::factory()->post->create( array( 'post_type' => 'post', 'post_title' => 'ZEBRA one', 'post_status' => 'publish' ) );
-		self::factory()->post->create( array( 'post_type' => 'aafm_book', 'post_title' => 'ZEBRA two', 'post_status' => 'publish' ) );
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'post',
+				'post_title'  => 'ZEBRA one',
+				'post_status' => 'publish',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_book',
+				'post_title'  => 'ZEBRA two',
+				'post_status' => 'publish',
+			)
+		);
 
 		$out   = aafm_exec_search_content( array( 'search' => 'ZEBRA' ) );
 		$types = array_column( $out['results'], 'type' );
@@ -38,24 +58,66 @@ final class SearchTest extends TestCase {
 	public function test_search_status_guard_blocks_low_priv_private(): void {
 		$sub = self::factory()->user->create( array( 'role' => 'subscriber' ) );
 		wp_set_current_user( $sub );
-		$this->assertInstanceOf( WP_Error::class, aafm_exec_search_content( array( 'search' => 'x', 'status' => 'draft' ) ) );
+		$this->assertInstanceOf(
+			WP_Error::class,
+			aafm_exec_search_content(
+				array(
+					'search' => 'x',
+					'status' => 'draft',
+				)
+			)
+		);
 	}
 
 	public function test_search_post_types_narrows_and_cannot_widen(): void {
-		update_option( 'aafm_allowed_post_types', array() ); // → ['post','page'].
-		self::factory()->post->create( array( 'post_type' => 'page', 'post_title' => 'YETI page', 'post_status' => 'publish' ) );
-		self::factory()->post->create( array( 'post_type' => 'post', 'post_title' => 'YETI post', 'post_status' => 'publish' ) );
-		$out = aafm_exec_search_content( array( 'search' => 'YETI', 'post_types' => array( 'page' ) ) );
+		update_option( 'aafm_allowed_post_types', array() ); // Allowlist resolves to post + page.
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_title'  => 'YETI page',
+				'post_status' => 'publish',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'post',
+				'post_title'  => 'YETI post',
+				'post_status' => 'publish',
+			)
+		);
+		$out = aafm_exec_search_content(
+			array(
+				'search'     => 'YETI',
+				'post_types' => array( 'page' ),
+			)
+		);
 		$this->assertSame( array( 'page' ), array_values( array_unique( array_column( $out['results'], 'type' ) ) ) );
-		$empty = aafm_exec_search_content( array( 'search' => 'YETI', 'post_types' => array( 'notallowed' ) ) );
+		$empty = aafm_exec_search_content(
+			array(
+				'search'     => 'YETI',
+				'post_types' => array( 'notallowed' ),
+			)
+		);
 		$this->assertSame( array(), $empty['results'] );
 		$this->assertSame( 0, $empty['total'] );
 	}
 
 	public function test_search_default_excludes_drafts(): void {
 		update_option( 'aafm_allowed_post_types', array() );
-		self::factory()->post->create( array( 'post_type' => 'post', 'post_title' => 'OKAPI draft', 'post_status' => 'draft' ) );
-		self::factory()->post->create( array( 'post_type' => 'post', 'post_title' => 'OKAPI live', 'post_status' => 'publish' ) );
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'post',
+				'post_title'  => 'OKAPI draft',
+				'post_status' => 'draft',
+			)
+		);
+		self::factory()->post->create(
+			array(
+				'post_type'   => 'post',
+				'post_title'  => 'OKAPI live',
+				'post_status' => 'publish',
+			)
+		);
 		$out    = aafm_exec_search_content( array( 'search' => 'OKAPI' ) );
 		$titles = array_column( $out['results'], 'title' );
 		$this->assertContains( 'OKAPI live', $titles );
@@ -65,7 +127,12 @@ final class SearchTest extends TestCase {
 
 	public function test_search_per_page_is_capped(): void {
 		update_option( 'aafm_allowed_post_types', array() );
-		$out = aafm_exec_search_content( array( 'search' => 'x', 'per_page' => 9999 ) );
+		$out = aafm_exec_search_content(
+			array(
+				'search'   => 'x',
+				'per_page' => 9999,
+			)
+		);
 		// A cap means the builder used per_page=50; with no matches the shape still holds.
 		$this->assertArrayHasKey( 'results', $out );
 		$this->assertLessThanOrEqual( 50, count( $out['results'] ) );
