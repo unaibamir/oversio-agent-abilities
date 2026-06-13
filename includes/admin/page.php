@@ -349,7 +349,6 @@ function aafm_render_post_types_selector(): void {
 	}
 
 	echo '<div id="aafm-post-types-form" class="aafm-post-types">';
-	wp_nonce_field( 'aafm_admin', 'aafm_post_types_nonce' );
 	echo '<table class="widefat striped aafm-post-types-table"><thead><tr>';
 	echo '<th>' . esc_html__( 'Expose', 'agent-abilities-for-mcp' ) . '</th>';
 	echo '<th>' . esc_html__( 'Type', 'agent-abilities-for-mcp' ) . '</th>';

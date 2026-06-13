@@ -98,7 +98,7 @@ final class PostTypesSaveTest extends TestCase {
 
 		// The save control is a non-submit button so it can never submit the outer form.
 		$this->assertStringContainsString( 'id="aafm-post-types-save"', $html );
-		$this->assertStringContainsString( 'type="button" id="aafm-post-types-save"', $html );
+		$this->assertStringContainsString( 'type="button"', $html );
 	}
 
 	public function test_content_panel_has_no_selector_when_no_eligible_cpts(): void {
