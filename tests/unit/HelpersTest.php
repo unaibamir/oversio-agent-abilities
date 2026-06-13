@@ -340,4 +340,16 @@ final class HelpersTest extends TestCase {
 		$this->assertSame( 'aafm_meta_key_not_allowed', aafm_validate_meta_key( 'unlisted' )->get_error_code() );
 		$this->assertSame( 'aafm_meta_key_not_allowed', aafm_validate_meta_key( '_edit_lock' )->get_error_code() );
 	}
+
+	public function test_meta_value_sanitizer_rejects_non_scalar(): void {
+		$this->assertInstanceOf( WP_Error::class, aafm_sanitize_meta_value( 'k', array( 1, 2 ) ) );
+		$this->assertInstanceOf( WP_Error::class, aafm_sanitize_meta_value( 'k', new \stdClass() ) );
+	}
+
+	public function test_meta_value_sanitizer_preserves_scalar_types_and_strips_html(): void {
+		$this->assertSame( 5, aafm_sanitize_meta_value( 'k', 5 ) );
+		$this->assertSame( true, aafm_sanitize_meta_value( 'k', true ) );
+		$this->assertSame( 1.5, aafm_sanitize_meta_value( 'k', 1.5 ) );
+		$this->assertSame( 'hello', aafm_sanitize_meta_value( 'k', '<b>hello</b>' ) );
+	}
 }

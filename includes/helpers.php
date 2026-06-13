@@ -181,6 +181,26 @@ function aafm_validate_meta_key( string $key ) {
 }
 
 /**
+ * Coerce + sanitize a meta value for writing. Scalar-only: arrays/objects are refused so
+ * the agent can never store a serialized structure. Strings are plain-text sanitized (meta
+ * is not rendered as post content); the result is then run through sanitize_meta so any
+ * registered sanitize_callback still applies.
+ *
+ * @param string $key   Meta key (already validated/allowlisted by the caller).
+ * @param mixed  $value Raw value from input.
+ * @return mixed|WP_Error Sanitized scalar, or error if non-scalar.
+ */
+function aafm_sanitize_meta_value( string $key, $value ) {
+	if ( ! is_scalar( $value ) ) {
+		return new WP_Error( 'aafm_meta_value_invalid', __( 'Only text, number, or boolean meta values are supported.', 'agent-abilities-for-mcp' ) );
+	}
+	if ( is_string( $value ) ) {
+		$value = sanitize_text_field( $value );
+	}
+	return sanitize_meta( $key, $value, 'post' );
+}
+
+/**
  * Resolve a post type's cap object and whether it uses core's meta-cap mapping.
  *
  * The Tier-1 cap keys (edit_post, delete_post, publish_posts, read_private_posts) are
