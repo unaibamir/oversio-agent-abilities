@@ -208,6 +208,34 @@ final class PostMetaTest extends TestCase {
 		}
 	}
 
+	public function test_update_meta_response_reflects_stored_value(): void {
+		update_option( 'aafm_allowed_meta_keys', array( 'aafm_upper' ) );
+		register_post_meta(
+			'post',
+			'aafm_upper',
+			array(
+				'type'              => 'string',
+				'single'            => true,
+				'sanitize_callback' => static fn( $v ) => is_string( $v ) ? strtoupper( $v ) : $v,
+			)
+		);
+		$author = self::factory()->user->create( array( 'role' => 'author' ) );
+		wp_set_current_user( $author );
+		$id = self::factory()->post->create( array( 'post_author' => $author ) );
+
+		$result = aafm_exec_update_post_meta(
+			array(
+				'post_id'  => $id,
+				'meta_key' => 'aafm_upper', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- test fixture: ability-input array key, not a meta query.
+				'value'    => 'hello',
+			)
+		);
+		$this->assertIsArray( $result );
+		$this->assertSame( get_post_meta( $id, 'aafm_upper', true ), $result['value'] );
+		$this->assertSame( 'HELLO', $result['value'] );
+		unregister_post_meta( 'post', 'aafm_upper' );
+	}
+
 	public function test_delete_meta_removes_key(): void {
 		update_option( 'aafm_allowed_meta_keys', array( 'subtitle' ) );
 		$author = self::factory()->user->create( array( 'role' => 'author' ) );

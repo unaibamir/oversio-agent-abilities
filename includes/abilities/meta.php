@@ -233,10 +233,11 @@ function aafm_exec_update_post_meta( array $input ) {
 			return aafm_generic_error();
 		}
 	}
+	$stored = get_post_meta( $id, $key, true ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- single-key read-back of the just-written value, not a meta query.
 	return array(
 		'post_id'  => $id,
 		'meta_key' => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- response array key, not a meta query.
-		'value'    => $value,
+		'value'    => $stored,
 	);
 }
 

@@ -360,4 +360,19 @@ final class HelpersTest extends TestCase {
 		$this->assertSame( 1.5, aafm_sanitize_meta_value( 'k', 1.5 ) );
 		$this->assertSame( 'hello', aafm_sanitize_meta_value( 'k', '<b>hello</b>' ) );
 	}
+
+	public function test_meta_value_sanitizer_refuses_callback_that_returns_non_scalar(): void {
+		register_post_meta(
+			'post',
+			'aafm_array_coercer',
+			array(
+				'type'              => 'string',
+				'single'            => true,
+				'sanitize_callback' => static fn() => array( 'evil' => 1 ),
+			)
+		);
+		$result = aafm_sanitize_meta_value( 'aafm_array_coercer', 'plain' );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		unregister_post_meta( 'post', 'aafm_array_coercer' );
+	}
 }
