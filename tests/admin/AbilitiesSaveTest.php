@@ -102,10 +102,14 @@ final class AbilitiesSaveTest extends TestCase {
 		$html = (string) ob_get_clean();
 
 		// The Content panel holds posts + pages; its Reads heading must precede its Writes heading,
-		// and its checkboxes must sit inside that panel (not in another subject's panel).
+		// and its checkboxes must sit inside that panel (not in another subject's panel). The panel
+		// runs from its own open to the next subject panel's open (or the form's save button), so
+		// slice on that boundary rather than the first </div> — the notice component and the meta
+		// selector both nest <div>s inside the panel, which a naive first-</div> slice would catch.
 		$content_open = strpos( $html, 'class="aafm-subject-panel" data-subject="content"' );
 		$this->assertNotFalse( $content_open, 'Content panel should render.' );
-		$content_close = strpos( $html, '</div>', $content_open );
+		$next_panel    = strpos( $html, 'class="aafm-subject-panel" data-subject=', $content_open + 1 );
+		$content_close = ( false === $next_panel ) ? strpos( $html, 'class="button button-primary"', $content_open ) : $next_panel;
 		$content_panel = substr( $html, $content_open, ( false === $content_close ? null : $content_close - $content_open ) );
 
 		$reads_pos  = strpos( $content_panel, '>Reads<' );
