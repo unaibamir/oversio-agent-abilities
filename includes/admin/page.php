@@ -142,6 +142,37 @@ function aafm_sanitize_allowed_meta_keys_input( array $posted ): array {
 }
 
 /**
+ * Sample up to 50 distinct, non-hard-blocked meta keys present on posts of the allowlisted
+ * types — the "Detected on your exposed types" chip source for the selector.
+ *
+ * One read-only, prepared query (dynamic IN of bound %s placeholders for the exposed types),
+ * filtered against the hard-block, sliced to 50, cached 5 minutes in a best-effort transient.
+ * Purely cosmetic: the cache is advisory and the allowlist gate never trusts this list.
+ *
+ * @return list<string>
+ */
+function aafm_detected_meta_keys(): array {
+	$cached = get_transient( 'aafm_detected_meta_keys' );
+	if ( is_array( $cached ) ) {
+		return array_values( array_map( 'strval', $cached ) );
+	}
+	global $wpdb;
+	$types = aafm_allowed_post_types();
+	if ( empty( $types ) ) {
+		return array();
+	}
+	$ph = implode( ',', array_fill( 0, count( $types ), '%s' ) );
+	// $ph is a list of %s placeholders, the type values are bound via prepare() below.
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+	$rows = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT pm.meta_key FROM {$wpdb->postmeta} pm INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE p.post_type IN ($ph) ORDER BY pm.meta_key ASC LIMIT 200", $types ) );
+	$keys = array_map( 'strval', (array) $rows );
+	$keys = array_values( array_filter( $keys, static fn( string $k ): bool => ! aafm_hard_blocked_meta_key( $k ) ) );
+	$keys = array_slice( $keys, 0, 50 );
+	set_transient( 'aafm_detected_meta_keys', $keys, 5 * MINUTE_IN_SECONDS );
+	return $keys;
+}
+
+/**
  * AJAX: save the exposed-meta-keys allowlist.
  *
  * @return void

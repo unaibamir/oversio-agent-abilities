@@ -19,4 +19,14 @@ final class MetaKeysSaveTest extends TestCase {
 		);
 		$this->assertSame( array( 'subtitle', 'featured_color' ), $out );
 	}
+
+	public function test_detected_keys_scopes_and_excludes_blocked(): void {
+		delete_transient( 'aafm_detected_meta_keys' );
+		$id = self::factory()->post->create( array( 'post_type' => 'post' ) );
+		update_post_meta( $id, 'subtitle', 'x' );
+		update_post_meta( $id, '_edit_lock', '123' );
+		$keys = aafm_detected_meta_keys();
+		$this->assertContains( 'subtitle', $keys );
+		$this->assertNotContains( '_edit_lock', $keys );
+	}
 }
