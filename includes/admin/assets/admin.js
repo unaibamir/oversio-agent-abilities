@@ -18,6 +18,7 @@
 			this.#bindOsTabs();
 			this.#bindSubjectTabs();
 			this.#bindSaveAbilities();
+			this.#bindSavePostTypes();
 			this.#bindCreateUser();
 			this.#bindTestConnection();
 			this.#bindClearLog();
@@ -118,6 +119,43 @@
 				body.append( 'action', 'aafm_save_abilities' );
 				body.append( 'nonce', this.#nonce );
 				enabled.forEach( ( v ) => body.append( 'aafm_abilities[]', v ) );
+
+				if ( status ) {
+					status.textContent = 'Saving…';
+				}
+				let json;
+				try {
+					const res = await fetch( this.#ajaxUrl, {
+						method: 'POST',
+						body,
+						credentials: 'same-origin',
+					} );
+					json = await res.json();
+				} catch {
+					json = { success: false };
+				}
+				if ( status ) {
+					status.textContent = json?.success ? 'Saved' : 'Error saving';
+				}
+			} );
+		}
+
+		#bindSavePostTypes() {
+			const btn = document.querySelector( '#aafm-post-types-save' );
+			const root = document.querySelector( '#aafm-post-types-form' );
+			if ( ! btn || ! root ) {
+				return;
+			}
+			btn.addEventListener( 'click', async () => {
+				const status = root.querySelector( '.aafm-post-types-status' );
+				const types = [
+					...root.querySelectorAll( 'input[name="aafm_post_types[]"]:checked' ),
+				].map( ( i ) => i.value );
+
+				const body = new URLSearchParams();
+				body.append( 'action', 'aafm_save_post_types' );
+				body.append( 'nonce', this.#nonce );
+				types.forEach( ( v ) => body.append( 'aafm_post_types[]', v ) );
 
 				if ( status ) {
 					status.textContent = 'Saving…';

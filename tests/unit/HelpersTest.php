@@ -11,6 +11,7 @@ namespace AAFM\Tests\Unit;
 
 use AAFM\Tests\TestCase;
 use WP_Error;
+use WP_Post_Type;
 
 final class HelpersTest extends TestCase {
 
@@ -27,6 +28,200 @@ final class HelpersTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, aafm_validate_post_type( 'attachment' ) );
 		// Other built-in internal types stay rejected even though some are queryable.
 		$this->assertInstanceOf( WP_Error::class, aafm_validate_post_type( 'revision' ) );
+	}
+
+	public function test_eligibility_floor_accepts_post_page_and_public_cpt(): void {
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
+		$this->assertTrue( aafm_post_type_is_eligible( 'post' ) );
+		$this->assertTrue( aafm_post_type_is_eligible( 'page' ) );
+		$this->assertTrue( aafm_post_type_is_eligible( 'aafm_book' ) );
+	}
+
+	public function test_eligibility_floor_rejects_builtin_internal_and_private(): void {
+		register_post_type(
+			'aafm_secret',
+			array(
+				'public' => false,
+				'label'  => 'Secret',
+			)
+		);
+		// attachment is public AND built-in — the one public-but-internal case.
+		$this->assertFalse( aafm_post_type_is_eligible( 'attachment' ) );
+		$this->assertFalse( aafm_post_type_is_eligible( 'revision' ) );
+		$this->assertFalse( aafm_post_type_is_eligible( 'nav_menu_item' ) );
+		$this->assertFalse( aafm_post_type_is_eligible( 'aafm_secret' ) );
+		$this->assertFalse( aafm_post_type_is_eligible( 'totally_fake' ) );
+	}
+
+	public function test_eligible_post_types_lists_public_non_builtin(): void {
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
+		$eligible = aafm_eligible_post_types();
+		$this->assertContains( 'aafm_book', $eligible );
+		$this->assertContains( 'post', $eligible );
+		$this->assertNotContains( 'attachment', $eligible );
+		$this->assertNotContains( 'revision', $eligible );
+	}
+
+	public function test_allowlist_defaults_to_post_and_page_only(): void {
+		delete_option( 'aafm_allowed_post_types' );
+		$allowed = aafm_allowed_post_types();
+		$this->assertContains( 'post', $allowed );
+		$this->assertContains( 'page', $allowed );
+		$this->assertCount( 2, $allowed );
+	}
+
+	public function test_allowlist_adds_opted_in_eligible_type(): void {
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
+		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
+		$allowed = aafm_allowed_post_types();
+		$this->assertContains( 'aafm_book', $allowed );
+		$this->assertContains( 'post', $allowed ); // post/page always forced on.
+	}
+
+	public function test_allowlist_floor_strips_injected_ineligible_types(): void {
+		// A junk option write (or a rogue filter) must never get attachment/revision through.
+		update_option( 'aafm_allowed_post_types', array( 'attachment', 'revision', 'totally_fake' ) );
+		$allowed = aafm_allowed_post_types();
+		$this->assertNotContains( 'attachment', $allowed );
+		$this->assertNotContains( 'revision', $allowed );
+		$this->assertNotContains( 'totally_fake', $allowed );
+		$this->assertSame( array( 'post', 'page' ), $allowed );
+	}
+
+	public function test_validate_denies_eligible_cpt_until_allowlisted(): void {
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
+		delete_option( 'aafm_allowed_post_types' );
+		// Eligible but not opted in → denied.
+		$this->assertInstanceOf( WP_Error::class, aafm_validate_post_type( 'aafm_book' ) );
+		// Opted in → passes.
+		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
+		$this->assertSame( 'aafm_book', aafm_validate_post_type( 'aafm_book' ) );
+	}
+
+	public function test_validate_floor_beats_a_forced_ineligible_allowlist_entry(): void {
+		// Even if attachment is jammed into the option, the floor in validate rejects it.
+		update_option( 'aafm_allowed_post_types', array( 'attachment' ) );
+		$this->assertInstanceOf( WP_Error::class, aafm_validate_post_type( 'attachment' ) );
+	}
+
+	public function test_type_caps_reports_mapped_flag(): void {
+		register_post_type(
+			'aafm_book',
+			array(
+				'public'          => true,
+				'map_meta_cap'    => true,
+				'capability_type' => 'post',
+				'label'           => 'Books',
+			)
+		);
+		register_post_type(
+			'aafm_unmapped',
+			array(
+				'public'          => true,
+				'map_meta_cap'    => false,
+				'capability_type' => array( 'aafm_unmapped', 'aafm_unmappeds' ),
+				'label'           => 'Unmapped',
+			)
+		);
+		$this->assertTrue( aafm_type_caps( 'aafm_book' )['mapped'] );
+		$this->assertFalse( aafm_type_caps( 'aafm_unmapped' )['mapped'] );
+		$this->assertInstanceOf( WP_Post_Type::class, aafm_type_caps( 'post' )['object'] );
+	}
+
+	public function test_edit_gate_refuses_writes_to_non_mapped_type(): void {
+		register_post_type(
+			'aafm_unmapped',
+			array(
+				'public'          => true,
+				'map_meta_cap'    => false,
+				'capability_type' => array( 'aafm_unmapped', 'aafm_unmappeds' ),
+				'label'           => 'Unmapped',
+			)
+		);
+		update_option( 'aafm_allowed_post_types', array( 'aafm_unmapped' ) );
+
+		// Grant an administrator the bare singular caps — the footgun would let this through.
+		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		$role  = get_role( 'administrator' );
+		$role->add_cap( 'edit_aafm_unmapped' );
+		$role->add_cap( 'delete_aafm_unmapped' );
+		wp_set_current_user( $admin );
+
+		$id   = self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_unmapped',
+				'post_status' => 'publish',
+			)
+		);
+		$post = get_post( $id );
+
+		$this->assertFalse( aafm_can_edit_post_object( $post ), 'Non-mapped CPT writes must be refused.' );
+		$this->assertFalse( aafm_can_delete_post_object( $post ), 'Non-mapped CPT deletes must be refused.' );
+
+		$role->remove_cap( 'edit_aafm_unmapped' );
+		$role->remove_cap( 'delete_aafm_unmapped' );
+	}
+
+	public function test_read_gate_allows_public_status_of_allowlisted_type(): void {
+		register_post_type(
+			'aafm_book',
+			array(
+				'public'          => true,
+				'map_meta_cap'    => true,
+				'capability_type' => 'post',
+				'label'           => 'Books',
+			)
+		);
+		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
+		$id = self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_book',
+				'post_status' => 'publish',
+			)
+		);
+		$this->assertTrue( aafm_can_read_post_object( get_post( $id ) ) );
+	}
+
+	public function test_read_gate_denies_non_allowlisted_type(): void {
+		register_post_type(
+			'aafm_book',
+			array(
+				'public' => true,
+				'label'  => 'Books',
+			)
+		);
+		delete_option( 'aafm_allowed_post_types' ); // not opted in.
+		$id = self::factory()->post->create(
+			array(
+				'post_type'   => 'aafm_book',
+				'post_status' => 'publish',
+			)
+		);
+		$this->assertFalse( aafm_can_read_post_object( get_post( $id ) ) );
 	}
 
 	public function test_taxonomy_allowlist(): void {

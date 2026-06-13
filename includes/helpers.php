@@ -10,7 +10,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Validate a post type against the public/queryable allow-list.
+ * Validate a post type against the eligibility floor AND the default-deny allowlist.
  *
  * @param string $type Requested post type.
  * @return string|WP_Error Sanitized type, or error if not allowed.
@@ -18,21 +18,173 @@ defined( 'ABSPATH' ) || exit;
 function aafm_validate_post_type( string $type ) {
 	$type = sanitize_key( $type );
 
-	// post and page are built-in but are our shipped, supported content types.
+	// The hard floor (public, non-internal) runs first and is independent of the allowlist —
+	// it rejects attachment/revision/internal types even if one is forced into the option.
+	if ( ! aafm_post_type_is_eligible( $type ) ) {
+		return new WP_Error( 'aafm_invalid_post_type', __( 'Unsupported post type.', 'agent-abilities-for-mcp' ) );
+	}
+
+	// Then default-deny: only types the operator has explicitly exposed (post/page always-on).
+	if ( ! in_array( $type, aafm_allowed_post_types(), true ) ) {
+		return new WP_Error( 'aafm_post_type_not_allowed', __( 'This content type is not exposed to agents.', 'agent-abilities-for-mcp' ) );
+	}
+
+	return $type;
+}
+
+/**
+ * The hard eligibility floor for an exposed content type, independent of the allowlist.
+ *
+ * Reads the RESOLVED WP_Post_Type object rather than get_post_types(['public'=>true]),
+ * which wrongly includes the built-in `attachment` type. post/page are built-in but are
+ * our shipped surface, so they are allowed by explicit special-case. Every internal type
+ * (revision, nav_menu_item, wp_block, wp_template, …) is caught by public===false and/or
+ * _builtin===true; `attachment` is the lone public-but-internal case, caught by _builtin.
+ *
+ * @param string $type Post type slug.
+ * @return bool True when the type may be exposed at all.
+ */
+function aafm_post_type_is_eligible( string $type ): bool {
+	$type = sanitize_key( $type );
 	if ( in_array( $type, array( 'post', 'page' ), true ) ) {
-		return $type;
+		return true;
 	}
-
-	// Everything else must be a registered, public, NON-internal content type.
-	// Resolve the object and read its booleans — get_post_types( ['public'=>true] )
-	// wrongly includes the built-in `attachment` type, which has its own redacted
-	// media path and must never be reachable through the content abilities.
 	$obj = get_post_type_object( $type );
-	if ( $obj instanceof WP_Post_Type && true === $obj->public && false === $obj->_builtin ) {
-		return $type;
-	}
+	return $obj instanceof WP_Post_Type && true === $obj->public && false === $obj->_builtin;
+}
 
-	return new WP_Error( 'aafm_invalid_post_type', __( 'Unsupported post type.', 'agent-abilities-for-mcp' ) );
+/**
+ * Every registered post type that clears the eligibility floor.
+ *
+ * Includes post/page (they are eligible); the admin selector excludes those two because
+ * they are always-on. Used to populate the "Exposed content types" UI and to intersect
+ * posted allowlist input down to real, eligible types.
+ *
+ * @return list<string>
+ */
+function aafm_eligible_post_types(): array {
+	$types = get_post_types( array(), 'names' );
+	return array_values( array_filter( $types, 'aafm_post_type_is_eligible' ) );
+}
+
+/**
+ * The default-deny post-type allowlist: post/page always-on, every other eligible type
+ * opt-in via the aafm_allowed_post_types option (admin selector) or the matching filter.
+ *
+ * The eligibility floor is applied AFTER the option read AND after the filter, so neither
+ * a junk option value nor a rogue filter can slip an ineligible type (attachment, revision,
+ * a private CPT) into the exposed set. post/page are merged in unconditionally to preserve
+ * the shipped, reviewed surface.
+ *
+ * @return list<string>
+ */
+function aafm_allowed_post_types(): array {
+	$stored = get_option( 'aafm_allowed_post_types', array() );
+	$stored = is_array( $stored ) ? array_map( 'sanitize_key', $stored ) : array();
+
+	$allowed = array_merge( array( 'post', 'page' ), $stored );
+	$allowed = array_values( array_unique( array_filter( $allowed, 'aafm_post_type_is_eligible' ) ) );
+
+	/**
+	 * Filters the post types exposed to AI agents.
+	 *
+	 * Values are re-floored after this filter, so adding an ineligible type is a no-op.
+	 *
+	 * @param list<string> $allowed Eligible, exposed post-type slugs.
+	 */
+	$allowed = apply_filters( 'aafm_allowed_post_types', $allowed );
+
+	return array_values( array_filter( array_map( 'sanitize_key', (array) $allowed ), 'aafm_post_type_is_eligible' ) );
+}
+
+/**
+ * Resolve a post type's cap object and whether it uses core's meta-cap mapping.
+ *
+ * The Tier-1 cap keys (edit_post, delete_post, publish_posts, read_private_posts) are
+ * guaranteed present on ->cap across every registration style. `mapped` reflects
+ * map_meta_cap: when false, per-object edit_post/delete_post checks degrade to a bare
+ * singular primitive with no author/status containment — the footgun the write gates refuse.
+ *
+ * @param string $type Post type slug.
+ * @return array{object: ?WP_Post_Type, mapped: bool}
+ */
+function aafm_type_caps( string $type ): array {
+	$obj = get_post_type_object( $type );
+	return array(
+		'object' => $obj instanceof WP_Post_Type ? $obj : null,
+		'mapped' => $obj instanceof WP_Post_Type && (bool) $obj->map_meta_cap,
+	);
+}
+
+/**
+ * Whether the current user may READ a single object of its type through the content abilities.
+ *
+ * Type must clear the floor AND the allowlist. Public-status objects use the cap-free fast
+ * path (matches the list reads). A non-public status is readable only on a map_meta_cap type,
+ * via that type's own per-object edit cap; non-mapped non-public reads are denied.
+ *
+ * @param WP_Post $post Target object.
+ * @return bool
+ */
+function aafm_can_read_post_object( WP_Post $post ): bool {
+	if ( is_wp_error( aafm_validate_post_type( $post->post_type ) ) ) {
+		return false;
+	}
+	if ( in_array( $post->post_status, get_post_stati( array( 'public' => true ) ), true ) ) {
+		return true;
+	}
+	$caps = aafm_type_caps( $post->post_type );
+	if ( ! $caps['mapped'] || ! $caps['object'] instanceof WP_Post_Type ) {
+		return false;
+	}
+	return current_user_can( (string) $caps['object']->cap->edit_post, $post->ID );
+}
+
+/**
+ * Whether the current user may EDIT a single object through the content abilities.
+ *
+ * Type must clear the floor AND the allowlist AND be map_meta_cap===true (Q5 write-safety).
+ * For a non-mapped type the write is refused outright rather than trusting a degraded
+ * per-object cap that can fail OPEN. For post/page (mapped) this resolves to today's
+ * current_user_can( 'edit_post'/'edit_page', $id ) — zero behaviour change.
+ *
+ * @param WP_Post $post Target object.
+ * @return bool
+ */
+function aafm_can_edit_post_object( WP_Post $post ): bool {
+	$caps = aafm_writable_type_caps( $post );
+	return null !== $caps && current_user_can( (string) $caps->cap->edit_post, $post->ID );
+}
+
+/**
+ * Whether the current user may TRASH a single object through the content abilities.
+ *
+ * Same floor + allowlist + map_meta_cap gate as edit; uses the type's own delete cap.
+ *
+ * @param WP_Post $post Target object.
+ * @return bool
+ */
+function aafm_can_delete_post_object( WP_Post $post ): bool {
+	$caps = aafm_writable_type_caps( $post );
+	return null !== $caps && current_user_can( (string) $caps->cap->delete_post, $post->ID );
+}
+
+/**
+ * Shared write-eligibility resolver: returns the cap object only when the post's type is
+ * exposed (floor + allowlist) AND map_meta_cap===true. Null means "refuse the write".
+ *
+ * @param WP_Post $post Target object.
+ * @return WP_Post_Type|null
+ */
+function aafm_writable_type_caps( WP_Post $post ): ?WP_Post_Type {
+	if ( is_wp_error( aafm_validate_post_type( $post->post_type ) ) ) {
+		return null;
+	}
+	$caps = aafm_type_caps( $post->post_type );
+	if ( ! $caps['mapped'] || ! $caps['object'] instanceof WP_Post_Type ) {
+		return null;
+	}
+	return $caps['object'];
 }
 
 /**

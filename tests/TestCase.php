@@ -31,6 +31,24 @@ abstract class TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tear down plugin state after each test.
+	 *
+	 * WP_UnitTestCase does not unregister post types created mid-test, so a throwaway
+	 * `aafm_*` CPT registered in one method leaks into the next and breaks tests that
+	 * assert its absence. Unregister those and clear the exposed-types option so every
+	 * CPT/admin case starts from a clean registry and a clean allowlist.
+	 */
+	public function tear_down(): void {
+		foreach ( array_keys( get_post_types() ) as $type ) {
+			if ( 0 === strncmp( $type, 'aafm_', 5 ) ) {
+				unregister_post_type( $type );
+			}
+		}
+		delete_option( 'aafm_allowed_post_types' );
+		parent::tear_down();
+	}
+
+	/**
 	 * Whether the activity log table exists for the current blog.
 	 *
 	 * The WordPress test suite rewrites every plugin `CREATE TABLE` / `DROP TABLE`
