@@ -348,7 +348,7 @@ function aafm_render_post_types_selector(): void {
 		return;
 	}
 
-	echo '<form id="aafm-post-types-form" class="aafm-post-types">';
+	echo '<div id="aafm-post-types-form" class="aafm-post-types">';
 	wp_nonce_field( 'aafm_admin', 'aafm_post_types_nonce' );
 	echo '<table class="widefat striped aafm-post-types-table"><thead><tr>';
 	echo '<th>' . esc_html__( 'Expose', 'agent-abilities-for-mcp' ) . '</th>';
@@ -379,8 +379,8 @@ function aafm_render_post_types_selector(): void {
 
 	echo '</tbody></table>';
 	echo '<p class="aafm-notice aafm-notice-warning">' . esc_html__( 'Exposed types are still gated by that type\'s capabilities and your low-privilege agent user. Only expose types whose title, slug, and excerpt are not sensitive — for example, a type that stores a person\'s name in the title would make that name readable.', 'agent-abilities-for-mcp' ) . '</p>';
-	echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Save content types', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-post-types-status" aria-live="polite"></span></p>';
-	echo '</form>';
+	echo '<p><button type="button" id="aafm-post-types-save" class="button button-primary">' . esc_html__( 'Save content types', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-post-types-status" aria-live="polite"></span></p>';
+	echo '</div>';
 }
 
 /**

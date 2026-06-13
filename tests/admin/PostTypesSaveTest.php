@@ -66,6 +66,41 @@ final class PostTypesSaveTest extends TestCase {
 		$this->assertStringContainsString( 'title', $html );
 	}
 
+	public function test_abilities_tab_has_no_nested_post_types_form(): void {
+		$this->acting_as( 'administrator' );
+		register_post_type(
+			'aafm_book',
+			array(
+				'public'          => true,
+				'show_in_rest'    => true,
+				'map_meta_cap'    => true,
+				'capability_type' => 'post',
+				'label'           => 'Books',
+			)
+		);
+		update_option( 'aafm_allowed_post_types', array( 'aafm_book' ) );
+
+		ob_start();
+		aafm_render_abilities_tab();
+		$html = (string) ob_get_clean();
+
+		// HTML forbids nested <form> elements: the browser drops the inner tags, breaking the
+		// JS save handler. Only the outer abilities form may open a <form> in this markup.
+		$this->assertSame(
+			1,
+			substr_count( $html, '<form' ),
+			'The abilities tab must not contain a nested form (the post-types selector must be a div).'
+		);
+
+		// The selector wrapper is a div, not a form.
+		$this->assertStringContainsString( '<div id="aafm-post-types-form"', $html );
+		$this->assertStringNotContainsString( '<form id="aafm-post-types-form"', $html );
+
+		// The save control is a non-submit button so it can never submit the outer form.
+		$this->assertStringContainsString( 'id="aafm-post-types-save"', $html );
+		$this->assertStringContainsString( 'type="button" id="aafm-post-types-save"', $html );
+	}
+
 	public function test_content_panel_has_no_selector_when_no_eligible_cpts(): void {
 		$this->acting_as( 'administrator' );
 		// No public non-builtin CPTs registered in this isolated test → selector lists nothing to opt into.
