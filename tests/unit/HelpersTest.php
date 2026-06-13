@@ -296,4 +296,25 @@ final class HelpersTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $err );
 		$this->assertSame( 'aafm_error', $err->get_error_code() );
 	}
+
+	public function test_hard_block_catches_protected_auth_and_cap_keys(): void {
+		global $wpdb;
+		foreach ( array(
+			'_thumbnail_id', '_edit_lock', 'session_tokens', '_application_passwords',
+			'wp_capabilities', 'wp_user_level', 'default_password_nonce', '_new_email',
+			$wpdb->prefix . 'capabilities', $wpdb->prefix . 'user_level', '',
+		) as $key ) {
+			$this->assertTrue( aafm_hard_blocked_meta_key( $key ), "$key must be hard-blocked" );
+		}
+		$this->assertFalse( aafm_hard_blocked_meta_key( 'subtitle' ) );
+	}
+
+	public function test_hard_block_filter_can_add_but_not_remove(): void {
+		add_filter( 'aafm_hard_blocked_meta_keys', static fn( $k ) => array_merge( $k, array( 'company_revenue' ) ) );
+		$this->assertTrue( aafm_hard_blocked_meta_key( 'company_revenue' ) );
+		// Cannot remove a built-in even by returning [].
+		add_filter( 'aafm_hard_blocked_meta_keys', static fn() => array(), 99 );
+		$this->assertTrue( aafm_hard_blocked_meta_key( 'wp_capabilities' ) );
+		remove_all_filters( 'aafm_hard_blocked_meta_keys' );
+	}
 }

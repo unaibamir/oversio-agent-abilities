@@ -98,6 +98,47 @@ function aafm_allowed_post_types(): array {
 }
 
 /**
+ * Whether a meta key is permanently blocked from agent access (even if allowlisted).
+ *
+ * Blocks protected (`_`-prefixed) meta, the auth-sensitive denylist stolen from
+ * easy-mcp-ai's User_Meta_Auth_Guard, and this install's capability/user-level keys.
+ * The aafm_hard_blocked_meta_keys filter may ADD keys; the built-ins are re-merged
+ * after it, so a filter can never unblock one.
+ *
+ * @param string $key Meta key.
+ * @return bool
+ */
+function aafm_hard_blocked_meta_key( string $key ): bool {
+	global $wpdb;
+	$key = (string) $key;
+	if ( '' === trim( $key ) ) {
+		return true;
+	}
+	if ( is_protected_meta( $key, 'post' ) ) {
+		return true;
+	}
+	$builtin = array(
+		'session_tokens', '_application_passwords', 'wp_capabilities', 'wp_user_level',
+		'wp_user-settings', 'wp_user-settings-time', 'default_password_nonce',
+		'_password_reset_key', 'community-events-location', '_new_email',
+		$wpdb->prefix . 'capabilities', $wpdb->prefix . 'user_level',
+	);
+	/**
+	 * Filters EXTRA meta keys to hard-block. Built-ins are re-merged after, so this
+	 * can only add blocks, never remove them.
+	 *
+	 * @param list<string> $extra Extra keys to block.
+	 */
+	$extra   = (array) apply_filters( 'aafm_hard_blocked_meta_keys', array() );
+	$blocked = array_merge( $builtin, array_map( 'strval', $extra ) );
+	if ( in_array( $key, $blocked, true ) ) {
+		return true;
+	}
+	// Any prefix*capabilities form (covers multisite wp_2_capabilities).
+	return (bool) preg_match( '/^' . preg_quote( $wpdb->prefix, '/' ) . '\d*capabilities$/', $key );
+}
+
+/**
  * Resolve a post type's cap object and whether it uses core's meta-cap mapping.
  *
  * The Tier-1 cap keys (edit_post, delete_post, publish_posts, read_private_posts) are
