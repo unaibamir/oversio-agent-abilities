@@ -21,7 +21,7 @@ add_filter( 'aafm_abilities_registry', 'aafm_register_revisions_definitions' );
  * @return array<string,array<string,mixed>>
  */
 function aafm_register_revisions_definitions( array $registry ): array {
-	$registry['aafm/list-revisions'] = array(
+	$registry['aafm/list-revisions']   = array(
 		'label'        => __( 'List revisions', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'List the revisions of a post the agent can edit (metadata only — no body content).', 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
@@ -29,13 +29,21 @@ function aafm_register_revisions_definitions( array $registry ): array {
 		'subject'      => 'content',
 		'args_builder' => 'aafm_args_list_revisions',
 	);
-	$registry['aafm/get-revision']   = array(
+	$registry['aafm/get-revision']     = array(
 		'label'        => __( 'Get revision', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'Get a single revision of a post the agent can edit (metadata only — no body content).', 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
 		'risk'         => 'read',
 		'subject'      => 'content',
 		'args_builder' => 'aafm_args_get_revision',
+	);
+	$registry['aafm/restore-revision'] = array(
+		'label'        => __( 'Restore revision', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Restore a post to one of its revisions. The current state is first saved as a fresh revision, so the restore is reversible.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'content',
+		'args_builder' => 'aafm_args_restore_revision',
 	);
 	return $registry;
 }
@@ -217,4 +225,91 @@ function aafm_exec_get_revision( array $input ) {
 		return aafm_generic_error();
 	}
 	return array( 'revision' => aafm_redact_revision( $revision ) );
+}
+
+/**
+ * Args for aafm/restore-revision.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_restore_revision(): array {
+	return array(
+		'label'               => __( 'Restore revision', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Restore a post to one of its revisions. The current state is first saved as a fresh revision, so the restore is reversible.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'post_id'     => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'revision_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'post_id', 'revision_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'restored'    => array( 'type' => 'boolean' ),
+				'post_id'     => array( 'type' => 'integer' ),
+				'revision_id' => array( 'type' => 'integer' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_restore_revision',
+		'permission_callback' => 'aafm_perm_restore_revision',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/restore-revision: parent editable AND the revision genuinely
+ * belongs to that parent.
+ *
+ * @param array<string,mixed> $input Ability input.
+ * @return bool
+ */
+function aafm_perm_restore_revision( array $input ): bool {
+	if ( ! aafm_revision_parent_editable( $input ) ) {
+		return false;
+	}
+	$revision_id = isset( $input['revision_id'] ) ? absint( $input['revision_id'] ) : 0;
+	$post_id     = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+	return ! is_wp_error( aafm_validate_revision( $revision_id, $post_id ) );
+}
+
+/**
+ * Execute aafm/restore-revision.
+ *
+ * Restores the post to the named revision via wp_restore_post_revision(), which first
+ * snapshots the current state as a fresh revision — making the restore reversible. The
+ * validator guarantees the revision belongs to the named parent before any write.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_restore_revision( array $input ) {
+	$post_id     = absint( $input['post_id'] ?? 0 );
+	$revision_id = absint( $input['revision_id'] ?? 0 );
+	if ( is_wp_error( aafm_validate_revision( $revision_id, $post_id ) ) ) {
+		return aafm_generic_error();
+	}
+	$restored = wp_restore_post_revision( $revision_id );
+	if ( ! $restored ) {
+		return aafm_generic_error();
+	}
+	return array(
+		'restored'    => true,
+		'post_id'     => $post_id,
+		'revision_id' => $revision_id,
+	);
 }
