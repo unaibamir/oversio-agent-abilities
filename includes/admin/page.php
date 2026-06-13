@@ -227,6 +227,7 @@ function aafm_render_admin_page(): void {
 		return;
 	}
 	$tabs = array(
+		'dashboard'  => __( 'Dashboard', 'agent-abilities-for-mcp' ),
 		'connection' => __( 'Connection', 'agent-abilities-for-mcp' ),
 		'abilities'  => __( 'Abilities', 'agent-abilities-for-mcp' ),
 		'settings'   => __( 'Settings', 'agent-abilities-for-mcp' ),
@@ -235,9 +236,9 @@ function aafm_render_admin_page(): void {
 	);
 
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only tab routing, no state change.
-	$active = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : 'connection';
+	$active = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : 'dashboard';
 	if ( ! isset( $tabs[ $active ] ) ) {
-		$active = 'connection';
+		$active = 'dashboard';
 	}
 
 	echo '<div class="wrap aafm-wrap">';
@@ -262,6 +263,9 @@ function aafm_render_admin_page(): void {
 	echo '</h2>';
 
 	switch ( $active ) {
+		case 'connection':
+			aafm_render_connection_tab();
+			break;
 		case 'abilities':
 			aafm_render_abilities_tab();
 			break;
@@ -275,7 +279,7 @@ function aafm_render_admin_page(): void {
 			aafm_render_help_tab();
 			break;
 		default:
-			aafm_render_connection_tab();
+			aafm_render_dashboard_tab();
 	}
 	echo '</div>';
 }

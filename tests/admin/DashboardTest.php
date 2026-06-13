@@ -69,4 +69,52 @@ final class DashboardTest extends TestCase {
 		$this->assertIsInt( $count );
 		$this->assertSame( 2, $count );
 	}
+
+	public function test_dashboard_renders_cards(): void {
+		ob_start();
+		aafm_render_dashboard_tab();
+		$html = ob_get_clean();
+		foreach ( array( 'Endpoint', 'PHP', 'abilities', 'Audit' ) as $needle ) {
+			$this->assertStringContainsString( $needle, $html );
+		}
+	}
+
+	public function test_dashboard_warns_when_no_abilities_enabled(): void {
+		update_option( 'aafm_enabled_abilities', array() );
+		ob_start();
+		aafm_render_dashboard_tab();
+		$html = ob_get_clean();
+		$this->assertStringContainsString( 'aafm-notice-warning', $html );
+	}
+
+	public function test_dashboard_warns_when_agent_user_can_manage_site(): void {
+		$admin = self::factory()->user->create(
+			array(
+				'role'       => 'administrator',
+				'user_login' => 'aafm-admin-agent',
+			)
+		);
+		WP_Application_Passwords::create_new_application_password( $admin, array( 'name' => 'mcp-admin' ) );
+
+		ob_start();
+		aafm_render_dashboard_tab();
+		$html = ob_get_clean();
+
+		$this->assertStringContainsString( 'aafm-notice-warning', $html );
+		$this->assertStringContainsString( 'aafm-admin-agent', $html );
+	}
+
+	public function test_default_tab_is_dashboard(): void {
+		$this->acting_as( 'administrator' );
+		unset( $_GET['tab'] );
+
+		ob_start();
+		aafm_render_admin_page();
+		$html = (string) ob_get_clean();
+
+		// The dashboard wrapper renders, and the Dashboard nav tab is marked active.
+		$this->assertStringContainsString( 'aafm-dashboard', $html );
+		$this->assertStringContainsString( 'nav-tab-active', $html );
+		$this->assertStringContainsString( 'tab=dashboard', $html );
+	}
 }

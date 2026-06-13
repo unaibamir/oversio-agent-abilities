@@ -93,3 +93,167 @@ function aafm_activity_count(): int {
 
 	return max( 0, (int) $count );
 }
+
+/**
+ * Exact count of distinct agent principals seen in the activity log over the last
+ * 24 hours (UTC), computed in one bounded query against the plugin's own audit table.
+ *
+ * This is recent-principal activity read back from the audit log, NOT a live socket or
+ * connection count. created_at is stored as a UTC ('mysql', true) datetime string, so the
+ * cutoff is computed with gmdate() and the query counts every distinct principal at once —
+ * no page cap, so it never undercounts on a busy site.
+ *
+ * @return int Number of distinct principals active in the last 24 hours.
+ */
+function aafm_recent_agent_count(): int {
+	global $wpdb;
+	// The table name is an internal constant ($wpdb->prefix . 'aafm_activity_log'),
+	// never user input; esc_sql() makes that explicit for the static analyzers.
+	$table  = esc_sql( aafm_activity_log_table() );
+	$cutoff = gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS );
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+	$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT principal_user_id) FROM {$table} WHERE created_at >= %s", $cutoff ) );
+
+	return max( 0, (int) $count );
+}
+
+/**
+ * Render the Dashboard tab: a read-only status overview made of small cards.
+ *
+ * Every card reflects current site state — the endpoint, versions, how many abilities are
+ * on, who the agent users are and how much power they hold, recent agent activity, and the
+ * audit log's size. Where the state is risky (no abilities on, or an agent user that can
+ * manage the site) the card carries an inline notice. Nothing here changes state.
+ *
+ * @return void
+ */
+function aafm_render_dashboard_tab(): void {
+	$endpoint      = aafm_endpoint_url();
+	$enabled       = aafm_enabled_ability_count();
+	$total         = aafm_total_ability_count();
+	$adapter       = aafm_loaded_adapter_version();
+	$candidates    = aafm_agent_user_candidates();
+	$recent        = aafm_recent_agent_count();
+	$log_rows      = aafm_activity_count();
+	$log_cap       = defined( 'AAFM_LOG_MAX_ROWS' ) ? (int) AAFM_LOG_MAX_ROWS : 10000;
+	$admin_agents  = array_values( array_filter( $candidates, static fn( array $c ): bool => ! empty( $c['is_admin'] ) ) );
+	$adapter_label = ( null === $adapter ) ? __( 'not loaded', 'agent-abilities-for-mcp' ) : $adapter;
+
+	echo '<div class="aafm-dashboard">';
+
+	// Endpoint card.
+	echo '<div class="aafm-card aafm-card-endpoint">';
+	echo '<h3>' . esc_html__( 'Endpoint', 'agent-abilities-for-mcp' ) . '</h3>';
+	printf(
+		'<p><code class="aafm-endpoint">%1$s</code> <button type="button" class="button aafm-copy" data-copy="%2$s">%3$s</button></p>',
+		esc_html( $endpoint ),
+		esc_attr( $endpoint ),
+		esc_html__( 'Copy', 'agent-abilities-for-mcp' )
+	);
+	echo '</div>';
+
+	// Versions card.
+	echo '<div class="aafm-card aafm-card-versions">';
+	echo '<h3>' . esc_html__( 'Versions', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<ul class="aafm-card-list">';
+	printf(
+		'<li><span class="aafm-card-key">%1$s</span> <span class="aafm-card-val">%2$s</span></li>',
+		esc_html__( 'Plugin', 'agent-abilities-for-mcp' ),
+		esc_html( AAFM_VERSION )
+	);
+	printf(
+		'<li><span class="aafm-card-key">%1$s</span> <span class="aafm-card-val">%2$s</span></li>',
+		esc_html__( 'PHP', 'agent-abilities-for-mcp' ),
+		esc_html( PHP_VERSION )
+	);
+	printf(
+		'<li><span class="aafm-card-key">%1$s</span> <span class="aafm-card-val">%2$s</span></li>',
+		esc_html__( 'MCP protocol', 'agent-abilities-for-mcp' ),
+		esc_html( aafm_mcp_protocol_version() )
+	);
+	printf(
+		'<li><span class="aafm-card-key">%1$s</span> <span class="aafm-card-val">%2$s</span></li>',
+		esc_html__( 'Bundled adapter', 'agent-abilities-for-mcp' ),
+		esc_html( $adapter_label )
+	);
+	echo '</ul>';
+	echo '</div>';
+
+	// Enabled abilities card.
+	echo '<div class="aafm-card aafm-card-abilities">';
+	echo '<h3>' . esc_html__( 'Enabled abilities', 'agent-abilities-for-mcp' ) . '</h3>';
+	printf(
+		'<p class="aafm-card-figure">%1$s</p>',
+		esc_html(
+			sprintf(
+				/* translators: 1: number of enabled abilities, 2: total abilities. */
+				__( '%1$d of %2$d enabled', 'agent-abilities-for-mcp' ),
+				$enabled,
+				$total
+			)
+		)
+	);
+	if ( 0 === $enabled ) {
+		aafm_render_notice(
+			'warning',
+			__( 'No abilities are enabled, so the agent can do nothing yet. Turn on the abilities you want it to have on the Abilities tab.', 'agent-abilities-for-mcp' )
+		);
+	}
+	echo '</div>';
+
+	// Agent-user least-privilege card.
+	echo '<div class="aafm-card aafm-card-agent-users">';
+	echo '<h3>' . esc_html__( 'Agent users', 'agent-abilities-for-mcp' ) . '</h3>';
+	if ( empty( $candidates ) ) {
+		aafm_render_notice(
+			'info',
+			__( 'No agent user is connected yet. Create a dedicated low-privilege user on the Connection tab and give it an Application Password.', 'agent-abilities-for-mcp' )
+		);
+	} elseif ( empty( $admin_agents ) ) {
+		aafm_render_notice(
+			'success',
+			__( 'Your agent users are all low-privilege. None of them can manage the site.', 'agent-abilities-for-mcp' )
+		);
+	} else {
+		$logins = implode( ', ', array_map( static fn( array $c ): string => (string) $c['login'], $admin_agents ) );
+		aafm_render_notice(
+			'warning',
+			sprintf(
+				/* translators: %s: comma-separated list of user logins that can manage the site. */
+				__( 'These agent users can manage the site: %s. Give the agent its own low-privilege user instead. Move this one to a lower role, or connect a different user.', 'agent-abilities-for-mcp' ),
+				$logins
+			)
+		);
+	}
+	echo '</div>';
+
+	// Recent agents card (read from the audit log — not a live connection count).
+	echo '<div class="aafm-card aafm-card-recent">';
+	echo '<h3>' . esc_html__( 'Recent agents (24h)', 'agent-abilities-for-mcp' ) . '</h3>';
+	printf(
+		'<p class="aafm-card-figure">%s</p>',
+		esc_html( (string) $recent )
+	);
+	echo '<p class="description">' . esc_html__( 'Separate agent users seen in the activity log in the last 24 hours. This is recent activity from the log, not a count of live connections.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '</div>';
+
+	// Audit health card.
+	echo '<div class="aafm-card aafm-card-audit">';
+	echo '<h3>' . esc_html__( 'Audit log', 'agent-abilities-for-mcp' ) . '</h3>';
+	printf(
+		'<p class="aafm-card-figure">%1$s</p>',
+		esc_html(
+			sprintf(
+				/* translators: 1: current row count, 2: maximum rows kept. */
+				__( '%1$s of %2$s rows', 'agent-abilities-for-mcp' ),
+				number_format_i18n( $log_rows ),
+				number_format_i18n( $log_cap )
+			)
+		)
+	);
+	echo '<p class="description">' . esc_html__( 'Logging is on. Every call is recorded, including denied ones; the oldest rows drop once the cap is reached.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '</div>';
+
+	echo '</div>';
+}
