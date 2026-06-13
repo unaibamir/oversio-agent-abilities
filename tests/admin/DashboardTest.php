@@ -1,0 +1,72 @@
+<?php
+/**
+ * Dashboard read-only data helpers: agent candidates, counts, protocol version.
+ *
+ * @package AgentAbilitiesForMCP
+ */
+
+declare( strict_types=1 );
+
+namespace AAFM\Tests\Admin;
+
+use AAFM\Tests\TestCase;
+use WP_Application_Passwords;
+
+final class DashboardTest extends TestCase {
+
+	public function set_up(): void {
+		parent::set_up();
+		aafm_install_activity_log();
+		aafm_clear_activity_log();
+	}
+
+	public function test_agent_user_candidates_flags_admins(): void {
+		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		$sub   = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		WP_Application_Passwords::create_new_application_password( $admin, array( 'name' => 'mcp-a' ) );
+		WP_Application_Passwords::create_new_application_password( $sub, array( 'name' => 'mcp-b' ) );
+		$cands = aafm_agent_user_candidates();
+		$ids   = wp_list_pluck( $cands, 'id' );
+		$this->assertContains( $admin, $ids );
+		$this->assertContains( $sub, $ids );
+		$admin_row = current( array_filter( $cands, static fn( $c ) => $c['id'] === $admin ) );
+		$this->assertTrue( $admin_row['is_admin'] );
+	}
+
+	public function test_candidates_expose_no_pii(): void {
+		$user = self::factory()->user->create( array( 'role' => 'editor' ) );
+		WP_Application_Passwords::create_new_application_password( $user, array( 'name' => 'mcp-c' ) );
+		$cands = aafm_agent_user_candidates();
+		$row   = current( array_filter( $cands, static fn( $c ) => $c['id'] === $user ) );
+		$this->assertSame(
+			array( 'id', 'login', 'roles', 'is_admin' ),
+			array_keys( $row )
+		);
+	}
+
+	public function test_enabled_count_and_protocol(): void {
+		$this->assertIsInt( aafm_enabled_ability_count() );
+		$this->assertIsInt( aafm_total_ability_count() );
+		$this->assertNotEmpty( aafm_mcp_protocol_version() );
+	}
+
+	public function test_activity_count_reflects_rows(): void {
+		$this->assertSame( 0, aafm_activity_count() );
+		$this->acting_as( 'administrator' );
+		aafm_log_activity(
+			array(
+				'ability' => 'aafm/get-post',
+				'status'  => 'success',
+			)
+		);
+		aafm_log_activity(
+			array(
+				'ability' => 'aafm/trash-post',
+				'status'  => 'denied',
+			)
+		);
+		$count = aafm_activity_count();
+		$this->assertIsInt( $count );
+		$this->assertSame( 2, $count );
+	}
+}

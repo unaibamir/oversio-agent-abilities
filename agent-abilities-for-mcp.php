@@ -76,6 +76,7 @@ function aafm_bootstrap() {
 	add_action( 'admin_init', 'aafm_register_privacy_policy_content' );
 
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/notices.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/admin/dashboard.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/connection.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/page.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/settings.php';
