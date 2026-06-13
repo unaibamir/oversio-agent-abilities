@@ -296,4 +296,83 @@ final class HelpersTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $err );
 		$this->assertSame( 'aafm_error', $err->get_error_code() );
 	}
+
+	public function test_hard_block_catches_protected_auth_and_cap_keys(): void {
+		global $wpdb;
+		foreach ( array(
+			'_thumbnail_id',
+			'_edit_lock',
+			'session_tokens',
+			'_application_passwords',
+			'wp_capabilities',
+			'wp_user_level',
+			'default_password_nonce',
+			'_new_email',
+			$wpdb->prefix . 'capabilities',
+			$wpdb->prefix . 'user_level',
+			$wpdb->prefix . '2_capabilities',
+			'',
+		) as $key ) {
+			$this->assertTrue( aafm_hard_blocked_meta_key( $key ), "$key must be hard-blocked" );
+		}
+		$this->assertFalse( aafm_hard_blocked_meta_key( 'subtitle' ) );
+	}
+
+	public function test_hard_block_filter_can_add_but_not_remove(): void {
+		add_filter( 'aafm_hard_blocked_meta_keys', static fn( $k ) => array_merge( $k, array( 'company_revenue' ) ) );
+		$this->assertTrue( aafm_hard_blocked_meta_key( 'company_revenue' ) );
+		// Cannot remove a built-in even by returning [].
+		add_filter( 'aafm_hard_blocked_meta_keys', static fn() => array(), 99 );
+		$this->assertTrue( aafm_hard_blocked_meta_key( 'wp_capabilities' ) );
+		remove_all_filters( 'aafm_hard_blocked_meta_keys' );
+	}
+
+	public function test_allowed_meta_keys_default_empty_and_refloors(): void {
+		delete_option( 'aafm_allowed_meta_keys' );
+		$this->assertSame( array(), aafm_allowed_meta_keys() );
+		update_option( 'aafm_allowed_meta_keys', array( 'subtitle', 'wp_capabilities', '_edit_lock' ) );
+		$this->assertSame( array( 'subtitle' ), aafm_allowed_meta_keys() ); // hard-blocked stripped on read.
+	}
+
+	public function test_validate_meta_key_allowlist_and_block(): void {
+		update_option( 'aafm_allowed_meta_keys', array( 'subtitle' ) );
+		$this->assertSame( 'subtitle', aafm_validate_meta_key( 'subtitle' ) );
+		$this->assertInstanceOf( WP_Error::class, aafm_validate_meta_key( 'unlisted' ) );
+		// Hard-blocked beats a forced allowlist entry.
+		update_option( 'aafm_allowed_meta_keys', array( 'wp_capabilities' ) );
+		$this->assertInstanceOf( WP_Error::class, aafm_validate_meta_key( 'wp_capabilities' ) );
+	}
+
+	public function test_validate_meta_key_uses_one_generic_code(): void {
+		update_option( 'aafm_allowed_meta_keys', array() );
+		$this->assertSame( 'aafm_meta_key_not_allowed', aafm_validate_meta_key( 'unlisted' )->get_error_code() );
+		$this->assertSame( 'aafm_meta_key_not_allowed', aafm_validate_meta_key( '_edit_lock' )->get_error_code() );
+	}
+
+	public function test_meta_value_sanitizer_rejects_non_scalar(): void {
+		$this->assertInstanceOf( WP_Error::class, aafm_sanitize_meta_value( 'k', array( 1, 2 ) ) );
+		$this->assertInstanceOf( WP_Error::class, aafm_sanitize_meta_value( 'k', new \stdClass() ) );
+	}
+
+	public function test_meta_value_sanitizer_preserves_scalar_types_and_strips_html(): void {
+		$this->assertSame( 5, aafm_sanitize_meta_value( 'k', 5 ) );
+		$this->assertSame( true, aafm_sanitize_meta_value( 'k', true ) );
+		$this->assertSame( 1.5, aafm_sanitize_meta_value( 'k', 1.5 ) );
+		$this->assertSame( 'hello', aafm_sanitize_meta_value( 'k', '<b>hello</b>' ) );
+	}
+
+	public function test_meta_value_sanitizer_refuses_callback_that_returns_non_scalar(): void {
+		register_post_meta(
+			'post',
+			'aafm_array_coercer',
+			array(
+				'type'              => 'string',
+				'single'            => true,
+				'sanitize_callback' => static fn() => array( 'evil' => 1 ),
+			)
+		);
+		$result = aafm_sanitize_meta_value( 'aafm_array_coercer', 'plain' );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		unregister_post_meta( 'post', 'aafm_array_coercer' );
+	}
 }

@@ -98,6 +98,125 @@ function aafm_allowed_post_types(): array {
 }
 
 /**
+ * Whether a meta key is permanently blocked from agent access (even if allowlisted).
+ *
+ * Blocks protected (`_`-prefixed) meta, the auth-sensitive denylist stolen from
+ * easy-mcp-ai's User_Meta_Auth_Guard, and this install's capability/user-level keys.
+ * The aafm_hard_blocked_meta_keys filter may ADD keys; the built-ins are re-merged
+ * after it, so a filter can never unblock one.
+ *
+ * @param string $key Meta key.
+ * @return bool
+ */
+function aafm_hard_blocked_meta_key( string $key ): bool {
+	global $wpdb;
+	$key = (string) $key;
+	if ( '' === trim( $key ) ) {
+		return true;
+	}
+	if ( is_protected_meta( $key, 'post' ) ) {
+		return true;
+	}
+	$builtin = array(
+		'session_tokens',
+		'_application_passwords',
+		'wp_capabilities',
+		'wp_user_level',
+		'wp_user-settings',
+		'wp_user-settings-time',
+		'default_password_nonce',
+		'_password_reset_key',
+		'community-events-location',
+		'_new_email',
+		$wpdb->prefix . 'capabilities',
+		$wpdb->prefix . 'user_level',
+	);
+	/**
+	 * Filters EXTRA meta keys to hard-block. Built-ins are re-merged after, so this
+	 * can only add blocks, never remove them.
+	 *
+	 * @param list<string> $extra Extra keys to block.
+	 */
+	$extra   = (array) apply_filters( 'aafm_hard_blocked_meta_keys', array() );
+	$blocked = array_merge( $builtin, array_map( 'strval', $extra ) );
+	if ( in_array( $key, $blocked, true ) ) {
+		return true;
+	}
+	// Any prefix*capabilities form, including multisite per-blog keys (wp_2_capabilities).
+	return (bool) preg_match( '/^' . preg_quote( $wpdb->prefix, '/' ) . '\d*_?capabilities$/', $key );
+}
+
+/**
+ * Default-deny meta-key allowlist. Default empty; opt-in via the aafm_allowed_meta_keys
+ * option (admin textarea) or the matching filter. Hard-blocked keys are stripped AFTER the
+ * option read AND after the filter, so neither a junk write nor a rogue filter exposes one.
+ *
+ * @return list<string>
+ */
+function aafm_allowed_meta_keys(): array {
+	$stored = get_option( 'aafm_allowed_meta_keys', array() );
+	$stored = is_array( $stored ) ? array_map( 'strval', $stored ) : array();
+	$stored = array_values( array_filter( $stored, static fn( $k ) => ! aafm_hard_blocked_meta_key( $k ) ) );
+
+	/**
+	 * Filters the meta keys exposed to AI agents. Re-floored against the hard-block
+	 * after this filter, so adding a blocked key is a no-op.
+	 *
+	 * @param list<string> $stored Allowlisted, non-blocked keys.
+	 */
+	$filtered = (array) apply_filters( 'aafm_allowed_meta_keys', $stored );
+
+	return array_values(
+		array_unique(
+			array_filter( array_map( 'strval', $filtered ), static fn( $k ) => '' !== $k && ! aafm_hard_blocked_meta_key( $k ) )
+		)
+	);
+}
+
+/**
+ * Validate a meta key: must be allowlisted AND not hard-blocked. One generic error code
+ * for both failure modes so a caller cannot distinguish "blocked" from "not allowlisted".
+ *
+ * @param string $key Requested meta key.
+ * @return string|WP_Error
+ */
+function aafm_validate_meta_key( string $key ) {
+	$key = trim( (string) $key );
+	if ( '' === $key || aafm_hard_blocked_meta_key( $key ) || ! in_array( $key, aafm_allowed_meta_keys(), true ) ) {
+		return new WP_Error( 'aafm_meta_key_not_allowed', __( 'This meta key is not available to agents.', 'agent-abilities-for-mcp' ) );
+	}
+	return $key;
+}
+
+/**
+ * Coerce + sanitize a meta value for writing. Scalar-only: arrays/objects are refused so
+ * the agent can never store a serialized structure. Strings are plain-text sanitized (meta
+ * is not rendered as post content); the result is then run through sanitize_meta so any
+ * registered sanitize_callback still applies. The object subtype ('post') is passed so the
+ * per-key sanitize_post_meta_{$key} callback actually fires — the 3-arg form skips it.
+ * Whatever the callback returns is re-asserted as scalar before it can be stored or returned,
+ * so a callback that coerces the value into an array/object is refused (defence in depth,
+ * symmetric with the scalar-only read path).
+ *
+ * @param string $key   Meta key (already validated/allowlisted by the caller).
+ * @param mixed  $value Raw value from input.
+ * @return mixed|WP_Error Sanitized scalar, or error if non-scalar.
+ */
+function aafm_sanitize_meta_value( string $key, $value ) {
+	if ( ! is_scalar( $value ) ) {
+		return new WP_Error( 'aafm_meta_value_invalid', __( 'Only text, number, or boolean meta values are supported.', 'agent-abilities-for-mcp' ) );
+	}
+	if ( is_string( $value ) ) {
+		$value = sanitize_text_field( $value );
+	}
+	$value = sanitize_meta( $key, $value, 'post', 'post' );
+	if ( ! is_scalar( $value ) ) {
+		return new WP_Error( 'aafm_meta_value_invalid', __( 'Only text, number, or boolean meta values are supported.', 'agent-abilities-for-mcp' ) );
+	}
+	return $value;
+}
+
+/**
  * Resolve a post type's cap object and whether it uses core's meta-cap mapping.
  *
  * The Tier-1 cap keys (edit_post, delete_post, publish_posts, read_private_posts) are
