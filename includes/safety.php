@@ -155,6 +155,44 @@ function aafm_cidr_match( string $ip, string $cidr ): bool {
 }
 
 /**
+ * Whether a single allowlist line is a valid bare IP or a valid CIDR range.
+ *
+ * Fail-closed: anything that is not a well-formed IPv4/IPv6 address, or a
+ * `network/prefix` where the network is a valid IP and the prefix is digits
+ * within the family's range (0..32 for IPv4, 0..128 for IPv6), returns false.
+ * This is the gate the settings sanitizer uses to drop invalid lines so a saved
+ * allowlist is always made up entirely of usable entries.
+ *
+ * @param string $line One trimmed allowlist entry.
+ * @return bool True only for a well-formed IP or CIDR.
+ */
+function aafm_is_valid_ip_or_cidr( string $line ): bool {
+	if ( '' === $line ) {
+		return false;
+	}
+
+	// Bare host: a plain IPv4 or IPv6 address.
+	if ( false === strpos( $line, '/' ) ) {
+		return false !== filter_var( $line, FILTER_VALIDATE_IP );
+	}
+
+	list( $subnet, $prefix_raw ) = explode( '/', $line, 2 );
+
+	if ( false === filter_var( $subnet, FILTER_VALIDATE_IP ) ) {
+		return false;
+	}
+
+	// Prefix must be a plain run of digits (no sign, whitespace, or decimals).
+	if ( '' === $prefix_raw || 1 !== preg_match( '/^\d+$/', $prefix_raw ) ) {
+		return false;
+	}
+
+	$max = ( false !== filter_var( $subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) ? 32 : 128;
+
+	return (int) $prefix_raw <= $max;
+}
+
+/**
  * Whether an IP is permitted by the allowlist.
  *
  * An empty allowlist is the neutral default and permits everyone. A non-empty
