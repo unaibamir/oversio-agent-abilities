@@ -29,6 +29,7 @@ final class SafetyEnforcementTest extends TestCase {
 		// The transport denial path writes a 'denied' row to the custom log.
 		aafm_install_activity_log();
 		aafm_clear_activity_log();
+		$this->ensure_categories();
 	}
 
 	public function tear_down(): void {
@@ -84,5 +85,120 @@ final class SafetyEnforcementTest extends TestCase {
 		$result = aafm_transport_permission_callback( null );
 		$this->assertInstanceOf( \WP_Error::class, $result );
 		$this->assertSame( 401, $result->get_error_data()['status'] ?? 0 );
+	}
+
+	/**
+	 * Register the plugin categories inside a simulated categories-init action.
+	 *
+	 * The Abilities API only permits category registration while the
+	 * 'wp_abilities_api_categories_init' action is running; aafm_register_categories()
+	 * is idempotent, so this is safe to call before every test.
+	 */
+	private function ensure_categories(): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_categories_init';
+		aafm_register_categories();
+		array_pop( $wp_current_filter );
+	}
+
+	/**
+	 * Register an ability through the wrapper inside a simulated abilities-init action.
+	 *
+	 * @param string              $name Ability name.
+	 * @param array<string,mixed> $args Ability args.
+	 * @return mixed The wrapper return value (WP_Ability or null).
+	 */
+	private function register( string $name, array $args ) {
+		global $wp_current_filter;
+		$wp_current_filter[] = 'wp_abilities_api_init';
+		$result              = aafm_register_ability_with_log( $name, $args );
+		array_pop( $wp_current_filter );
+		return $result;
+	}
+
+	public function test_decorated_permission_rate_limits_and_audits(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_rate_limit_per_min', 1 );
+
+		$this->register(
+			'aafm/rl-probe',
+			array(
+				'label'               => 'RL Probe',
+				'description'         => 'Throwaway ability for rate-limit testing.',
+				'category'            => 'aafm-reads',
+				'output_schema'       => array( 'type' => 'object' ),
+				'execute_callback'    => '__return_empty_array',
+				'permission_callback' => '__return_true',
+			)
+		);
+		$ability = wp_get_ability( 'aafm/rl-probe' );
+
+		$this->assertTrue( $ability->check_permissions( array() ) );  // 1st: under limit.
+		$this->assertFalse( $ability->check_permissions( array() ) ); // 2nd: over limit -> false.
+
+		$denied = aafm_query_activity(
+			array(
+				'status'   => 'denied',
+				'per_page' => 1,
+			)
+		);
+		$this->assertNotEmpty( $denied );
+		$this->assertSame( 'denied', $denied[0]['status'] );
+		$this->assertSame( 'aafm/rl-probe', $denied[0]['ability'] );
+	}
+
+	public function test_rate_limit_off_decorator_is_no_op(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_rate_limit_per_min', 0 ); // Zero is the default and disables the limit.
+
+		$this->register(
+			'aafm/rl-off-probe',
+			array(
+				'label'               => 'RL Off Probe',
+				'description'         => 'Throwaway.',
+				'category'            => 'aafm-reads',
+				'output_schema'       => array( 'type' => 'object' ),
+				'execute_callback'    => '__return_empty_array',
+				'permission_callback' => '__return_true',
+			)
+		);
+		$ability = wp_get_ability( 'aafm/rl-off-probe' );
+
+		// Many calls, all allowed — off means no token consumption, identical to today.
+		for ( $i = 0; $i < 5; $i++ ) {
+			$this->assertTrue( $ability->check_permissions( array() ) );
+		}
+	}
+
+	public function test_discovery_does_not_consume_a_rate_token(): void {
+		// The RAW permission (used by tools/list) must NOT consume a token, so a real
+		// ability call afterwards still gets its full allowance.
+		$uid = self::factory()->user->create( array( 'role' => 'editor' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_rate_limit_per_min', 1 );
+
+		$this->register(
+			'aafm/rl-disc-probe',
+			array(
+				'label'               => 'RL Disc Probe',
+				'description'         => 'Throwaway.',
+				'category'            => 'aafm-reads',
+				'output_schema'       => array( 'type' => 'object' ),
+				'execute_callback'    => '__return_empty_array',
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		// Simulate discovery: call the RAW permission the way the tools/list filter does.
+		$raw = aafm_remember_raw_permission( 'aafm/rl-disc-probe' );
+		$this->assertTrue( (bool) $raw( array() ) ); // discovery visibility check — must NOT consume a token.
+		$this->assertTrue( (bool) $raw( array() ) ); // again — still no token.
+
+		// Now the FIRST real (decorated) call still has its full allowance of 1.
+		$ability = wp_get_ability( 'aafm/rl-disc-probe' );
+		$this->assertTrue( $ability->check_permissions( array() ) );  // 1st real call allowed.
+		$this->assertFalse( $ability->check_permissions( array() ) ); // 2nd real call over limit.
 	}
 }
