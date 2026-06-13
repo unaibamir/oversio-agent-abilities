@@ -134,8 +134,8 @@ function aafm_hard_blocked_meta_key( string $key ): bool {
 	if ( in_array( $key, $blocked, true ) ) {
 		return true;
 	}
-	// Any prefix*capabilities form (covers multisite wp_2_capabilities).
-	return (bool) preg_match( '/^' . preg_quote( $wpdb->prefix, '/' ) . '\d*capabilities$/', $key );
+	// Any prefix*capabilities form, including multisite per-blog keys (wp_2_capabilities).
+	return (bool) preg_match( '/^' . preg_quote( $wpdb->prefix, '/' ) . '\d*_?capabilities$/', $key );
 }
 
 /**
