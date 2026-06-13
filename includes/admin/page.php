@@ -42,6 +42,10 @@ function aafm_enqueue_admin_assets( string $hook ): void {
 		array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'aafm_admin' ),
+			'i18n'    => array(
+				'quickstartsShow' => __( 'Show config for a specific client', 'agent-abilities-for-mcp' ),
+				'quickstartsHide' => __( 'Hide client configs', 'agent-abilities-for-mcp' ),
+			),
 		)
 	);
 }
@@ -227,6 +231,7 @@ function aafm_render_admin_page(): void {
 		return;
 	}
 	$tabs = array(
+		'dashboard'  => __( 'Dashboard', 'agent-abilities-for-mcp' ),
 		'connection' => __( 'Connection', 'agent-abilities-for-mcp' ),
 		'abilities'  => __( 'Abilities', 'agent-abilities-for-mcp' ),
 		'settings'   => __( 'Settings', 'agent-abilities-for-mcp' ),
@@ -235,9 +240,9 @@ function aafm_render_admin_page(): void {
 	);
 
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only tab routing, no state change.
-	$active = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : 'connection';
+	$active = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( (string) $_GET['tab'] ) ) : 'dashboard';
 	if ( ! isset( $tabs[ $active ] ) ) {
-		$active = 'connection';
+		$active = 'dashboard';
 	}
 
 	echo '<div class="wrap aafm-wrap">';
@@ -262,6 +267,9 @@ function aafm_render_admin_page(): void {
 	echo '</h2>';
 
 	switch ( $active ) {
+		case 'connection':
+			aafm_render_connection_tab();
+			break;
 		case 'abilities':
 			aafm_render_abilities_tab();
 			break;
@@ -275,7 +283,7 @@ function aafm_render_admin_page(): void {
 			aafm_render_help_tab();
 			break;
 		default:
-			aafm_render_connection_tab();
+			aafm_render_dashboard_tab();
 	}
 	echo '</div>';
 }
@@ -352,12 +360,29 @@ function aafm_render_abilities_tab(): void {
 		'writes' => __( 'Writes', 'agent-abilities-for-mcp' ),
 	);
 
+	$disclosures = aafm_ability_disclosures();
+
 	foreach ( $subjects as $slug => $label ) {
 		$is_active = ( $slug === $first );
 		printf(
 			'<div class="aafm-subject-panel" data-subject="%1$s" role="tabpanel"%2$s>',
 			esc_attr( $slug ),
 			$is_active ? '' : ' hidden'
+		);
+
+		// Per-subject count badge: how many of this subject's abilities are enabled.
+		$subject_total   = count( $by_subject[ $slug ] );
+		$subject_enabled = 0;
+		foreach ( $by_subject[ $slug ] as $ability ) {
+			if ( in_array( (string) $ability['name'], $enabled, true ) ) {
+				++$subject_enabled;
+			}
+		}
+		printf(
+			'<p class="aafm-subject-heading"><span class="aafm-count-badge">%1$s / %2$s</span> %3$s</p>',
+			esc_html( (string) $subject_enabled ),
+			esc_html( (string) $subject_total ),
+			esc_html__( 'enabled', 'agent-abilities-for-mcp' )
 		);
 
 		if ( 'content' === $slug ) {
@@ -379,13 +404,29 @@ function aafm_render_abilities_tab(): void {
 			foreach ( $rows as $ability ) {
 				$name = (string) $ability['name'];
 				$risk = (string) ( $ability['risk'] ?? 'read' );
+				$hint = (string) ( $disclosures[ $name ] ?? ( $ability['description'] ?? '' ) );
+
+				// Risk badge, plus the checkbox/label cell.
 				printf(
-					'<tr><td><label><input type="checkbox" name="aafm_abilities[]" value="%1$s" %2$s> %3$s</label></td><td><span class="aafm-badge aafm-badge-%4$s">%4$s</span></td><td>%5$s</td></tr>',
+					'<tr><td><label><input type="checkbox" name="aafm_abilities[]" value="%1$s" %2$s> %3$s</label></td><td><span class="aafm-badge aafm-badge-%4$s">%4$s</span>',
 					esc_attr( $name ),
 					checked( in_array( $name, $enabled, true ), true, false ),
 					esc_html( (string) ( $ability['label'] ?? $name ) ),
-					esc_attr( $risk ),
-					esc_html( (string) ( $ability['description'] ?? '' ) )
+					esc_attr( $risk )
+				);
+
+				// Read-only badge only on read-risk rows; never on write/destructive. The read-only
+				// state is derived from risk === 'read' because the registry entries this UI walks do
+				// not carry an annotations.readonly field — that flag lives only in each ability's MCP
+				// arg-builder definition, not in the catalog. So at render time, risk === 'read' is the
+				// authoritative read-only signal.
+				if ( 'read' === $risk ) {
+					echo ' <span class="aafm-badge aafm-badge-readonly aafm-readonly-badge">' . esc_html__( 'read-only', 'agent-abilities-for-mcp' ) . '</span>';
+				}
+
+				printf(
+					'</td><td class="aafm-ability-hint">%1$s</td></tr>',
+					esc_html( $hint )
 				);
 			}
 			echo '</tbody></table>';

@@ -13,6 +13,12 @@ use AAFM\Tests\TestCase;
 
 final class HelpTabTest extends TestCase {
 
+	public function set_up(): void {
+		parent::set_up();
+		aafm_install_activity_log();
+		aafm_clear_activity_log();
+	}
+
 	public function test_help_tab_renders_section_headings(): void {
 		$this->acting_as( 'administrator' );
 
@@ -156,7 +162,7 @@ final class HelpTabTest extends TestCase {
 		$this->assertStringContainsString( 'tab=help', $html );
 	}
 
-	public function test_router_falls_back_to_connection_for_unknown_tab(): void {
+	public function test_router_falls_back_to_dashboard_for_unknown_tab(): void {
 		$this->acting_as( 'administrator' );
 		$_GET['tab'] = 'bogus';
 
@@ -166,8 +172,8 @@ final class HelpTabTest extends TestCase {
 
 		unset( $_GET['tab'] );
 
-		// Unknown tab routes to the Connection tab, not Help.
-		$this->assertStringContainsString( 'aafm-connection', $html );
+		// Unknown tab routes to the Dashboard tab, not Help.
+		$this->assertStringContainsString( 'aafm-dashboard', $html );
 		$this->assertStringNotContainsString( 'aafm-help-entry', $html );
 	}
 }
