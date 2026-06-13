@@ -342,6 +342,11 @@ function aafm_perm_publish_posts(): bool {
  * @return array<string,mixed>|WP_Error
  */
 function aafm_insert_post( array $input, string $status, string $type ) {
+	// Force-draft override applies to every create that routes here (post + page).
+	if ( aafm_force_draft() ) {
+		$status = 'draft';
+	}
+
 	$postarr = array(
 		'post_type'    => $type,
 		'post_status'  => $status,

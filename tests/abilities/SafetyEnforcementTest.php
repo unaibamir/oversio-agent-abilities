@@ -201,4 +201,28 @@ final class SafetyEnforcementTest extends TestCase {
 		$this->assertTrue( $ability->check_permissions( array() ) );  // 1st real call allowed.
 		$this->assertFalse( $ability->check_permissions( array() ) ); // 2nd real call over limit.
 	}
+
+	public function test_force_draft_overrides_create_post(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_force_draft', '1' );
+		$out = aafm_exec_create_post( array( 'title' => 'Hello' ) );
+		$this->assertSame( 'draft', $out['post']['status'] );
+	}
+
+	public function test_force_draft_overrides_create_page(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_force_draft', '1' );
+		$out = aafm_exec_create_page( array( 'title' => 'Hello Page' ) );
+		$this->assertSame( 'draft', $out['post']['status'] );
+	}
+
+	public function test_force_draft_off_create_post_still_publishes(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $uid );
+		update_option( 'aafm_force_draft', '0' ); // OFF (default) — no behavior change.
+		$out = aafm_exec_create_post( array( 'title' => 'Published Hello' ) );
+		$this->assertSame( 'publish', $out['post']['status'] );
+	}
 }
