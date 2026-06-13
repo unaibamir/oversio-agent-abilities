@@ -79,14 +79,14 @@ function aafm_enqueue_admin_assets( string $hook ): void {
  * The result is intersected with the live registry, so a stale, unknown, or smuggled
  * key can never enable anything — only abilities that actually exist are honored.
  *
- * @param array<string,mixed> $posted The raw $_POST payload (slashes handled here).
+ * @param array<string,mixed> $posted The $_POST payload, already unslashed by the caller.
  * @return array<int,string>
  */
 function aafm_sanitize_enabled_input( array $posted ): array {
 	$known   = array_keys( aafm_get_abilities_registry() );
 	$enabled = array();
 	if ( isset( $posted['aafm_abilities'] ) && is_array( $posted['aafm_abilities'] ) ) {
-		foreach ( wp_unslash( $posted['aafm_abilities'] ) as $name ) {
+		foreach ( $posted['aafm_abilities'] as $name ) {
 			$enabled[] = sanitize_text_field( (string) $name );
 		}
 	}
@@ -115,13 +115,13 @@ function aafm_ajax_save_abilities(): void {
  * intentionally dropped here rather than persisted. Every remaining value must clear the
  * eligibility floor, so attachment, revision, private CPTs, and junk can never be stored.
  *
- * @param array<string,mixed> $posted Raw $_POST payload (slashes handled here).
+ * @param array<string,mixed> $posted The $_POST payload, already unslashed by the caller.
  * @return list<string>
  */
 function aafm_sanitize_allowed_post_types_input( array $posted ): array {
 	$types = array();
 	if ( isset( $posted['aafm_post_types'] ) && is_array( $posted['aafm_post_types'] ) ) {
-		foreach ( wp_unslash( $posted['aafm_post_types'] ) as $type ) {
+		foreach ( $posted['aafm_post_types'] as $type ) {
 			$types[] = sanitize_key( (string) $type );
 		}
 	}
