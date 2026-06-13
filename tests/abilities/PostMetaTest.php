@@ -259,4 +259,11 @@ final class PostMetaTest extends TestCase {
 			)
 		);
 	}
+
+	public function test_meta_abilities_registered(): void {
+		$reg = aafm_get_abilities_registry();
+		$this->assertArrayHasKey( 'aafm/get-post-meta', $reg );
+		$this->assertArrayHasKey( 'aafm/update-post-meta', $reg );
+		$this->assertArrayHasKey( 'aafm/delete-post-meta', $reg );
+	}
 }
