@@ -54,6 +54,12 @@ final class AbilitiesSaveTest extends TestCase {
 		$this->assertStringContainsString( 'value="aafm/get-posts"', $html );
 		$this->assertStringContainsString( 'name="aafm_abilities[]"', $html );
 		$this->assertStringContainsString( 'checked', $html );
+
+		// Direction A presentation: the subject nav is the pill sub-tab bar and each ability
+		// checkbox is wrapped in the toggle switch. These are presentation-only; the input
+		// name/value/checked contract above is unchanged.
+		$this->assertStringContainsString( 'aafm-subtabs', $html );
+		$this->assertStringContainsString( 'aafm-switch', $html );
 	}
 
 	public function test_every_registry_entry_declares_a_subject(): void {

@@ -41,6 +41,8 @@ final class MetaKeysSaveTest extends TestCase {
 		$this->assertStringContainsString( 'name="aafm_meta_keys"', $html );
 		$this->assertStringContainsString( 'id="aafm-meta-keys-save"', $html );
 		$this->assertStringContainsString( 'aafm-meta-chip', $html );
+		// Direction A presentation: the meta-keys selector lives in a card.
+		$this->assertStringContainsString( 'aafm-card', $html );
 
 		// The privacy warning now renders through the shared notice component (a <div> with a
 		// dashicon), not the old ad-hoc <p class="aafm-notice">. The <div> never opens a form,

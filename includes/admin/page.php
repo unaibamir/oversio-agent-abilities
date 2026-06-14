@@ -391,13 +391,14 @@ function aafm_render_abilities_tab(): void {
 	echo '<form id="aafm-abilities-form" class="aafm-abilities">';
 	wp_nonce_field( 'aafm_admin', 'aafm_nonce' );
 
-	// Sub-tab bar — reuses the shared .aafm-os-tabs styling; .aafm-subject-tab is the JS hook.
+	// Sub-tab bar — pill style (.aafm-subtabs); .aafm-subject-tab stays the JS hook the
+	// toggle binds to and data-subject is preserved so panel switching keeps working.
 	$first = array_key_first( $subjects );
-	echo '<div class="aafm-os-tabs aafm-subject-tabs" role="tablist">';
+	echo '<div class="aafm-subtabs aafm-subject-tabs" role="tablist">';
 	foreach ( $subjects as $slug => $label ) {
 		$is_active = ( $slug === $first );
 		printf(
-			'<button type="button" class="button aafm-os-tab aafm-subject-tab%1$s" role="tab" aria-selected="%2$s" data-subject="%3$s">%4$s</button>',
+			'<button type="button" class="aafm-subject-tab%1$s" role="tab" aria-selected="%2$s" data-subject="%3$s">%4$s</button>',
 			$is_active ? ' is-active' : '',
 			$is_active ? 'true' : 'false',
 			esc_attr( $slug ),
@@ -450,18 +451,42 @@ function aafm_render_abilities_tab(): void {
 			if ( empty( $rows ) ) {
 				continue;
 			}
-			echo '<h3>' . esc_html( $heading ) . '</h3>';
-			echo '<table class="widefat striped aafm-ability-table"><tbody>';
+
+			// Per-group enabled count for the group head.
+			$group_enabled = 0;
+			foreach ( $rows as $ability ) {
+				if ( in_array( (string) $ability['name'], $enabled, true ) ) {
+					++$group_enabled;
+				}
+			}
+
+			// Group head: the Reads/Writes heading plus an enabled-over-total count. The bare
+			// >Reads< / >Writes< text the panel-structure test keys off lives in this <h3>.
+			printf(
+				'<div class="aafm-ability-group-head"><h3>%1$s</h3><span class="aafm-count-badge">%2$s / %3$s</span></div>',
+				esc_html( $heading ),
+				esc_html( (string) $group_enabled ),
+				esc_html( (string) count( $rows ) )
+			);
+
+			echo '<div class="aafm-card aafm-ability-list">';
 			foreach ( $rows as $ability ) {
 				$name = (string) $ability['name'];
 				$risk = (string) ( $ability['risk'] ?? 'read' );
 				$hint = (string) ( $disclosures[ $name ] ?? ( $ability['description'] ?? '' ) );
 
-				// Risk badge, plus the checkbox/label cell.
+				// Toggle switch wraps the checkbox. The <input> keeps its exact name/value/checked()
+				// contract — the save handler and its tests bind to that, not to this markup.
+				echo '<div class="aafm-ability-row">';
 				printf(
-					'<tr><td><label><input type="checkbox" name="aafm_abilities[]" value="%1$s" %2$s> %3$s</label></td><td><span class="aafm-badge aafm-badge-%4$s">%4$s</span>',
+					'<label class="aafm-switch"><input type="checkbox" name="aafm_abilities[]" value="%1$s" %2$s><span class="aafm-switch-track"></span></label>',
 					esc_attr( $name ),
-					checked( in_array( $name, $enabled, true ), true, false ),
+					checked( in_array( $name, $enabled, true ), true, false )
+				);
+
+				echo '<div class="aafm-ability-main"><div class="aafm-ability-title">';
+				printf(
+					'<h4>%1$s</h4><span class="aafm-badge aafm-badge-%2$s">%2$s</span>',
 					esc_html( (string) ( $ability['label'] ?? $name ) ),
 					esc_attr( $risk )
 				);
@@ -476,11 +501,11 @@ function aafm_render_abilities_tab(): void {
 				}
 
 				printf(
-					'</td><td class="aafm-ability-hint">%1$s</td></tr>',
+					'</div><p class="aafm-ability-hint">%1$s</p></div></div>',
 					esc_html( $hint )
 				);
 			}
-			echo '</tbody></table>';
+			echo '</div>';
 		}
 
 		// Rendered after the ability tables as a layout choice — the meta selector belongs below
@@ -493,7 +518,7 @@ function aafm_render_abilities_tab(): void {
 		echo '</div>';
 	}
 
-	echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Save changes', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-save-status" aria-live="polite"></span></p>';
+	echo '<div class="aafm-savebar"><button type="submit" class="button button-primary">' . esc_html__( 'Save changes', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-save-status" aria-live="polite"></span></div>';
 	echo '</form>';
 
 	// Future: per-connection / per-client ability allowlist scoping is a separate roadmapped
@@ -514,15 +539,20 @@ function aafm_render_post_types_selector(): void {
 	$eligible = array_values( array_diff( aafm_eligible_post_types(), array( 'post', 'page' ) ) );
 	$allowed  = aafm_allowed_post_types();
 
-	echo '<h3>' . esc_html__( 'Exposed content types', 'agent-abilities-for-mcp' ) . '</h3>';
-	echo '<p class="description">' . esc_html__( 'Posts and pages are always available. Any custom content type is off until you turn it on here. The agent can read only these fields of an exposed type: title, slug, excerpt, status, link, dates, author id.', 'agent-abilities-for-mcp' ) . '</p>';
-
 	if ( empty( $eligible ) ) {
+		echo '<div class="aafm-card aafm-card-pad">';
+		echo '<h3>' . esc_html__( 'Exposed content types', 'agent-abilities-for-mcp' ) . '</h3>';
+		echo '<p class="description">' . esc_html__( 'Posts and pages are always available. Any custom content type is off until you turn it on here. The agent can read only these fields of an exposed type: title, slug, excerpt, status, link, dates, author id.', 'agent-abilities-for-mcp' ) . '</p>';
 		aafm_render_notice( 'info', __( 'No custom content types on this site are eligible to expose. Only public, non-internal types can be offered here.', 'agent-abilities-for-mcp' ) );
+		echo '</div>';
 		return;
 	}
 
-	echo '<div id="aafm-post-types-form" class="aafm-post-types">';
+	// The selector is a plain <div> (never a nested <form>): only the outer abilities <form>
+	// may open a form here, and the save control below is a type="button" the JS binds to.
+	echo '<div id="aafm-post-types-form" class="aafm-card aafm-card-pad aafm-post-types">';
+	echo '<h3>' . esc_html__( 'Exposed content types', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<p class="description">' . esc_html__( 'Posts and pages are always available. Any custom content type is off until you turn it on here. The agent can read only these fields of an exposed type: title, slug, excerpt, status, link, dates, author id.', 'agent-abilities-for-mcp' ) . '</p>';
 	echo '<table class="widefat striped aafm-post-types-table"><thead><tr>';
 	echo '<th>' . esc_html__( 'Expose', 'agent-abilities-for-mcp' ) . '</th>';
 	echo '<th>' . esc_html__( 'Type', 'agent-abilities-for-mcp' ) . '</th>';
@@ -538,7 +568,7 @@ function aafm_render_post_types_selector(): void {
 		$rest   = $obj instanceof WP_Post_Type && $obj->show_in_rest;
 
 		printf(
-			'<tr><td><label><input type="checkbox" name="aafm_post_types[]" value="%1$s" %2$s></label></td><td><strong>%3$s</strong> <code>%4$s</code></td><td>%5$s</td><td>%6$s</td></tr>',
+			'<tr><td><label class="aafm-switch"><input type="checkbox" name="aafm_post_types[]" value="%1$s" %2$s><span class="aafm-switch-track"></span></label></td><td><strong>%3$s</strong> <code>%4$s</code></td><td>%5$s</td><td>%6$s</td></tr>',
 			esc_attr( $type ),
 			checked( in_array( $type, $allowed, true ), true, false ),
 			esc_html( (string) $label ),
@@ -572,11 +602,13 @@ function aafm_render_meta_keys_selector(): void {
 	$allowed  = aafm_allowed_meta_keys();
 	$detected = aafm_detected_meta_keys();
 
+	// Mirrors the post-types selector: a plain <div> (never a nested <form>) with a
+	// type="button" save, so the one outer abilities <form> is never closed early.
+	echo '<div id="aafm-meta-keys-form" class="aafm-card aafm-card-pad aafm-meta-keys">';
 	echo '<h3>' . esc_html__( 'Exposed meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
 	echo '<p class="description">' . esc_html__( 'One meta key per line. These are the only meta keys an agent can read or write on a post it can already edit. Everything else stays hidden.', 'agent-abilities-for-mcp' ) . '</p>';
 	aafm_render_notice( 'warning', __( 'Meta can hold private data. Only expose keys whose values are safe for an agent to read and write. Protected keys (anything starting with an underscore) and authentication keys are blocked for good and can\'t be added.', 'agent-abilities-for-mcp' ) );
 
-	echo '<div id="aafm-meta-keys-form" class="aafm-meta-keys">';
 	printf(
 		'<textarea name="aafm_meta_keys" rows="6" class="large-text code">%s</textarea>',
 		esc_textarea( implode( "\n", $allowed ) )
