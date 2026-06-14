@@ -13,6 +13,13 @@ use AAFM\Tests\TestCase;
 
 final class ShellTest extends TestCase {
 
+	public function set_up(): void {
+		parent::set_up();
+		// Rendering the default (dashboard) tab queries the activity-log table, so install it
+		// to keep the suite output clean.
+		aafm_install_activity_log();
+	}
+
 	public function test_shell_has_lede_and_dashicon_tabs(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
 		ob_start();
