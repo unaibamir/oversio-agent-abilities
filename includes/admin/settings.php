@@ -121,7 +121,7 @@ function aafm_ajax_save_settings(): void {
 }
 
 /**
- * Render the Settings tab: a WP form-table of the four optional safety controls.
+ * Render the Settings tab: a card of labelled rows for the four optional safety controls.
  *
  * Each control reads its current value through its safety.php getter (filterable, bounded,
  * default off) and writes via the aafm_save_settings AJAX action. Everything is escaped on
@@ -140,55 +140,57 @@ function aafm_render_settings_tab(): void {
 	);
 
 	echo '<form id="aafm-settings-form">';
-	echo '<table class="form-table" role="presentation"><tbody>';
+	echo '<section class="aafm-card">';
 
 	// Rate limit.
-	echo '<tr>';
-	echo '<th scope="row"><label for="aafm-rate-limit">' . esc_html__( 'Rate limit (per minute)', 'agent-abilities-for-mcp' ) . '</label></th>';
-	echo '<td>';
+	echo '<div class="aafm-set-row">';
+	echo '<div class="aafm-set-label"><label for="aafm-rate-limit">' . esc_html__( 'Rate limit', 'agent-abilities-for-mcp' ) . '</label><span class="opt">' . esc_html__( 'Per minute', 'agent-abilities-for-mcp' ) . '</span></div>';
+	echo '<div class="aafm-set-control">';
 	printf(
 		'<input type="number" id="aafm-rate-limit" name="aafm_rate_limit_per_min" class="small-text" min="0" step="1" value="%s">',
 		esc_attr( (string) aafm_rate_limit_per_min() )
 	);
-	echo '<p class="description">' . esc_html__( 'How many agent calls one connection can make per minute. Set it to 0 to leave the limit off.', 'agent-abilities-for-mcp' ) . '</p>';
-	echo '</td></tr>';
+	echo '<p class="help">' . esc_html__( 'How many agent calls one connection can make per minute. Set it to 0 to leave the limit off.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '</div></div>';
 
 	// IP allowlist.
-	echo '<tr>';
-	echo '<th scope="row"><label for="aafm-ip-allowlist">' . esc_html__( 'IP allowlist', 'agent-abilities-for-mcp' ) . '</label></th>';
-	echo '<td>';
+	echo '<div class="aafm-set-row">';
+	echo '<div class="aafm-set-label"><label for="aafm-ip-allowlist">' . esc_html__( 'IP allowlist', 'agent-abilities-for-mcp' ) . '</label><span class="opt">' . esc_html__( 'One per line', 'agent-abilities-for-mcp' ) . '</span></div>';
+	echo '<div class="aafm-set-control">';
 	printf(
 		'<textarea id="aafm-ip-allowlist" name="aafm_ip_allowlist" rows="5" class="large-text code">%s</textarea>',
 		esc_textarea( implode( "\n", aafm_ip_allowlist() ) )
 	);
-	echo '<p class="description">' . esc_html__( 'One IP address or CIDR range per line. Leave it empty to allow connections from anywhere. When you save, any line that is not a valid IP or range is dropped.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '<p class="help">' . esc_html__( 'One IP address or CIDR range per line. Leave it empty to allow connections from anywhere. When you save, any line that is not a valid IP or range is dropped.', 'agent-abilities-for-mcp' ) . '</p>';
 	aafm_render_notice(
 		'warning',
 		__( 'Before you save a list with anything in it, add the IP address your AI client connects from. As soon as this list has one entry, any request from an address that is not on it is blocked, including your own agent. Get it wrong and every agent call stops.', 'agent-abilities-for-mcp' )
 	);
-	echo '</td></tr>';
+	echo '</div></div>';
 
 	// Force draft.
-	echo '<tr>';
-	echo '<th scope="row">' . esc_html__( 'Force draft on create', 'agent-abilities-for-mcp' ) . '</th>';
-	echo '<td>';
-	echo '<label for="aafm-force-draft"><input type="checkbox" id="aafm-force-draft" name="aafm_force_draft" value="1" ' . checked( aafm_force_draft(), true, false ) . '> ';
-	echo esc_html__( 'Save everything an agent creates as a draft, no matter what status the request asked for.', 'agent-abilities-for-mcp' ) . '</label>';
-	echo '<p class="description">' . esc_html__( 'Turn this on if you want to look over agent-created content before it goes live.', 'agent-abilities-for-mcp' ) . '</p>';
-	echo '</td></tr>';
+	echo '<div class="aafm-set-row">';
+	echo '<div class="aafm-set-label">' . esc_html__( 'Force draft on create', 'agent-abilities-for-mcp' ) . '</div>';
+	echo '<div class="aafm-set-control">';
+	// Toggle switch wraps the checkbox. The <input> keeps its exact name/value/checked()
+	// contract — the save handler and its tests bind to that, not to this markup.
+	echo '<label class="aafm-switch" for="aafm-force-draft"><input type="checkbox" id="aafm-force-draft" name="aafm_force_draft" value="1" ' . checked( aafm_force_draft(), true, false ) . '><span class="aafm-switch-track"></span></label> ';
+	echo '<label for="aafm-force-draft">' . esc_html__( 'Save everything an agent creates as a draft, no matter what status the request asked for.', 'agent-abilities-for-mcp' ) . '</label>';
+	echo '<p class="help">' . esc_html__( 'Turn this on if you want to look over agent-created content before it goes live.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '</div></div>';
 
 	// Max title length.
-	echo '<tr>';
-	echo '<th scope="row"><label for="aafm-max-title">' . esc_html__( 'Maximum title length', 'agent-abilities-for-mcp' ) . '</label></th>';
-	echo '<td>';
+	echo '<div class="aafm-set-row">';
+	echo '<div class="aafm-set-label"><label for="aafm-max-title">' . esc_html__( 'Maximum title length', 'agent-abilities-for-mcp' ) . '</label><span class="opt">' . esc_html__( 'Characters', 'agent-abilities-for-mcp' ) . '</span></div>';
+	echo '<div class="aafm-set-control">';
 	printf(
 		'<input type="number" id="aafm-max-title" name="aafm_max_title_len" class="small-text" min="0" step="1" value="%s">',
 		esc_attr( (string) aafm_max_title_len() )
 	);
-	echo '<p class="description">' . esc_html__( 'The longest title, in characters, an agent can set. Set it to 0 to leave the limit off.', 'agent-abilities-for-mcp' ) . '</p>';
-	echo '</td></tr>';
+	echo '<p class="help">' . esc_html__( 'The longest title, in characters, an agent can set. Set it to 0 to leave the limit off.', 'agent-abilities-for-mcp' ) . '</p>';
+	echo '</div></div>';
 
-	echo '</tbody></table>';
+	echo '</section>';
 
 	aafm_render_notice(
 		'warning',
