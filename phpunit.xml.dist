@@ -17,6 +17,7 @@
 			<directory>tests/abilities</directory>
 			<directory>tests/audit</directory>
 			<directory>tests/admin</directory>
+			<directory>tests/oauth</directory>
 			<directory>tests/coexistence</directory>
 		</testsuite>
 	</testsuites>

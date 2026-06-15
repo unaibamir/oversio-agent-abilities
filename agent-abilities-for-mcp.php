@@ -42,6 +42,9 @@ if ( ! defined( 'AAFM_LOG_PRUNE_INTERVAL' ) ) {
 require_once AAFM_PLUGIN_DIR . 'includes/audit/log.php';
 register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_install_activity_log' );
 
+// OAuth storage schema is required early too; activation/upgrade wiring lands in a later task.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/schema.php';
+
 /**
  * Bootstraps the plugin once all plugins are loaded.
  *
