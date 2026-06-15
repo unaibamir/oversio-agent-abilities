@@ -72,6 +72,18 @@ add_filter( 'rest_post_dispatch', 'aafm_oauth_filter_rest_challenge', 10, 3 );
 require_once AAFM_PLUGIN_DIR . 'includes/oauth/rest.php';
 add_action( 'rest_api_init', 'aafm_oauth_register_rest_routes' );
 
+// Bearer-token validator: resolve an OAuth access token to its approving user on
+// the same auth layer Application Passwords use, before the transport gate runs.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/validator.php';
+// Priority 20 runs after cookie auth (10) and alongside core's Application
+// Password resolver. Ordering is not load-bearing for the frozen invariant: the
+// resolver returns early whenever a user is already set, so it can never preempt
+// an App Password (or any other) identity regardless of which runs first.
+add_filter( 'determine_current_user', 'aafm_oauth_resolve_current_user', 20 );
+// Defensive pass-through so a present-but-invalid OAuth token never gets turned
+// into a hard auth failure on unrelated REST routes.
+add_filter( 'rest_authentication_errors', 'aafm_oauth_rest_authentication_errors', 5 );
+
 /**
  * Bootstraps the plugin once all plugins are loaded.
  *
