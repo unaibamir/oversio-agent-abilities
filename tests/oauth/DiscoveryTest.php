@@ -58,6 +58,13 @@ class DiscoveryTest extends TestCase {
 
 		$this->assertSame( '', aafm_oauth_match_well_known( '/wp-json/foo' ) );
 		$this->assertSame( '', aafm_oauth_match_well_known( '' ) );
+
+		// Exact-anchoring guard: adversarial paths that merely contain a well-known
+		// document name must never match. Locks the matcher against path confusion.
+		$this->assertSame( '', aafm_oauth_match_well_known( '.well-known/oauth-authorization-server/evil' ) );
+		$this->assertSame( '', aafm_oauth_match_well_known( '/foo/.well-known/oauth-authorization-server' ) );
+		$this->assertSame( '', aafm_oauth_match_well_known( '/.well-known/oauth-authorization-server/' ) );
+		$this->assertSame( '', aafm_oauth_match_well_known( '/.well-known/oauth-authorization-serverXYZ' ) );
 	}
 
 	/**
