@@ -142,6 +142,65 @@ function aafm_truncate_oauth_tables(): void {
 }
 
 /**
+ * Prune dead OAuth artifacts: expired authorization codes and inactive access
+ * tokens whose refresh window has lapsed past a small grace period.
+ *
+ * Run daily by the `aafm_oauth_cleanup` cron event. Two passes:
+ *
+ * - Codes are one-time and short-lived (60-second TTL), so any row past its
+ *   `expires_at` is dead regardless of `used_at` and is deleted.
+ * - Access-token rows are deleted only when inactive (`is_active = 0`) AND their
+ *   `refresh_expires_at` is older than now minus a grace window. An active row is
+ *   never pruned by access-token expiry alone: its refresh token is still valid.
+ *   The grace lets a rotated/replaced (now-inactive) refresh row linger briefly so
+ *   the token manager's reuse-detection still has the parent chain to walk during a
+ *   network race. Filterable via `aafm_oauth_cleanup_grace` (seconds).
+ *
+ * Times are compared in UTC `Y-m-d H:i:s`, the storage format used across the
+ * plugin (matches the token manager and audit log). Mirrors the direct-query and
+ * escaping precedent of aafm_truncate_oauth_tables() / aafm_drop_oauth_tables().
+ *
+ * @return void
+ */
+function aafm_oauth_cleanup(): void {
+	global $wpdb;
+
+	$now = gmdate( 'Y-m-d H:i:s', time() );
+
+	/**
+	 * Grace period (in seconds) before an inactive token row is eligible for
+	 * deletion after its refresh window expires. Keeps a rotated refresh row around
+	 * long enough for reuse detection under a network race.
+	 *
+	 * @param int $grace Grace period in seconds. Default DAY_IN_SECONDS.
+	 */
+	$grace        = (int) apply_filters( 'aafm_oauth_cleanup_grace', DAY_IN_SECONDS );
+	$token_cutoff = gmdate( 'Y-m-d H:i:s', time() - $grace );
+
+	// Internal constant table names; esc_sql() makes the safety explicit for analyzers.
+	$codes_table  = esc_sql( $wpdb->prefix . 'aafm_oauth_codes' );
+	$tokens_table = esc_sql( $wpdb->prefix . 'aafm_oauth_access_tokens' );
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$wpdb->query(
+		$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is an internal constant.
+			"DELETE FROM {$codes_table} WHERE expires_at IS NOT NULL AND expires_at < %s",
+			$now
+		)
+	);
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$wpdb->query(
+		$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is an internal constant.
+			"DELETE FROM {$tokens_table} WHERE is_active = 0 AND refresh_expires_at IS NOT NULL AND refresh_expires_at < %s",
+			$token_cutoff
+		)
+	);
+}
+
+/**
  * Drop all four OAuth tables. Used by uninstall.
  *
  * @return void

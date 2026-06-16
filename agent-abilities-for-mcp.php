@@ -46,6 +46,34 @@ register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_install_activity_log' );
 require_once AAFM_PLUGIN_DIR . 'includes/oauth/schema.php';
 register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_install_oauth_tables' );
 
+/**
+ * Schedule the daily OAuth cleanup event on activation, if not already scheduled.
+ *
+ * The event fires the `aafm_oauth_cleanup` action (wired in aafm_bootstrap()),
+ * which prunes expired codes and dead tokens.
+ *
+ * @return void
+ */
+function aafm_oauth_schedule_cleanup(): void {
+	if ( ! wp_next_scheduled( 'aafm_oauth_cleanup' ) ) {
+		wp_schedule_event( time(), 'daily', 'aafm_oauth_cleanup' );
+	}
+}
+register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_oauth_schedule_cleanup' );
+
+/**
+ * Clear the scheduled OAuth cleanup event on deactivation.
+ *
+ * @return void
+ */
+function aafm_oauth_unschedule_cleanup(): void {
+	wp_clear_scheduled_hook( 'aafm_oauth_cleanup' );
+}
+register_deactivation_hook( AAFM_PLUGIN_FILE, 'aafm_oauth_unschedule_cleanup' );
+
+// The cron event fires this action; the handler prunes expired OAuth artifacts.
+add_action( 'aafm_oauth_cleanup', 'aafm_oauth_cleanup' );
+
 // PKCE helpers are pure functions with nothing to hook.
 require_once AAFM_PLUGIN_DIR . 'includes/oauth/pkce.php';
 

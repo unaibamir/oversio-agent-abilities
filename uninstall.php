@@ -32,6 +32,7 @@ function aafm_uninstall_site_data(): void {
 	aafm_uninstall_site();
 	aafm_drop_oauth_tables();
 	delete_option( 'aafm_oauth_schema_version' );
+	wp_clear_scheduled_hook( 'aafm_oauth_cleanup' );
 }
 
 /**
