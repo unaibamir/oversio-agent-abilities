@@ -42,6 +42,84 @@ if ( ! defined( 'AAFM_LOG_PRUNE_INTERVAL' ) ) {
 require_once AAFM_PLUGIN_DIR . 'includes/audit/log.php';
 register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_install_activity_log' );
 
+// OAuth storage schema is required early so the activation hook can install its tables.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/schema.php';
+register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_install_oauth_tables' );
+
+/**
+ * Schedule the daily OAuth cleanup event on activation, if not already scheduled.
+ *
+ * The event fires the `aafm_oauth_cleanup` action (wired in aafm_bootstrap()),
+ * which prunes expired codes and dead tokens.
+ *
+ * @return void
+ */
+function aafm_oauth_schedule_cleanup(): void {
+	if ( ! wp_next_scheduled( 'aafm_oauth_cleanup' ) ) {
+		wp_schedule_event( time(), 'daily', 'aafm_oauth_cleanup' );
+	}
+}
+register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_oauth_schedule_cleanup' );
+
+/**
+ * Clear the scheduled OAuth cleanup event on deactivation.
+ *
+ * @return void
+ */
+function aafm_oauth_unschedule_cleanup(): void {
+	wp_clear_scheduled_hook( 'aafm_oauth_cleanup' );
+}
+register_deactivation_hook( AAFM_PLUGIN_FILE, 'aafm_oauth_unschedule_cleanup' );
+
+// The cron event fires this action; the handler prunes expired OAuth artifacts.
+add_action( 'aafm_oauth_cleanup', 'aafm_oauth_cleanup' );
+
+// PKCE helpers are pure functions with nothing to hook.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/pkce.php';
+
+// HTTP helpers (transport policy, rate limiting) load before the client registry,
+// which calls into them and the audit log's aafm_source_ip().
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/http.php';
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/clients.php';
+
+// Authorization codes: hashed storage, 60-second TTL, atomic one-time redemption.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/codes.php';
+
+// Access/refresh token manager: hashed storage, refresh rotation, reuse detection.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/tokens.php';
+
+// Discovery documents: the two .well-known metadata files served before REST auth.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/discovery.php';
+add_action( 'parse_request', 'aafm_oauth_maybe_serve_well_known', 0 );
+
+// Seed the OAuth toggles to "on" at activation (add_option only — never clobbers a saved value).
+register_activation_hook( AAFM_PLUGIN_FILE, 'aafm_oauth_seed_default_options' );
+
+// Surface the transport's 401 challenge (resource_metadata) as a real
+// WWW-Authenticate header on the dispatched REST error response.
+add_filter( 'rest_post_dispatch', 'aafm_oauth_filter_rest_challenge', 10, 3 );
+
+// OAuth REST endpoints: dynamic client registration, token, and revocation.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/rest.php';
+add_action( 'rest_api_init', 'aafm_oauth_register_rest_routes' );
+
+// Bearer-token validator: resolve an OAuth access token to its approving user on
+// the same auth layer Application Passwords use, before the transport gate runs.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/validator.php';
+// Priority 20 runs after cookie auth (10) and alongside core's Application
+// Password resolver. Ordering is not load-bearing for the frozen invariant: the
+// resolver returns early whenever a user is already set, so it can never preempt
+// an App Password (or any other) identity regardless of which runs first.
+add_filter( 'determine_current_user', 'aafm_oauth_resolve_current_user', 20 );
+// Defensive pass-through so a present-but-invalid OAuth token never gets turned
+// into a hard auth failure on unrelated REST routes.
+add_filter( 'rest_authentication_errors', 'aafm_oauth_rest_authentication_errors', 5 );
+
+// Authorization endpoint + consent screen: served off init at ?aafm_oauth=authorize.
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/authorize.php';
+require_once AAFM_PLUGIN_DIR . 'includes/oauth/consent-template.php';
+add_action( 'init', 'aafm_oauth_handle_authorize' );
+
 /**
  * Bootstraps the plugin once all plugins are loaded.
  *
@@ -74,6 +152,10 @@ function aafm_bootstrap() {
 	// includes/admin/page.php is loaded), so this is behavior-identical to gating it
 	// behind is_admin(), while remaining wired at plugin load for deterministic tests.
 	add_action( 'admin_init', 'aafm_register_privacy_policy_content' );
+
+	// Same admin_init rationale: keeps the OAuth schema current on real upgrades
+	// (the installer runs only when the recorded version is behind).
+	add_action( 'admin_init', 'aafm_maybe_upgrade_oauth_tables' );
 
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/icons.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/notices.php';
