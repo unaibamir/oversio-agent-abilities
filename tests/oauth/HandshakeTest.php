@@ -356,6 +356,9 @@ class HandshakeTest extends TestCase {
 		$data = $response->get_data();
 		$this->assertStringStartsWith( 'aafm_oat_', (string) $data['access_token'], 'access token must carry the OAuth prefix' );
 		$this->assertNotEmpty( $data['refresh_token'], 'a refresh token must be issued' );
+		$this->assertSame( 'Bearer', $data['token_type'], 'the token_type a client reads must be exactly Bearer' );
+		$this->assertIsInt( $data['expires_in'], 'expires_in must be an integer the client can schedule a refresh from' );
+		$this->assertGreaterThan( 0, $data['expires_in'], 'expires_in must be a positive lifetime' );
 		$access_token = (string) $data['access_token'];
 
 		// (5) The minted bearer resolves to the approving user on determine_current_user.
