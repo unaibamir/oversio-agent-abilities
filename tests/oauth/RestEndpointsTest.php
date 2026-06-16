@@ -270,6 +270,70 @@ class RestEndpointsTest extends TestCase {
 	}
 
 	/**
+	 * Registration accepts an application/x-www-form-urlencoded body (RFC 7591 parity).
+	 *
+	 * Real agents post DCR as form-encoded as readily as JSON. The handler must read
+	 * the redirect_uris[] and client_name from the form body, not only get_json_params().
+	 */
+	public function test_register_accepts_form_encoded_body(): void {
+		$request = new WP_REST_Request( 'POST', '/agent-abilities-for-mcp/oauth/register' );
+		$request->set_header( 'Content-Type', 'application/x-www-form-urlencoded' );
+		$request->set_body(
+			http_build_query(
+				array(
+					'redirect_uris' => array( 'https://app.example/cb' ),
+					'client_name'   => 'Form Client',
+				)
+			)
+		);
+
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 201, $response->get_status() );
+
+		$data = $response->get_data();
+		$this->assertMatchesRegularExpression( '/^[0-9a-f]{32}$/', (string) $data['client_id'] );
+		$this->assertSame( 'Form Client', $data['client_name'] );
+	}
+
+	/**
+	 * The authorization_code grant accepts a form-encoded body (RFC 6749 §4.1.3).
+	 *
+	 * Regression guard: the token endpoint must redeem a real minted code from an
+	 * application/x-www-form-urlencoded body, the wire format the spec prescribes.
+	 */
+	public function test_token_accepts_form_encoded_body(): void {
+		$redirect  = 'https://app.example/cb';
+		$verifier  = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+		$challenge = $this->challenge_for( $verifier );
+
+		$client_id = $this->register_client( $redirect );
+		$code      = $this->mint_code( $client_id, $redirect, $challenge );
+
+		$request = new WP_REST_Request( 'POST', '/agent-abilities-for-mcp/oauth/token' );
+		$request->set_header( 'Content-Type', 'application/x-www-form-urlencoded' );
+		$request->set_body(
+			http_build_query(
+				array(
+					'grant_type'    => 'authorization_code',
+					'code'          => $code,
+					'redirect_uri'  => $redirect,
+					'client_id'     => $client_id,
+					'code_verifier' => $verifier,
+				)
+			)
+		);
+
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+
+		$data = $response->get_data();
+		$this->assertStringStartsWith( 'aafm_oat_', (string) $data['access_token'] );
+		$this->assertSame( 'Bearer', $data['token_type'] );
+	}
+
+	/**
 	 * When DCR is disabled, registration returns 404.
 	 */
 	public function test_register_is_404_when_dcr_disabled(): void {

@@ -86,6 +86,65 @@ function aafm_oauth_rest_error( string $code, string $message, int $status ): WP
 }
 
 /**
+ * Read OAuth parameters from a request, merging JSON and form-encoded bodies.
+ *
+ * RFC 6749 §4.1.3 prescribes application/x-www-form-urlencoded for the token
+ * endpoint; RFC 7591 uses JSON for registration. Real agents send both at both
+ * endpoints, so the handlers accept either. WP_REST_Request::get_param() already
+ * merges JSON and form params for most methods, but for a POST it parses the body
+ * only when the web server populated $_POST (see WP_REST_Request::get_parameter_order()).
+ * A directly-dispatched POST whose body was set with set_body() is therefore never
+ * parsed. This helper closes that gap: it reads JSON params and the (force-parsed)
+ * body params and returns a single merged map, JSON winning on a key collision.
+ *
+ * @param \WP_REST_Request $request The incoming request.
+ * @return array<string,mixed> Merged parameter map (form body under JSON).
+ */
+function aafm_oauth_rest_params( WP_REST_Request $request ): array {
+	$body = $request->get_body_params();
+	if ( empty( $body ) ) {
+		$content_type = $request->get_content_type();
+		$subtype      = is_array( $content_type ) && isset( $content_type['value'] ) ? (string) $content_type['value'] : '';
+		$raw          = (string) $request->get_body();
+
+		if ( '' !== $raw && false !== strpos( $subtype, 'application/x-www-form-urlencoded' ) ) {
+			$parsed = array();
+			parse_str( $raw, $parsed );
+			$body = $parsed;
+		}
+	}
+
+	$json = $request->get_json_params();
+	if ( ! is_array( $json ) ) {
+		$json = array();
+	}
+
+	if ( ! is_array( $body ) ) {
+		$body = array();
+	}
+
+	// JSON wins over the form body on a key collision.
+	return array_merge( $body, $json );
+}
+
+/**
+ * Read a single OAuth string parameter from the merged JSON/form body.
+ *
+ * @param \WP_REST_Request $request The incoming request.
+ * @param string           $key     The parameter name.
+ * @return string The parameter value cast to string, or '' when absent or non-scalar.
+ */
+function aafm_oauth_rest_param( WP_REST_Request $request, string $key ): string {
+	$params = aafm_oauth_rest_params( $request );
+
+	if ( ! isset( $params[ $key ] ) || ! is_scalar( $params[ $key ] ) ) {
+		return '';
+	}
+
+	return (string) $params[ $key ];
+}
+
+/**
  * Enforce the shared transport-security policy for an OAuth endpoint.
  *
  * @return \WP_Error|null A 400 error when HTTPS is required but the request is plain HTTP, otherwise null.
@@ -134,13 +193,10 @@ function aafm_oauth_rest_register( WP_REST_Request $request ) {
 		);
 	}
 
-	$params = $request->get_json_params();
-	if ( ! is_array( $params ) ) {
-		$params = array();
-	}
+	$params = aafm_oauth_rest_params( $request );
 
 	$redirect_uris  = isset( $params['redirect_uris'] ) && is_array( $params['redirect_uris'] ) ? $params['redirect_uris'] : array();
-	$client_name    = isset( $params['client_name'] ) ? (string) $params['client_name'] : '';
+	$client_name    = isset( $params['client_name'] ) && is_scalar( $params['client_name'] ) ? (string) $params['client_name'] : '';
 	$grant_types    = isset( $params['grant_types'] ) && is_array( $params['grant_types'] ) ? $params['grant_types'] : array( 'authorization_code', 'refresh_token' );
 	$response_types = isset( $params['response_types'] ) && is_array( $params['response_types'] ) ? $params['response_types'] : array( 'code' );
 
@@ -209,7 +265,7 @@ function aafm_oauth_rest_token( WP_REST_Request $request ) {
 		);
 	}
 
-	$grant_type = (string) $request->get_param( 'grant_type' );
+	$grant_type = aafm_oauth_rest_param( $request, 'grant_type' );
 
 	if ( 'authorization_code' === $grant_type ) {
 		return aafm_oauth_rest_token_authorization_code( $request );
@@ -233,10 +289,10 @@ function aafm_oauth_rest_token( WP_REST_Request $request ) {
  * @return \WP_REST_Response|\WP_Error
  */
 function aafm_oauth_rest_token_authorization_code( WP_REST_Request $request ) {
-	$code          = (string) $request->get_param( 'code' );
-	$redirect_uri  = (string) $request->get_param( 'redirect_uri' );
-	$client_id     = (string) $request->get_param( 'client_id' );
-	$code_verifier = (string) $request->get_param( 'code_verifier' );
+	$code          = aafm_oauth_rest_param( $request, 'code' );
+	$redirect_uri  = aafm_oauth_rest_param( $request, 'redirect_uri' );
+	$client_id     = aafm_oauth_rest_param( $request, 'client_id' );
+	$code_verifier = aafm_oauth_rest_param( $request, 'code_verifier' );
 
 	$invalid_grant = aafm_oauth_rest_error(
 		'invalid_grant',
@@ -278,8 +334,8 @@ function aafm_oauth_rest_token_authorization_code( WP_REST_Request $request ) {
  * @return \WP_REST_Response|\WP_Error
  */
 function aafm_oauth_rest_token_refresh( WP_REST_Request $request ) {
-	$refresh_token = (string) $request->get_param( 'refresh_token' );
-	$client_id     = (string) $request->get_param( 'client_id' );
+	$refresh_token = aafm_oauth_rest_param( $request, 'refresh_token' );
+	$client_id     = aafm_oauth_rest_param( $request, 'client_id' );
 
 	if ( '' === $refresh_token || '' === $client_id ) {
 		return aafm_oauth_rest_error(
@@ -354,7 +410,7 @@ function aafm_oauth_rest_revoke( WP_REST_Request $request ) {
 		);
 	}
 
-	$token = (string) $request->get_param( 'token' );
+	$token = aafm_oauth_rest_param( $request, 'token' );
 	if ( '' !== $token ) {
 		aafm_oauth_revoke_token( $token );
 	}
