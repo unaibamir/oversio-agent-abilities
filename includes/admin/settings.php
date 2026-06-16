@@ -198,7 +198,7 @@ function aafm_ajax_reset_plugin(): void {
 }
 
 /**
- * Render the Settings tab: a card of labelled rows for the four optional safety controls.
+ * Render the Settings tab: a card of labelled rows for the four optional safety controls, plus an OAuth card with its two toggles.
  *
  * Each control reads its current value through its safety.php getter (filterable, bounded,
  * default off) and writes via the aafm_save_settings AJAX action. Everything is escaped on
