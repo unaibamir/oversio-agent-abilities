@@ -471,6 +471,23 @@ function aafm_render_abilities_tab(): void {
 			esc_html__( 'enabled', 'agent-abilities-for-mcp' )
 		);
 
+		// Per-section enable/disable-all control. JS toggles every checkbox in this panel;
+		// the data-has-destructive flag tells it to confirm before bulk-enabling a section
+		// that contains a destructive ability.
+		$has_destructive = false;
+		foreach ( $by_subject[ $slug ] as $ability ) {
+			if ( 'destructive' === (string) ( $ability['risk'] ?? '' ) ) {
+				$has_destructive = true;
+				break;
+			}
+		}
+		printf(
+			'<p class="aafm-section-toggle"><button type="button" class="aafm-btn aafm-btn-secondary aafm-section-toggle-all" data-subject="%1$s"%2$s>%3$s</button></p>',
+			esc_attr( $slug ),
+			$has_destructive ? ' data-has-destructive="1"' : '',
+			esc_html__( 'Enable all / Disable all', 'agent-abilities-for-mcp' )
+		);
+
 		if ( 'content' === $slug ) {
 			aafm_render_post_types_selector();
 		}
