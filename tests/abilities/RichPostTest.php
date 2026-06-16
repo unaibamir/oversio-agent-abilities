@@ -203,4 +203,34 @@ final class RichPostTest extends TestCase {
 		$this->assertArrayNotHasKey( 'structured', $shape['meta'] );
 		$this->assertStringNotContainsString( 'should-never-leak', (string) wp_json_encode( $shape ) );
 	}
+
+	public function test_rich_post_omits_content_when_include_content_false(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'Heavy body here.',
+			)
+		);
+		$shape = aafm_rich_post( get_post( $post_id ), array( 'include_content' => false ) );
+
+		$this->assertArrayNotHasKey( 'content', $shape );
+		// Light fields still present.
+		$this->assertArrayHasKey( 'excerpt', $shape );
+		$this->assertArrayHasKey( 'terms', $shape );
+		$this->assertArrayHasKey( 'author', $shape );
+		$this->assertArrayHasKey( 'featured_image', $shape );
+		$this->assertArrayHasKey( 'meta', $shape );
+	}
+
+	public function test_rich_post_includes_content_by_default(): void {
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => 'Body present.',
+			)
+		);
+		$shape = aafm_rich_post( get_post( $post_id ) );
+
+		$this->assertArrayHasKey( 'content', $shape );
+	}
 }
