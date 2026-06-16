@@ -436,14 +436,46 @@ function aafm_rich_post_output_properties(): array {
 		'slug'           => array( 'type' => 'string' ),
 		'link'           => array( 'type' => 'string' ),
 		'author_id'      => array( 'type' => 'integer' ),
-		'author'         => array( 'type' => array( 'object', 'null' ) ),
+		'author'         => array(
+			'type'       => array( 'object', 'null' ),
+			'properties' => array(
+				'id'           => array( 'type' => 'integer' ),
+				'display_name' => array( 'type' => 'string' ),
+			),
+		),
 		'date_gmt'       => array( 'type' => 'string' ),
 		'modified_gmt'   => array( 'type' => 'string' ),
-		'content'        => array( 'type' => 'string' ),
+		'content'        => array(
+			'type'        => 'string',
+			'description' => __( 'Present on single-post reads and when include_content=true; omitted for password-protected posts.', 'agent-abilities-for-mcp' ),
+		),
 		'excerpt'        => array( 'type' => 'string' ),
-		'terms'          => array( 'type' => 'object' ),
-		'featured_image' => array( 'type' => array( 'object', 'null' ) ),
-		'meta'           => array( 'type' => 'object' ),
+		'terms'          => array(
+			'type'                 => 'object',
+			'additionalProperties' => array(
+				'type'  => 'array',
+				'items' => array(
+					'type'       => 'object',
+					'properties' => array(
+						'id'   => array( 'type' => 'integer' ),
+						'name' => array( 'type' => 'string' ),
+						'slug' => array( 'type' => 'string' ),
+					),
+				),
+			),
+		),
+		'featured_image' => array(
+			'type'       => array( 'object', 'null' ),
+			'properties' => array(
+				'id'  => array( 'type' => 'integer' ),
+				'url' => array( 'type' => 'string' ),
+				'alt' => array( 'type' => 'string' ),
+			),
+		),
+		'meta'           => array(
+			'type'                 => 'object',
+			'additionalProperties' => true,
+		),
 	);
 }
 

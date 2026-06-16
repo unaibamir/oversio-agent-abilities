@@ -260,4 +260,72 @@ final class RichPostTest extends TestCase {
 			$this->assertSame( '', $shape['excerpt'], "excerpt leaked the body ({$format})" );
 		}
 	}
+
+	public function test_rich_post_output_schema_declares_nested_object_shapes(): void {
+		$props = aafm_rich_post_output_properties();
+
+		// author: object|null with id + display_name.
+		$this->assertSame(
+			array( 'id', 'display_name' ),
+			array_keys( $props['author']['properties'] )
+		);
+
+		// featured_image: object|null with id + url + alt.
+		$this->assertSame(
+			array( 'id', 'url', 'alt' ),
+			array_keys( $props['featured_image']['properties'] )
+		);
+
+		// terms: object whose additionalProperties is an array of {id, name, slug}.
+		$term_item = $props['terms']['additionalProperties']['items'];
+		$this->assertSame( 'object', $term_item['type'] );
+		$this->assertSame(
+			array( 'id', 'name', 'slug' ),
+			array_keys( $term_item['properties'] )
+		);
+
+		// meta: free-form allowlisted scalars.
+		$this->assertTrue( $props['meta']['additionalProperties'] );
+
+		// content stays a string with a conditional-presence description, and is never
+		// in a required list (it is conditionally absent).
+		$this->assertSame( 'string', $props['content']['type'] );
+		$this->assertArrayHasKey( 'description', $props['content'] );
+		$this->assertArrayNotHasKey( 'required', $props );
+	}
+
+	public function test_rich_post_payload_conforms_to_declared_nested_schema(): void {
+		$user_id = self::factory()->user->create(
+			array(
+				'role'         => 'author',
+				'display_name' => 'Schema Author',
+			)
+		);
+		$post_id = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_author' => $user_id,
+			)
+		);
+		$cat_id  = self::factory()->term->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'Conformance',
+			)
+		);
+		wp_set_object_terms( $post_id, array( (int) $cat_id ), 'category' );
+
+		$shape = aafm_rich_post( get_post( $post_id ) );
+
+		// author keys match the declared author.properties.
+		$this->assertSame(
+			array( 'id', 'display_name' ),
+			array_keys( $shape['author'] )
+		);
+		// Each grouped term matches the declared terms item shape.
+		$this->assertSame(
+			array( 'id', 'name', 'slug' ),
+			array_keys( $shape['terms']['category'][0] )
+		);
+	}
 }
