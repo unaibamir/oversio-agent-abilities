@@ -90,6 +90,7 @@ function aafm_oauth_render_consent_page( array $view ): void {
 			color: var(--aafm-text-muted);
 		}
 		.aafm-card strong { color: var(--aafm-text); }
+		.aafm-card .aafm-consent-warning { color: var(--aafm-red); font-weight: 700; }
 		.aafm-actions {
 			display: flex;
 			gap: 10px;
@@ -140,13 +141,14 @@ function aafm_oauth_render_consent_page( array $view ): void {
 	echo '<h1>' . $headline . '</h1>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $headline is pre-escaped at construction (esc_html on the client name).
 
 	printf(
-		'<p>%s</p>',
+		'<p>%1$s %2$s</p>',
 		sprintf(
 			/* translators: 1: site name, 2: WordPress username the agent acts as. */
-			esc_html__( 'This will let it access %1$s as %2$s. It can do anything your account can do.', 'agent-abilities-for-mcp' ),
+			esc_html__( 'This will let it access %1$s as %2$s.', 'agent-abilities-for-mcp' ),
 			'<strong>' . esc_html( $site_name ) . '</strong>', // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- inner value escaped.
 			'<strong>' . esc_html( $user_login ) . '</strong>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- inner value escaped.
-		)
+		),
+		'<strong class="aafm-consent-warning">' . esc_html__( 'It can do anything your account can do.', 'agent-abilities-for-mcp' ) . '</strong>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- inner value escaped.
 	);
 
 	echo '<form method="post" action="' . esc_url( $action_url ) . '">';

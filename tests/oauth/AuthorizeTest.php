@@ -284,6 +284,14 @@ class AuthorizeTest extends TestCase {
 		// The agent user login is shown.
 		$this->assertStringContainsString( 'mcp-agent', $html );
 
+		// The security-critical clause is emphasized: it renders inside a
+		// <strong class="aafm-consent-warning"> and the stylesheet carries the rule.
+		$this->assertStringContainsString(
+			'<strong class="aafm-consent-warning">It can do anything your account can do.</strong>',
+			$html
+		);
+		$this->assertStringContainsString( '.aafm-consent-warning', $html );
+
 		// No script tag anywhere: the page is CSP-clean and self-contained.
 		$this->assertStringNotContainsString( '<script', $html );
 
