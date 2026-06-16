@@ -102,4 +102,33 @@ final class RichPostTest extends TestCase {
 		// Trimmed to 55 words + the trailing hellip from wp_trim_words.
 		$this->assertLessThan( strlen( $body ), strlen( $shape['excerpt'] ) );
 	}
+
+	public function test_rich_post_terms_grouped_by_taxonomy(): void {
+		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$cat_id  = self::factory()->term->create(
+			array(
+				'taxonomy' => 'category',
+				'name'     => 'News',
+			)
+		);
+		$tag_id  = self::factory()->term->create(
+			array(
+				'taxonomy' => 'post_tag',
+				'name'     => 'Alpha',
+			)
+		);
+		wp_set_object_terms( $post_id, array( (int) $cat_id ), 'category' );
+		wp_set_object_terms( $post_id, array( (int) $tag_id ), 'post_tag' );
+
+		$shape = aafm_rich_post( get_post( $post_id ) );
+
+		$this->assertArrayHasKey( 'terms', $shape );
+		$this->assertArrayHasKey( 'category', $shape['terms'] );
+		$this->assertArrayHasKey( 'post_tag', $shape['terms'] );
+		$this->assertSame( 'News', $shape['terms']['category'][0]['name'] );
+		$this->assertSame(
+			array( 'id', 'name', 'slug' ),
+			array_keys( $shape['terms']['category'][0] )
+		);
+	}
 }

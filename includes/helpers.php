@@ -386,6 +386,40 @@ function aafm_redact_post( WP_Post $post ): array {
 }
 
 /**
+ * Collect a post's terms grouped by taxonomy, restricted to public/queryable
+ * taxonomies registered for the post's type. Empty taxonomies are omitted.
+ *
+ * @param WP_Post $post Post object.
+ * @return array<string,array<int,array<string,mixed>>>
+ */
+function aafm_post_terms_grouped( WP_Post $post ): array {
+	$grouped    = array();
+	$taxonomies = get_object_taxonomies( $post->post_type, 'objects' );
+
+	foreach ( $taxonomies as $tax_name => $tax ) {
+		if ( ! ( $tax instanceof WP_Taxonomy ) || ! $tax->public ) {
+			continue;
+		}
+		$terms = get_the_terms( $post, $tax_name );
+		if ( ! is_array( $terms ) || empty( $terms ) ) {
+			continue;
+		}
+		$grouped[ $tax_name ] = array_map(
+			static function ( WP_Term $term ): array {
+				return array(
+					'id'   => (int) $term->term_id,
+					'name' => $term->name,
+					'slug' => $term->slug,
+				);
+			},
+			$terms
+		);
+	}
+
+	return $grouped;
+}
+
+/**
  * Assemble the enriched, agent-facing post shape: the lean redactor base plus
  * content, excerpt, terms, author, featured image, and allowlisted meta.
  *
@@ -435,6 +469,8 @@ function aafm_rich_post( WP_Post $post, array $options = array() ): array {
 	if ( $include_content && ! $is_protected ) {
 		$shape['content'] = 'raw' === $format ? (string) $post->post_content : $rendered;
 	}
+
+	$shape['terms'] = aafm_post_terms_grouped( $post );
 
 	return $shape;
 }
