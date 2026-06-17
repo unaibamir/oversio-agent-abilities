@@ -1,9 +1,14 @@
 <?php
 /**
- * User read ability (redacted, read-only). This is the most PII-sensitive read
- * in the catalog: enumeration is gated behind list_users (the cap WP itself
- * requires to view the user list) and the output is reduced to a safe whitelist
- * with no email, login, or password hash. No user writes exist in v1.
+ * User read + write abilities. The reads are the most PII-sensitive in the catalog:
+ * enumeration is gated behind list_users (the cap WP itself requires to view the user
+ * list) and the output is reduced to a safe whitelist with no login or password hash.
+ *
+ * The writes (create/update/delete-user) are the most security-sensitive in the whole
+ * catalog. create-user forces the site default role server-side — never a caller-chosen
+ * role, so an agent can never mint an admin. update-user gates any role change behind
+ * promote_users and refuses to demote the sole remaining administrator. delete-user
+ * requires a reassign target and refuses to delete the current user or the last admin.
  *
  * @package AgentAbilitiesForMCP
  */
@@ -21,7 +26,7 @@ add_filter( 'aafm_abilities_registry', 'aafm_register_users_definitions' );
  * @return array<string,array<string,mixed>>
  */
 function aafm_register_users_definitions( array $registry ): array {
-	$registry['aafm/get-users'] = array(
+	$registry['aafm/get-users']   = array(
 		'label'        => __( 'Get users', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'List users: id, display name, email, roles, and post count. Gated by the list-users capability. Never login or password.', 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
@@ -29,13 +34,21 @@ function aafm_register_users_definitions( array $registry ): array {
 		'subject'      => 'users',
 		'args_builder' => 'aafm_args_get_users',
 	);
-	$registry['aafm/get-user']  = array(
+	$registry['aafm/get-user']    = array(
 		'label'        => __( 'Get user', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'Read one user by id: id, display name, email, roles, post count, registration date, and bio. Never login or password.', 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
 		'risk'         => 'read',
 		'subject'      => 'users',
 		'args_builder' => 'aafm_args_get_user',
+	);
+	$registry['aafm/create-user'] = array(
+		'label'        => __( 'Create user', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Create a new user with the site default role (never a caller-chosen role). Requires the create-users capability. Off by default.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'destructive',
+		'subject'      => 'users',
+		'args_builder' => 'aafm_args_create_user',
 	);
 	return $registry;
 }
@@ -207,4 +220,118 @@ function aafm_exec_get_users( array $input ): array {
 	}
 
 	return array( 'users' => $redacted );
+}
+
+/**
+ * Args for aafm/create-user.
+ *
+ * Closed schema: username + email required; display_name/first_name/last_name/password
+ * optional. There is deliberately NO role field — the role is forced to the site default
+ * server-side so an agent can never request an elevated role.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_create_user(): array {
+	return array(
+		'label'               => __( 'Create user', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Create a new user with the site default role only — never a caller-chosen role. A password is generated if none is given. Requires the create-users capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'username'     => array(
+					'type'      => 'string',
+					'minLength' => 1,
+				),
+				'email'        => array(
+					'type'   => 'string',
+					'format' => 'email',
+				),
+				'display_name' => array(
+					'type' => 'string',
+				),
+				'first_name'   => array(
+					'type' => 'string',
+				),
+				'last_name'    => array(
+					'type' => 'string',
+				),
+				'password'     => array(
+					'type' => 'string',
+				),
+			),
+			'required'             => array( 'username', 'email' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'user' => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_create_user',
+		'permission_callback' => 'aafm_perm_create_user',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => true,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/create-user: the create_users capability.
+ *
+ * Object-independent (no per-object branch), so discovery can fall through to this
+ * callback with empty input — it is the correct answer at both discovery and execute.
+ *
+ * @return bool
+ */
+function aafm_perm_create_user(): bool {
+	return current_user_can( 'create_users' );
+}
+
+/**
+ * Execute aafm/create-user.
+ *
+ * Creates a user with the SITE DEFAULT role only. The role is read from the
+ * default_role option, never from caller input, so an agent can never mint an
+ * administrator. A duplicate username or email is refused. A strong password is
+ * generated when none is supplied. Uses core wp_insert_user().
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_create_user( array $input ) {
+	$username = sanitize_user( (string) ( $input['username'] ?? '' ), true );
+	$email    = sanitize_email( (string) ( $input['email'] ?? '' ) );
+	if ( '' === $username || ! is_email( $email ) ) {
+		return aafm_generic_error();
+	}
+	if ( username_exists( $username ) || email_exists( $email ) ) {
+		return aafm_generic_error();
+	}
+
+	$password = isset( $input['password'] ) && '' !== (string) $input['password']
+		? (string) $input['password']
+		: wp_generate_password( 24, true );
+
+	$userdata = array(
+		'user_login'   => $username,
+		'user_email'   => $email,
+		'user_pass'    => $password,
+		// Role is forced to the site default — never caller-chosen, so an agent can't mint an admin.
+		'role'         => (string) get_option( 'default_role', 'subscriber' ),
+		'display_name' => sanitize_text_field( (string) ( $input['display_name'] ?? $username ) ),
+		'first_name'   => sanitize_text_field( (string) ( $input['first_name'] ?? '' ) ),
+		'last_name'    => sanitize_text_field( (string) ( $input['last_name'] ?? '' ) ),
+	);
+
+	$result = wp_insert_user( $userdata );
+	if ( is_wp_error( $result ) ) {
+		return aafm_generic_error();
+	}
+
+	return array( 'user' => aafm_rich_user( get_userdata( (int) $result ) ) );
 }
