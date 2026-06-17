@@ -58,6 +58,14 @@ function aafm_register_terms_definitions( array $registry ): array {
 		'subject'      => 'content',
 		'args_builder' => 'aafm_args_add_post_terms',
 	);
+	$registry['aafm/get-term-meta'] = array(
+		'label'        => __( 'Get term meta', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Read a single allowlisted scalar meta value from a term in a public taxonomy.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'taxonomies',
+		'args_builder' => 'aafm_args_get_term_meta',
+	);
 	return $registry;
 }
 
@@ -328,6 +336,113 @@ function aafm_exec_add_post_terms( array $input ) {
 	return array(
 		'post_id' => $post_id,
 		'terms'   => array_values( array_map( 'aafm_redact_term', $objects ) ),
+	);
+}
+
+/**
+ * Per-object term-edit gate shared by get/update/delete term-meta: the term must be readable
+ * + key-allowlisted (aafm_validate_term_meta_request) AND the current user must hold
+ * edit_term on that specific term. Term meta can hold private data, so even the read gates on
+ * edit_term here — mirroring how the post-meta family gates get/update/delete on edit_post.
+ *
+ * @param array<string,mixed> $input Ability input.
+ * @return bool
+ */
+function aafm_perm_can_edit_term_meta( array $input ): bool {
+	if ( is_wp_error( aafm_validate_term_meta_request( $input ) ) ) {
+		return false;
+	}
+	$term_id = absint( $input['term_id'] );
+	return current_user_can( 'edit_term', $term_id );
+}
+
+/**
+ * Args for aafm/get-term-meta.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_get_term_meta(): array {
+	return array(
+		'label'               => __( 'Get term meta', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Read a single allowlisted scalar meta value from a term in a public taxonomy.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'taxonomy' => array(
+					'type'    => 'string',
+					'default' => 'category',
+				),
+				'term_id'  => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'meta_key' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- schema property key, not a meta query.
+					'type'      => 'string',
+					'minLength' => 1,
+				),
+			),
+			'required'             => array( 'term_id', 'meta_key' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'term_id'  => array( 'type' => 'integer' ),
+				'meta_key' => array( 'type' => 'string' ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- schema property key, not a meta query.
+				'value'    => array(
+					'type' => array( 'string', 'number', 'boolean', 'null' ),
+				),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_get_term_meta',
+		'permission_callback' => 'aafm_perm_get_term_meta',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/get-term-meta: per-object edit_term + key allowlist (EDIT 2).
+ *
+ * Term meta can hold private data, so reads require edit_term on the term, mirroring
+ * get-post-meta's edit_post gate. Reuses the shared per-object gate.
+ *
+ * @param array<string,mixed> $input Ability input.
+ * @return bool
+ */
+function aafm_perm_get_term_meta( array $input ): bool {
+	return aafm_perm_can_edit_term_meta( $input );
+}
+
+/**
+ * Execute aafm/get-term-meta.
+ *
+ * Re-validates taxonomy/term/key (defence in depth), then reads a single value. Non-scalar
+ * values are refused so a serialized array/object can never be dumped to the agent.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_get_term_meta( array $input ) {
+	$taxonomy = aafm_validate_term_meta_request( $input );
+	if ( is_wp_error( $taxonomy ) ) {
+		return $taxonomy;
+	}
+	$term_id = absint( $input['term_id'] );
+	$key     = (string) $input['meta_key'];
+	$value   = get_term_meta( $term_id, $key, true );
+	if ( '' !== $value && ! is_scalar( $value ) ) {
+		return aafm_generic_error();
+	}
+	return array(
+		'term_id'  => $term_id,
+		'meta_key' => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- response array key, not a meta query.
+		'value'    => $value,
 	);
 }
 

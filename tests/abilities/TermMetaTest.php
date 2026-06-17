@@ -36,4 +36,71 @@ final class TermMetaTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, aafm_sanitize_term_meta_value( 'seo_title', array( 'x' => 1 ) ) );
 		$this->assertSame( 'hello', aafm_sanitize_term_meta_value( 'seo_title', 'hello' ) );
 	}
+
+	public function test_get_term_meta_happy_path_and_gates(): void {
+		add_filter( 'aafm_allowed_term_meta_keys', static fn(): array => array( 'seo_title' ) );
+		$this->acting_as( 'editor' );
+		$term_id = self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+		update_term_meta( $term_id, 'seo_title', 'Hello' );
+
+		$this->assertTrue(
+			aafm_perm_get_term_meta(
+				array( 'taxonomy' => 'category', 'term_id' => $term_id, 'meta_key' => 'seo_title' )
+			)
+		);
+		$this->assertSame(
+			array(
+				'term_id'  => (int) $term_id,
+				'meta_key' => 'seo_title',
+				'value'    => 'Hello',
+			),
+			aafm_exec_get_term_meta(
+				array( 'taxonomy' => 'category', 'term_id' => $term_id, 'meta_key' => 'seo_title' )
+			)
+		);
+		// Non-allowlisted key is denied at the gate.
+		$this->assertFalse(
+			aafm_perm_get_term_meta(
+				array( 'taxonomy' => 'category', 'term_id' => $term_id, 'meta_key' => 'unlisted' )
+			)
+		);
+		remove_all_filters( 'aafm_allowed_term_meta_keys' );
+	}
+
+	public function test_get_term_meta_requires_edit_term(): void {
+		// EDIT 2: term meta can hold private data, so the read requires per-object edit_term
+		// (mirroring get-post-meta's edit_post gate). A low-cap user on a locked taxonomy is denied.
+		register_taxonomy(
+			'aafm_readlock',
+			'post',
+			array(
+				'public'       => true,
+				'capabilities' => array( 'edit_terms' => 'manage_options' ),
+			)
+		);
+		add_filter( 'aafm_allowed_term_meta_keys', static fn(): array => array( 'seo_title' ) );
+		$this->acting_as( 'editor' ); // lacks manage_options, so cannot edit_term here.
+		$term_id = self::factory()->term->create( array( 'taxonomy' => 'aafm_readlock' ) );
+		$this->assertFalse(
+			aafm_perm_get_term_meta(
+				array( 'taxonomy' => 'aafm_readlock', 'term_id' => $term_id, 'meta_key' => 'seo_title' )
+			)
+		);
+		remove_all_filters( 'aafm_allowed_term_meta_keys' );
+		unregister_taxonomy( 'aafm_readlock' );
+	}
+
+	public function test_get_term_meta_refuses_non_scalar(): void {
+		add_filter( 'aafm_allowed_term_meta_keys', static fn(): array => array( 'blob' ) );
+		$this->acting_as( 'editor' );
+		$term_id = self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+		update_term_meta( $term_id, 'blob', array( 'x' => 1 ) );
+		$this->assertInstanceOf(
+			WP_Error::class,
+			aafm_exec_get_term_meta(
+				array( 'taxonomy' => 'category', 'term_id' => $term_id, 'meta_key' => 'blob' )
+			)
+		);
+		remove_all_filters( 'aafm_allowed_term_meta_keys' );
+	}
 }
