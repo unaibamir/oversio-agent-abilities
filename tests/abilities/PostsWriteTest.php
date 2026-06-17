@@ -520,4 +520,12 @@ final class PostsWriteTest extends TestCase {
 		// Validation happens before wp_update_post, so the title must NOT have changed.
 		$this->assertSame( 'Original', get_post_field( 'post_title', $post ) );
 	}
+
+	public function test_write_descriptions_mention_optional_fields(): void {
+		$desc = aafm_args_create_draft()['description'];
+		$this->assertStringContainsString( 'terms', $desc );
+		$this->assertStringContainsString( 'featured_media', $desc );
+		$this->assertStringContainsString( 'slug', $desc );
+		$this->assertStringContainsString( 'meta', $desc );
+	}
 }

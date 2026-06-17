@@ -36,7 +36,7 @@ function aafm_register_posts_definitions( array $registry ): array {
 	);
 	$registry['aafm/create-draft'] = array(
 		'label'        => __( 'Create draft', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Create a new draft post. The agent drafts; a human publishes.', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Create a new draft post. The agent drafts; a human publishes. Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
 		'group'        => 'writes',
 		'risk'         => 'write',
 		'subject'      => 'content',
@@ -44,7 +44,7 @@ function aafm_register_posts_definitions( array $registry ): array {
 	);
 	$registry['aafm/create-post']  = array(
 		'label'        => __( 'Create post', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Create and publish a post (requires publish capability).', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Create and publish a post (requires publish capability). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
 		'group'        => 'writes',
 		'risk'         => 'write',
 		'subject'      => 'content',
@@ -52,7 +52,7 @@ function aafm_register_posts_definitions( array $registry ): array {
 	);
 	$registry['aafm/update-post']  = array(
 		'label'        => __( 'Update post', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Update an existing post by ID (publishing is a separate gate).', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Update an existing post by ID (publishing is a separate gate). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
 		'group'        => 'writes',
 		'risk'         => 'write',
 		'subject'      => 'content',
@@ -348,7 +348,7 @@ function aafm_write_content_schema( bool $require_title ): array {
 function aafm_args_create_draft(): array {
 	return array(
 		'label'               => __( 'Create draft', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create a new draft post. The agent drafts; a human publishes.', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Create a new draft post. The agent drafts; a human publishes. Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => aafm_write_content_schema( true ),
 		'output_schema'       => array(
@@ -462,7 +462,7 @@ function aafm_exec_create_draft( array $input ) {
 function aafm_args_create_post(): array {
 	return array(
 		'label'               => __( 'Create post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create and publish a post (requires publish capability).', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Create and publish a post (requires publish capability). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => aafm_write_content_schema( true ),
 		'output_schema'       => array(
@@ -505,7 +505,7 @@ function aafm_args_update_post(): array {
 
 	return array(
 		'label'               => __( 'Update post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Update an existing post by ID (publishing is a separate gate).', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Update an existing post by ID (publishing is a separate gate). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => $schema,
 		'output_schema'       => array(
