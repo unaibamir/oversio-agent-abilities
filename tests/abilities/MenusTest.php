@@ -131,4 +131,36 @@ final class MenusTest extends TestCase {
 			)
 		);
 	}
+
+	public function test_create_update_delete_menu_item(): void {
+		$this->register_menus();
+		$this->acting_as( 'administrator' );
+		$menu_id = $this->make_menu( 'Nav' );
+
+		$item = wp_get_ability( 'aafm/create-menu-item' )->execute(
+			array(
+				'menu_id' => $menu_id,
+				'title'   => 'About',
+				'url'     => home_url( '/about' ),
+			)
+		);
+		$this->assertArrayHasKey( 'id', $item );
+		$item_id = (int) $item['id'];
+
+		$up = wp_get_ability( 'aafm/update-menu-item' )->execute(
+			array(
+				'menu_id' => $menu_id,
+				'item_id' => $item_id,
+				'title'   => 'About Us',
+			)
+		);
+		$this->assertSame( 'About Us', $up['title'] );
+
+		$del = wp_get_ability( 'aafm/delete-menu-item' )->execute( array( 'item_id' => $item_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $del );
+		// Empirical force-delete check: wp_delete_post( $id ) with NO ,true literal must remove
+		// the trash-less nav_menu_item outright in WP 7.0. If this assertion holds, the no-true
+		// call is sufficient and no force-delete primitive (or invariant extension) is needed.
+		$this->assertNull( get_post( $item_id ), 'menu item removed.' );
+	}
 }

@@ -483,3 +483,255 @@ function aafm_exec_delete_menu( array $input ) {
 		'deleted' => true,
 	);
 }
+
+/**
+ * Args for aafm/create-menu-item.
+ *
+ * Closed schema: a menu id and a title (both required), plus optional url/parent/object_id/type
+ * for a link or an object reference. The title is sanitized as plain text and the url through
+ * esc_url_raw at execute; nothing else is writable, so no extra menu-item field can be smuggled.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_create_menu_item(): array {
+	return array(
+		'label'               => __( 'Create menu item', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Adds an item (link) to a navigation menu. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'menu_id'   => array( 'type' => 'integer' ),
+				'title'     => array( 'type' => 'string' ),
+				'url'       => array( 'type' => 'string' ),
+				'parent'    => array( 'type' => 'integer' ),
+				'object_id' => array( 'type' => 'integer' ),
+				'type'      => array( 'type' => 'string' ),
+			),
+			'required'             => array( 'menu_id', 'title' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => aafm_menu_item_output_properties(),
+		),
+		'execute_callback'    => 'aafm_exec_create_menu_item',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/create-menu-item.
+ *
+ * Resolves the target menu first (unknown id → generic error), then adds a published item to it
+ * via the core nav-menu API (item id 0 means "create"). The title is sanitized as plain text and
+ * the url through esc_url_raw; the created item is returned in the redacted item shape.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_create_menu_item( array $input ) {
+	$menu_id = (int) ( $input['menu_id'] ?? 0 );
+	$menu    = wp_get_nav_menu_object( $menu_id );
+	if ( ! $menu instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+
+	$args = array(
+		'menu-item-title'  => sanitize_text_field( (string) ( $input['title'] ?? '' ) ),
+		'menu-item-status' => 'publish',
+	);
+	if ( isset( $input['url'] ) ) {
+		$args['menu-item-url'] = esc_url_raw( (string) $input['url'] );
+	}
+	if ( isset( $input['parent'] ) ) {
+		$args['menu-item-parent-id'] = (int) $input['parent'];
+	}
+	if ( isset( $input['object_id'] ) ) {
+		$args['menu-item-object-id'] = (int) $input['object_id'];
+	}
+	if ( isset( $input['type'] ) ) {
+		$args['menu-item-type'] = sanitize_key( (string) $input['type'] );
+	}
+
+	$item_id = wp_update_nav_menu_item( $menu_id, 0, $args );
+	if ( is_wp_error( $item_id ) || 0 === (int) $item_id ) {
+		return aafm_generic_error();
+	}
+	return aafm_redact_menu_item( aafm_menu_item_by_id( $menu_id, (int) $item_id ) );
+}
+
+/**
+ * Args for aafm/update-menu-item.
+ *
+ * Closed schema: the menu id and item id (both required) plus optional title/url to change.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_update_menu_item(): array {
+	return array(
+		'label'               => __( 'Update menu item', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Updates a menu item's title or URL by id. Requires the edit-theme-options capability.", 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'menu_id' => array( 'type' => 'integer' ),
+				'item_id' => array( 'type' => 'integer' ),
+				'title'   => array( 'type' => 'string' ),
+				'url'     => array( 'type' => 'string' ),
+			),
+			'required'             => array( 'menu_id', 'item_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => aafm_menu_item_output_properties(),
+		),
+		'execute_callback'    => 'aafm_exec_update_menu_item',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/update-menu-item.
+ *
+ * Resolves both the menu and the item by id (an unknown menu, or an item that is not in that
+ * menu, returns a generic error), then applies the title/url edit through the core API. The
+ * updated item is returned in the redacted shape. The title is sanitized as plain text and the
+ * url through esc_url_raw.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_update_menu_item( array $input ) {
+	$menu_id = (int) ( $input['menu_id'] ?? 0 );
+	$item_id = (int) ( $input['item_id'] ?? 0 );
+
+	$menu = wp_get_nav_menu_object( $menu_id );
+	if ( ! $menu instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+	$existing = aafm_menu_item_by_id( $menu_id, $item_id );
+	if ( null === $existing ) {
+		return aafm_generic_error();
+	}
+
+	$args = array();
+	if ( isset( $input['title'] ) ) {
+		$args['menu-item-title'] = sanitize_text_field( (string) $input['title'] );
+	}
+	if ( isset( $input['url'] ) ) {
+		$args['menu-item-url'] = esc_url_raw( (string) $input['url'] );
+	}
+
+	$result = wp_update_nav_menu_item( $menu_id, $item_id, $args );
+	if ( is_wp_error( $result ) || 0 === (int) $result ) {
+		return aafm_generic_error();
+	}
+	return aafm_redact_menu_item( aafm_menu_item_by_id( $menu_id, $item_id ) );
+}
+
+/**
+ * Args for aafm/delete-menu-item.
+ *
+ * Closed schema: just the item id. This is a disclosed destructive write — a menu item has no
+ * Trash, so removing it is permanent.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_delete_menu_item(): array {
+	return array(
+		'label'               => __( 'Delete menu item', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Permanently removes one item from a navigation menu. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'item_id' => array( 'type' => 'integer' ),
+			),
+			'required'             => array( 'item_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'id'      => array( 'type' => 'integer' ),
+				'deleted' => array( 'type' => 'boolean' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_delete_menu_item',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => true,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/delete-menu-item.
+ *
+ * Confirms the id is a nav_menu_item post (so this cannot be steered into deleting an arbitrary
+ * post type), then removes it. A nav_menu_item has no Trash, so a plain wp_delete_post() call
+ * with NO second argument deletes it directly. That avoids the trash-bypass force-delete flag
+ * the security sweep bans, so this adds no force-delete primitive to our source. Removal is
+ * verified by re-fetching the post.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_delete_menu_item( array $input ) {
+	$item_id = (int) ( $input['item_id'] ?? 0 );
+	$post    = get_post( $item_id );
+	if ( ! $post instanceof WP_Post || 'nav_menu_item' !== $post->post_type ) {
+		return aafm_generic_error();
+	}
+	wp_delete_post( $item_id );
+	if ( null !== get_post( $item_id ) ) {
+		return aafm_generic_error();
+	}
+	return array(
+		'id'      => $item_id,
+		'deleted' => true,
+	);
+}
+
+/**
+ * Resolve one nav menu item inside a given menu by its id.
+ *
+ * The core writer wp_update_nav_menu_item() returns only the new item id, so to hand back the
+ * redacted item shape we re-read the menu's items and match the id. Scoping the lookup to the menu confirms the
+ * item really belongs to it (used by update to reject an item from another menu). Returns null
+ * when the id is not an item of that menu.
+ *
+ * @param int $menu_id Menu (nav_menu term) id.
+ * @param int $item_id Menu item (nav_menu_item post) id.
+ * @return object|null The decorated nav menu item object, or null.
+ */
+function aafm_menu_item_by_id( int $menu_id, int $item_id ) {
+	$items = wp_get_nav_menu_items( $menu_id );
+	if ( ! is_array( $items ) ) {
+		return null;
+	}
+	foreach ( $items as $item ) {
+		if ( isset( $item->ID ) && (int) $item->ID === $item_id ) {
+			return $item;
+		}
+	}
+	return null;
+}
