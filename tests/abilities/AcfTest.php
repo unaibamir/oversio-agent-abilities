@@ -129,7 +129,8 @@ final class AcfTest extends TestCase {
 		$this->assertNotInstanceOf( WP_Error::class, $res );
 		$this->assertSame( $post_id, $res['post_id'] );
 		$this->assertArrayHasKey( 'fields', $res );
-		$this->assertSame( 'Hello', $res['fields']['field_1'] );
+		$fields = (array) $res['fields'];
+		$this->assertSame( 'Hello', $fields['field_1'] );
 	}
 
 	public function test_get_post_fields_denies_a_subscriber(): void {
@@ -151,10 +152,10 @@ final class AcfTest extends TestCase {
 			)
 		);
 		$this->assertNotInstanceOf( WP_Error::class, $res );
-		$this->assertSame( 'Updated headline', $res['fields']['field_1'] );
+		$this->assertSame( 'Updated headline', ( (array) $res['fields'] )['field_1'] );
 
 		$read = wp_get_ability( 'aafm/acf-get-post-fields' )->execute( array( 'post_id' => $post_id ) );
-		$this->assertSame( 'Updated headline', $read['fields']['field_1'], 'The ACF post write must round-trip.' );
+		$this->assertSame( 'Updated headline', ( (array) $read['fields'] )['field_1'], 'The ACF post write must round-trip.' );
 	}
 
 	public function test_update_post_fields_sanitizes_each_value(): void {
@@ -265,7 +266,8 @@ final class AcfTest extends TestCase {
 		$this->assertNotInstanceOf( WP_Error::class, $res );
 		$this->assertSame( $term_id, $res['term_id'] );
 		$this->assertArrayHasKey( 'fields', $res );
-		$this->assertSame( 'Hello', $res['fields']['field_1'] );
+		$fields = (array) $res['fields'];
+		$this->assertSame( 'Hello', $fields['field_1'] );
 	}
 
 	public function test_get_term_fields_denies_a_subscriber(): void {
@@ -287,7 +289,7 @@ final class AcfTest extends TestCase {
 			)
 		);
 		$this->assertNotInstanceOf( WP_Error::class, $res );
-		$this->assertSame( 'Term value', $res['fields']['field_1'] );
+		$this->assertSame( 'Term value', ( (array) $res['fields'] )['field_1'] );
 
 		// The write was recorded under the "term_{id}" ACF selector, not the post bucket.
 		$this->assertSame(
@@ -297,7 +299,7 @@ final class AcfTest extends TestCase {
 		);
 
 		$read = wp_get_ability( 'aafm/acf-get-term-fields' )->execute( array( 'term_id' => $term_id ) );
-		$this->assertSame( 'Term value', $read['fields']['field_1'] );
+		$this->assertSame( 'Term value', ( (array) $read['fields'] )['field_1'] );
 	}
 
 	public function test_update_term_fields_rejects_a_smuggled_top_level_field(): void {
@@ -402,7 +404,8 @@ final class AcfTest extends TestCase {
 		$this->assertNotInstanceOf( WP_Error::class, $res );
 		$this->assertSame( $user_id, $res['user_id'] );
 		$this->assertArrayHasKey( 'fields', $res );
-		$this->assertSame( 'Hello', $res['fields']['field_1'] );
+		$fields = (array) $res['fields'];
+		$this->assertSame( 'Hello', $fields['field_1'] );
 	}
 
 	public function test_get_user_fields_exposes_the_user_email_field_value_not_stripped(): void {
@@ -451,7 +454,7 @@ final class AcfTest extends TestCase {
 			)
 		);
 		$this->assertNotInstanceOf( WP_Error::class, $res );
-		$this->assertSame( 'User value', $res['fields']['field_1'] );
+		$this->assertSame( 'User value', ( (array) $res['fields'] )['field_1'] );
 
 		$this->assertSame(
 			'User value',
@@ -460,7 +463,7 @@ final class AcfTest extends TestCase {
 		);
 
 		$read = wp_get_ability( 'aafm/acf-get-user-fields' )->execute( array( 'user_id' => $user_id ) );
-		$this->assertSame( 'User value', $read['fields']['field_1'] );
+		$this->assertSame( 'User value', ( (array) $read['fields'] )['field_1'] );
 	}
 
 	public function test_update_user_fields_rejects_a_smuggled_top_level_field(): void {
@@ -520,5 +523,77 @@ final class AcfTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/acf-update-user-fields', $abilities );
+	}
+
+	/**
+	 * Re-seed the ACF stub with an EMPTY value set, then re-register, so an object with no ACF data
+	 * exercises the empty-map path (the default fixture always seeds field_1 => 'Hello').
+	 *
+	 * @return void
+	 */
+	private function stub_acf_empty(): void {
+		$this->reset_integration_stubs();
+		$this->force_integration( 'acf' );
+		$this->stub_acf(
+			array(
+				'groups' => array(),
+				'values' => array(),
+			)
+		);
+		aafm_registry_cache_should_flush( true );
+		$this->register_acf();
+	}
+
+	/**
+	 * HIGH-1: an object with no ACF data returns an EMPTY fields map that JSON-encodes to "{}"
+	 * (object), never "[]" (list), per the type:object output schema. Mirrors the get-all-post-meta
+	 * regression. The default fixture always seeds a value, so this re-seeds empty to exercise it.
+	 */
+	public function test_get_post_fields_empty_encodes_as_object_not_array(): void {
+		$this->stub_acf_empty();
+		$admin_id = $this->acting_as( 'administrator' );
+		$post_id  = (int) self::factory()->post->create( array( 'post_author' => $admin_id ) );
+
+		$res = wp_get_ability( 'aafm/acf-get-post-fields' )->execute( array( 'post_id' => $post_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( '{}', (string) wp_json_encode( $res['fields'] ), 'Empty post fields must encode as {}.' );
+	}
+
+	public function test_get_term_fields_empty_encodes_as_object_not_array(): void {
+		$this->stub_acf_empty();
+		$this->acting_as( 'administrator' );
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+
+		$res = wp_get_ability( 'aafm/acf-get-term-fields' )->execute( array( 'term_id' => $term_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( '{}', (string) wp_json_encode( $res['fields'] ), 'Empty term fields must encode as {}.' );
+	}
+
+	public function test_get_user_fields_empty_encodes_as_object_not_array(): void {
+		$this->stub_acf_empty();
+		$this->acting_as( 'administrator' );
+		$user_id = (int) self::factory()->user->create( array( 'role' => 'subscriber' ) );
+
+		$res = wp_get_ability( 'aafm/acf-get-user-fields' )->execute( array( 'user_id' => $user_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( '{}', (string) wp_json_encode( $res['fields'] ), 'Empty user fields must encode as {}.' );
+	}
+
+	/**
+	 * HIGH-1: an empty-fields WRITE also returns "{}" on the refreshed read shape.
+	 */
+	public function test_update_post_fields_empty_write_encodes_as_object_not_array(): void {
+		$this->stub_acf_empty();
+		$admin_id = $this->acting_as( 'administrator' );
+		$post_id  = (int) self::factory()->post->create( array( 'post_author' => $admin_id ) );
+
+		$res = wp_get_ability( 'aafm/acf-update-post-fields' )->execute(
+			array(
+				'post_id' => $post_id,
+				'fields'  => array(),
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( '{}', (string) wp_json_encode( $res['fields'] ), 'An empty write must refresh to {}.' );
 	}
 }

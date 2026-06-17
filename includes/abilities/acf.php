@@ -376,7 +376,9 @@ function aafm_exec_acf_get_post_fields( array $input ) {
 	}
 	return array(
 		'post_id' => $id,
-		'fields'  => aafm_acf_read_fields( $id ),
+		// Cast the top-level map so an empty fields set JSON-encodes to "{}" (object) per the
+		// schema, never "[]". Only the top level — nested repeater/relationship arrays stay lists.
+		'fields'  => (object) aafm_acf_read_fields( $id ),
 	);
 }
 
@@ -445,7 +447,8 @@ function aafm_exec_acf_update_post_fields( array $input ) {
 	}
 	return array(
 		'post_id' => $id,
-		'fields'  => aafm_acf_write_fields( $fields, $id ),
+		// (object) so an empty refreshed map encodes to "{}" per the schema (see the read executor).
+		'fields'  => (object) aafm_acf_write_fields( $fields, $id ),
 	);
 }
 
@@ -526,7 +529,8 @@ function aafm_exec_acf_get_term_fields( array $input ) {
 	}
 	return array(
 		'term_id' => $id,
-		'fields'  => aafm_acf_read_fields( aafm_acf_term_selector( $id ) ),
+		// (object) so an empty fields map encodes to "{}" per the schema (see the post read executor).
+		'fields'  => (object) aafm_acf_read_fields( aafm_acf_term_selector( $id ) ),
 	);
 }
 
@@ -590,7 +594,8 @@ function aafm_exec_acf_update_term_fields( array $input ) {
 	}
 	return array(
 		'term_id' => $id,
-		'fields'  => aafm_acf_write_fields( $fields, aafm_acf_term_selector( $id ) ),
+		// (object) so an empty refreshed map encodes to "{}" per the schema (see the read executor).
+		'fields'  => (object) aafm_acf_write_fields( $fields, aafm_acf_term_selector( $id ) ),
 	);
 }
 
@@ -675,7 +680,8 @@ function aafm_exec_acf_get_user_fields( array $input ) {
 	}
 	return array(
 		'user_id' => $id,
-		'fields'  => aafm_acf_read_fields( aafm_acf_user_selector( $id ) ),
+		// (object) so an empty fields map encodes to "{}" per the schema (see the post read executor).
+		'fields'  => (object) aafm_acf_read_fields( aafm_acf_user_selector( $id ) ),
 	);
 }
 
@@ -739,6 +745,7 @@ function aafm_exec_acf_update_user_fields( array $input ) {
 	}
 	return array(
 		'user_id' => $id,
-		'fields'  => aafm_acf_write_fields( $fields, aafm_acf_user_selector( $id ) ),
+		// (object) so an empty refreshed map encodes to "{}" per the schema (see the read executor).
+		'fields'  => (object) aafm_acf_write_fields( $fields, aafm_acf_user_selector( $id ) ),
 	);
 }
