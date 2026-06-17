@@ -318,6 +318,14 @@ final class SecurityRegressionTest extends TestCase {
 		// the 'plugin' needle still bans a generic plugin-management surface (e.g.
 		// aafm/activate-plugin, aafm/manage-plugins). list-plugins never changes a plugin.
 		$sanctioned = array_merge( $sanctioned, array( 'aafm/list-plugins' ) );
+		// get-active-theme and list-themes are the sanctioned exception to the 'theme' needle.
+		// Both are READS gated on edit_theme_options (the Appearance-screen capability),
+		// default-OFF, audited, and closed-schema, and neither returns a filesystem path. There is
+		// deliberately NO theme switch/install/delete ability in the catalog, so the 'theme' needle
+		// still bans a generic theme-management surface (e.g. aafm/switch-theme, aafm/delete-theme).
+		// The other FSE abilities (list-templates, get-template, update-template, get-global-styles)
+		// trip no needle, so they need no sanction.
+		$sanctioned = array_merge( $sanctioned, array( 'aafm/get-active-theme', 'aafm/list-themes' ) );
 		foreach ( array_keys( $registry ) as $name ) {
 			if ( in_array( $name, $sanctioned, true ) ) {
 				continue;

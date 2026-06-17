@@ -55,6 +55,11 @@ function aafm_ability_disclosures(): array {
 		'aafm/list-menus'           => __( 'Lists navigation menus by id, name, slug, and item count. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'aafm/get-menu'             => __( 'Reads one navigation menu by id: name, slug, and item count. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'aafm/list-menu-items'      => __( "Lists a navigation menu's items: title, URL, type, linked object, parent, and order. Requires the edit-theme-options capability.", 'agent-abilities-for-mcp' ),
+		'aafm/get-active-theme'     => __( 'Reads the active theme: name, version, stylesheet, parent, and whether it is a block theme. Never a filesystem path. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'aafm/list-themes'          => __( 'Lists installed themes by name, version, stylesheet, and active state. Never a filesystem path. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'aafm/list-templates'       => __( 'Lists block templates (or template parts) by id, slug, title, type, and source. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'aafm/get-template'         => __( 'Reads one block template by id, including its markup. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'aafm/get-global-styles'    => __( "Reads the active theme's resolved global styles and settings (theme.json). Requires the edit-theme-options capability.", 'agent-abilities-for-mcp' ),
 
 		// Writes.
 		'aafm/create-draft'         => __( 'Creates a new draft post. The agent drafts, a human publishes. It never goes live on its own.', 'agent-abilities-for-mcp' ),
@@ -85,6 +90,7 @@ function aafm_ability_disclosures(): array {
 		'aafm/update-menu'          => __( 'Renames a navigation menu by id. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'aafm/create-menu-item'     => __( 'Adds an item (link) to a navigation menu. The URL is sanitized. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'aafm/update-menu-item'     => __( "Updates a menu item's title or URL by id. Requires the edit-theme-options capability.", 'agent-abilities-for-mcp' ),
+		'aafm/update-template'      => __( 'Updates a database block template by id. Its markup is sanitized, and theme-file templates cannot be edited. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 
 		// Destructive (still recoverable).
 		'aafm/trash-post'           => __( 'Moves a post the agent can edit to the Trash, where you can restore it. Never a permanent delete.', 'agent-abilities-for-mcp' ),

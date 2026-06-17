@@ -129,6 +129,14 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		// ability falls through to its real permission_callback with empty input, which is the
 		// correct discovery answer for reads and writes alike.
 
+		// The FSE family (get-active-theme, list-themes, list-templates, get-template,
+		// get-global-styles, and update-template) gates on the same object-independent
+		// edit_theme_options capability, so none needs a server.php case either. WordPress has no
+		// per-theme or per-template capability, so there is nothing to scope per id; each falls
+		// through to its real permission_callback with empty input, the correct discovery answer
+		// for the reads and the single write alike. Proven in ThemesTest (an admin discovers
+		// update-template, an editor does not).
+
 		// Reusable-block reads/writes: get-block, update-block, and delete-block gate
 		// per-object on edit_post/delete_post on the wp_block id, which is false with empty
 		// input at discovery — so use the object-independent edit_posts/delete_posts floor;
