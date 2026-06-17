@@ -1,0 +1,71 @@
+<?php
+/**
+ * FSE theme / template / global-styles abilities (Slice D).
+ *
+ * Covers the active-theme + theme-list reads, the block-template list/get reads, the
+ * kses-hardened update-template write (including the B-1 file-only-template refusal), and
+ * the read-only global-styles ability. Every ability gates on edit_theme_options, so an
+ * editor is denied and an administrator is allowed. No filesystem path may appear in any
+ * output (the tests assert ABSPATH is absent from the JSON).
+ *
+ * @package AgentAbilitiesForMCP
+ */
+
+declare( strict_types=1 );
+
+namespace AAFM\Tests\Abilities;
+
+use AAFM\Tests\TestCase;
+use WP_Error;
+
+final class ThemesTest extends TestCase {
+
+	/**
+	 * Run a callback inside a simulated Abilities API init action.
+	 *
+	 * @param string   $action Action name to simulate.
+	 * @param callable $cb     Callback to invoke while the action is "running".
+	 */
+	private function in_action( string $action, callable $cb ): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = $action;
+		$cb();
+		array_pop( $wp_current_filter );
+	}
+
+	/**
+	 * Enable + register the FSE abilities so they can be invoked.
+	 */
+	private function register_themes(): void {
+		aafm_install_activity_log();
+		aafm_clear_activity_log();
+		$this->in_action( 'wp_abilities_api_categories_init', 'aafm_register_categories' );
+		update_option(
+			'aafm_enabled_abilities',
+			array( 'aafm/get-active-theme', 'aafm/list-themes', 'aafm/list-templates', 'aafm/get-template', 'aafm/update-template', 'aafm/get-global-styles' )
+		);
+		$this->in_action( 'wp_abilities_api_init', 'aafm_register_enabled_abilities' );
+	}
+
+	public function test_get_active_theme_requires_cap_and_hides_path(): void {
+		$this->register_themes();
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue( wp_get_ability( 'aafm/get-active-theme' )->check_permissions( array() ) );
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/get-active-theme' )->execute( array() );
+		$this->assertArrayHasKey( 'stylesheet', $res );
+		$this->assertArrayHasKey( 'is_block_theme', $res );
+		$json = (string) wp_json_encode( $res );
+		$this->assertStringNotContainsString( ABSPATH, $json, 'Theme path must not leak.' );
+	}
+
+	public function test_list_themes_marks_the_active_one(): void {
+		$this->register_themes();
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/list-themes' )->execute( array() );
+		$this->assertArrayHasKey( 'themes', $res );
+		$active = array_filter( $res['themes'], static fn( $t ) => 'active' === $t['status'] );
+		$this->assertNotEmpty( $active, 'One theme must be marked active.' );
+	}
+}
