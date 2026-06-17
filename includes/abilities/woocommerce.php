@@ -1212,6 +1212,11 @@ function aafm_exec_wc_create_product_variation( array $input ) {
 	if ( null === $parent ) {
 		return aafm_generic_error();
 	}
+	// MCP LOW-1: a variation only belongs under a variable parent; attaching to a simple/grouped/
+	// external parent silently no-ops downstream, so refuse a non-variable parent up front.
+	if ( 'variable' !== $parent->get_type() ) {
+		return aafm_generic_error();
+	}
 
 	unset( $input['product_id'] );
 	$variation = new \WC_Product_Variation();

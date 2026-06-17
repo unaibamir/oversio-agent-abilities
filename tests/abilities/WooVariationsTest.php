@@ -279,6 +279,27 @@ final class WooVariationsTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $res, 'A variation cannot attach to a nonexistent parent.' );
 	}
 
+	public function test_create_variation_rejects_a_non_variable_parent(): void {
+		// Fix MCP LOW-1: a variation only belongs under a variable parent. Attaching to a simple
+		// product silently no-ops in the store, so the create exec rejects a non-variable parent.
+		$this->acting_as( 'administrator' );
+		WcStubStore::seed(
+			801,
+			array(
+				'id'   => 801,
+				'name' => 'Simple Parent',
+				'type' => 'simple',
+			)
+		);
+		$res = wp_get_ability( 'aafm/wc-create-product-variation' )->execute(
+			array(
+				'product_id' => 801,
+				'sku'        => 'UNDER-SIMPLE',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'A variation cannot attach to a simple (non-variable) parent.' );
+	}
+
 	public function test_create_variation_sanitizes_description(): void {
 		$this->acting_as( 'administrator' );
 		$res = wp_get_ability( 'aafm/wc-create-product-variation' )->execute(
