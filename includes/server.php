@@ -111,6 +111,7 @@ function aafm_ability_list_permission( string $name ): ?callable {
 
 		// Post writes: the floor cap that the per-object edit_post()/delete_post() refine.
 		case 'aafm/update-post':
+		case 'aafm/replace-in-post':
 		case 'aafm/set-featured-image':
 			return static fn(): bool => current_user_can( 'edit_posts' );
 		case 'aafm/trash-post':
@@ -123,10 +124,11 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		case 'aafm/update-cpt-item':
 			return static fn(): bool => current_user_can( 'edit_posts' );
 
-		// Governed post-meta (get/update/delete): all gate on per-object edit_post (reads
-		// included — meta can hold private data), so discovery uses the same edit_posts floor
-		// as update-post, refined per-object at execute time.
+		// Governed post-meta (get/update/delete + bulk read): all gate on per-object
+		// edit_post (reads included — meta can hold private data), so discovery uses the
+		// same edit_posts floor as update-post, refined per-object at execute time.
 		case 'aafm/get-post-meta':
+		case 'aafm/get-all-post-meta':
 		case 'aafm/update-post-meta':
 		case 'aafm/delete-post-meta':
 			return static fn(): bool => current_user_can( 'edit_posts' );
