@@ -331,12 +331,22 @@ final class SecurityRegressionTest extends TestCase {
 	/**
 	 * CVE class: PERMANENT DELETE.
 	 *
-	 * Destructive writes use trash/recoverable semantics — never force-delete. Asserted
-	 * in the source: no wp_delete_post(...,true) / wp_delete_comment(...,true).
+	 * Post writes never force-delete: wp_delete_post(...,true) must not appear anywhere —
+	 * posts and pages are only ever trashed (recoverable).
+	 *
+	 * Comments are the one sanctioned exception. aafm/delete-comment is an explicit,
+	 * separately-disclosed destructive ability (risk=destructive, in DESTRUCTIVE_WRITES,
+	 * filed under "Destructive (permanent)") that uses wp_delete_comment(...,true) by
+	 * design — moderators routinely purge spam permanently, and aafm/moderate-comment
+	 * still offers the recoverable 'trash' path. That single call is allowed only in
+	 * includes/abilities/comments.php; a force-delete in any other file is still a CVE.
 	 */
 	public function test_no_force_delete_in_source(): void {
 		$dir   = dirname( __DIR__, 2 ) . '/includes';
 		$files = new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( $dir ) );
+
+		// The one file permitted to force-delete a comment (the disclosed destructive ability).
+		$comment_force_delete_allowed = 'includes/abilities/comments.php';
 
 		foreach ( $files as $file ) {
 			if ( 'php' !== $file->getExtension() ) {
@@ -344,19 +354,24 @@ final class SecurityRegressionTest extends TestCase {
 			}
 			// Reading our own bundled source for a static scan — not a remote fetch.
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$src = (string) file_get_contents( $file->getPathname() );
+			$src  = (string) file_get_contents( $file->getPathname() );
+			$path = str_replace( '\\', '/', $file->getPathname() );
 
-			// A force-delete call with the trash-bypass flag must never appear in our writes.
+			// A force-delete of a post/page with the trash-bypass flag must never appear.
 			$this->assertDoesNotMatchRegularExpression(
 				'/wp_delete_post\s*\([^)]*,\s*true\s*\)/',
 				$src,
 				'Permanent wp_delete_post(...,true) in ' . $file->getFilename()
 			);
-			$this->assertDoesNotMatchRegularExpression(
-				'/wp_delete_comment\s*\([^)]*,\s*true\s*\)/',
-				$src,
-				'Permanent wp_delete_comment(...,true) in ' . $file->getFilename()
-			);
+
+			// Permanent comment delete is allowed ONLY in the sanctioned comments file.
+			if ( ! str_ends_with( $path, $comment_force_delete_allowed ) ) {
+				$this->assertDoesNotMatchRegularExpression(
+					'/wp_delete_comment\s*\([^)]*,\s*true\s*\)/',
+					$src,
+					'Permanent wp_delete_comment(...,true) in ' . $file->getFilename() . ' (only the disclosed delete-comment ability may force-delete)'
+				);
+			}
 		}
 	}
 
