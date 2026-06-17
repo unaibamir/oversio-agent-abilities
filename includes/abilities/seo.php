@@ -37,13 +37,29 @@ function aafm_register_seo_definitions( array $registry ): array {
 		'subject'      => 'seo',
 		'args_builder' => 'aafm_args_seo_get_post',
 	);
-	$registry['aafm/seo-update-post'] = array(
+	$registry['aafm/seo-update-post']   = array(
 		'label'        => __( 'Update post SEO', 'agent-abilities-for-mcp' ),
 		'description'  => __( "Writes a post's SEO fields (title, description, focus keyword, canonical, robots, and social) to the active SEO plugin's meta keys. URL fields are sanitized as URLs. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
 		'group'        => 'writes',
 		'risk'         => 'write',
 		'subject'      => 'seo',
 		'args_builder' => 'aafm_args_seo_update_post',
+	);
+	$registry['aafm/seo-get-schema']    = array(
+		'label'        => __( 'Get post schema', 'agent-abilities-for-mcp' ),
+		'description'  => __( "Reads a post's structured-data (JSON-LD) schema from Rank Math. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'seo',
+		'args_builder' => 'aafm_args_seo_get_schema',
+	);
+	$registry['aafm/seo-update-schema'] = array(
+		'label'        => __( 'Update post schema', 'agent-abilities-for-mcp' ),
+		'description'  => __( "Writes a post's structured-data (JSON-LD) schema to Rank Math. The object is recursively sanitized. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'seo',
+		'args_builder' => 'aafm_args_seo_update_schema',
 	);
 
 	return $registry;
@@ -259,4 +275,176 @@ function aafm_exec_seo_update_post( array $input ) {
 	}
 
 	return aafm_seo_read_fields( $id );
+}
+
+/**
+ * The Rank Math post-meta key that holds the structured-data schema object.
+ */
+const AAFM_SEO_SCHEMA_META_KEY = 'rank_math_schema';
+
+/**
+ * Recursively sanitize a JSON-LD schema array.
+ *
+ * At every depth: arrays recurse; a value under a url-ish key (url / image / logo / sameAs / @id,
+ * case-insensitive) is run through esc_url_raw so a javascript: scheme is dropped; every other
+ * scalar leaf is run through sanitize_text_field, which strips <script> tags and control noise;
+ * anything that is neither scalar nor array (objects, resources) is dropped. So script payloads
+ * cannot survive at any level.
+ *
+ * @param array<int|string,mixed> $schema Schema array.
+ * @return array<int|string,mixed>
+ */
+function aafm_sanitize_schema_array( array $schema ): array {
+	$url_keys = array( 'url', 'image', 'logo', 'sameas', '@id', 'contenturl', 'thumbnailurl' );
+	$clean    = array();
+	foreach ( $schema as $key => $value ) {
+		$safe_key = is_string( $key ) ? sanitize_text_field( $key ) : $key;
+		if ( is_array( $value ) ) {
+			$clean[ $safe_key ] = aafm_sanitize_schema_array( $value );
+			continue;
+		}
+		if ( ! is_scalar( $value ) ) {
+			continue; // Drop objects / resources / null.
+		}
+		$as_string = is_bool( $value ) ? $value : (string) $value;
+		if ( is_string( $safe_key ) && in_array( strtolower( $safe_key ), $url_keys, true ) ) {
+			$clean[ $safe_key ] = esc_url_raw( (string) $as_string );
+		} else {
+			$clean[ $safe_key ] = is_bool( $as_string ) ? $as_string : sanitize_text_field( (string) $as_string );
+		}
+	}
+	return $clean;
+}
+
+/**
+ * Args for aafm/seo-get-schema.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_seo_get_schema(): array {
+	return array(
+		'label'               => __( 'Get post schema', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Reads a post's structured-data (JSON-LD) schema from Rank Math. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'post_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'post_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'post_id' => array( 'type' => 'integer' ),
+				'schema'  => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_seo_get_schema',
+		'permission_callback' => 'aafm_perm_seo_post',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/seo-get-schema.
+ *
+ * Schema is Rank Math-primary. On any other active SEO plugin this degrades to a generic error
+ * rather than guessing at that plugin's (different) schema storage.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_seo_get_schema( array $input ) {
+	$id = absint( $input['post_id'] ?? 0 );
+	if ( ! get_post( $id ) instanceof WP_Post ) {
+		return aafm_generic_error();
+	}
+	if ( 'rankmath' !== aafm_seo_active_plugin() ) {
+		return aafm_generic_error();
+	}
+	$stored = get_post_meta( $id, AAFM_SEO_SCHEMA_META_KEY, true );
+	return array(
+		'post_id' => $id,
+		'schema'  => is_array( $stored ) ? $stored : array(),
+	);
+}
+
+/**
+ * Args for aafm/seo-update-schema.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_seo_update_schema(): array {
+	return array(
+		'label'               => __( 'Update post schema', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Writes a post's structured-data (JSON-LD) schema to Rank Math. The object is recursively sanitized. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'post_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'schema'  => array( 'type' => 'object' ),
+			),
+			'required'             => array( 'post_id', 'schema' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'post_id' => array( 'type' => 'integer' ),
+				'schema'  => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_seo_update_schema',
+		'permission_callback' => 'aafm_perm_seo_post',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/seo-update-schema.
+ *
+ * Refuses a non-array payload, recursively sanitizes the schema, and writes it to the Rank Math
+ * schema meta. Schema is Rank Math-primary, so on any other active plugin this degrades to a
+ * generic error. Returns the refreshed read shape.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_seo_update_schema( array $input ) {
+	$id = absint( $input['post_id'] ?? 0 );
+	if ( ! get_post( $id ) instanceof WP_Post ) {
+		return aafm_generic_error();
+	}
+	if ( 'rankmath' !== aafm_seo_active_plugin() ) {
+		return aafm_generic_error();
+	}
+	$schema = $input['schema'] ?? null;
+	if ( ! is_array( $schema ) ) {
+		return aafm_generic_error();
+	}
+	$clean = aafm_sanitize_schema_array( $schema );
+	update_post_meta( $id, AAFM_SEO_SCHEMA_META_KEY, $clean );
+	return array(
+		'post_id' => $id,
+		'schema'  => $clean,
+	);
 }

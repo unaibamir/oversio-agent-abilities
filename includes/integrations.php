@@ -56,15 +56,23 @@ function aafm_integration_active( string $slug ): bool {
  */
 function aafm_seo_active_plugin(): string {
 	if ( class_exists( 'RankMath' ) ) {
-		return 'rankmath';
+		$plugin = 'rankmath';
+	} elseif ( defined( 'WPSEO_VERSION' ) ) {
+		$plugin = 'yoast';
+	} elseif ( function_exists( 'aioseo' ) ) {
+		$plugin = 'aioseo';
+	} else {
+		$plugin = '';
 	}
-	if ( defined( 'WPSEO_VERSION' ) ) {
-		return 'yoast';
-	}
-	if ( function_exists( 'aioseo' ) ) {
-		return 'aioseo';
-	}
-	return '';
+
+	/**
+	 * Filters which SEO plugin is reported active. Production passes the real detection through;
+	 * the test suite uses this to pin the active plugin deterministically (the marker stubs it
+	 * defines are process-permanent, so detection order alone is not enough to switch back).
+	 *
+	 * @param string $plugin Detected plugin slug ('' | 'rankmath' | 'yoast' | 'aioseo').
+	 */
+	return (string) apply_filters( 'aafm_seo_active_plugin', $plugin );
 }
 
 /**

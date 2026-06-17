@@ -180,6 +180,105 @@ final class SeoTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $res, 'A closed schema rejects a smuggled field.' );
 	}
 
+	public function test_seo_schema_round_trips_under_rank_math(): void {
+		// Schema is Rank Math-primary. The RankMath stub marker makes aafm_seo_active_plugin()
+		// report rankmath (the class is checked ahead of the Yoast define), so the schema
+		// routing reads/writes the Rank Math storage.
+		$this->reset_integration_stubs();
+		$this->force_integration( 'seo' );
+		$this->stub_seo_plugin( 'rankmath' );
+		add_filter( 'aafm_seo_active_plugin', static fn() => 'rankmath' );
+		aafm_registry_cache_should_flush( true );
+		$this->register_seo();
+
+		$editor_id = $this->acting_as( 'administrator' );
+		$post_id   = (int) self::factory()->post->create( array( 'post_author' => $editor_id ) );
+
+		$schema = array(
+			'@type' => 'Article',
+			'name'  => 'My Article',
+			'about' => array(
+				'@type' => 'Thing',
+				'name'  => 'Nested Thing',
+			),
+		);
+		$res = wp_get_ability( 'aafm/seo-update-schema' )->execute(
+			array(
+				'post_id' => $post_id,
+				'schema'  => $schema,
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res, 'A schema write under Rank Math must succeed.' );
+
+		$read = wp_get_ability( 'aafm/seo-get-schema' )->execute( array( 'post_id' => $post_id ) );
+		$this->assertSame( 'Article', $read['schema']['@type'] );
+		$this->assertSame( 'Nested Thing', $read['schema']['about']['name'] );
+	}
+
+	public function test_seo_update_schema_strips_script_at_every_depth(): void {
+		$this->reset_integration_stubs();
+		$this->force_integration( 'seo' );
+		$this->stub_seo_plugin( 'rankmath' );
+		add_filter( 'aafm_seo_active_plugin', static fn() => 'rankmath' );
+		aafm_registry_cache_should_flush( true );
+		$this->register_seo();
+
+		$editor_id = $this->acting_as( 'administrator' );
+		$post_id   = (int) self::factory()->post->create( array( 'post_author' => $editor_id ) );
+
+		$dirty = array(
+			'@type' => '<script>alert(1)</script>Article',
+			'about' => array(
+				'name'   => '<script>alert(2)</script>Deep',
+				'deeper' => array(
+					'evil' => '<script>alert(3)</script>',
+				),
+			),
+		);
+		wp_get_ability( 'aafm/seo-update-schema' )->execute(
+			array(
+				'post_id' => $post_id,
+				'schema'  => $dirty,
+			)
+		);
+		$read = wp_get_ability( 'aafm/seo-get-schema' )->execute( array( 'post_id' => $post_id ) );
+		$json = (string) wp_json_encode( $read['schema'] );
+		$this->assertStringNotContainsString( '<script>', $json, 'Script must be stripped at every depth.' );
+		$this->assertStringNotContainsString( 'alert(2)', $json, 'Nested script content must be stripped.' );
+		$this->assertStringNotContainsString( 'alert(3)', $json, 'Deeply nested script content must be stripped.' );
+	}
+
+	public function test_seo_update_schema_refuses_a_non_array_payload(): void {
+		$this->reset_integration_stubs();
+		$this->force_integration( 'seo' );
+		$this->stub_seo_plugin( 'rankmath' );
+		add_filter( 'aafm_seo_active_plugin', static fn() => 'rankmath' );
+		aafm_registry_cache_should_flush( true );
+		$this->register_seo();
+
+		$this->acting_as( 'administrator' );
+		$post_id = (int) self::factory()->post->create();
+		$res     = wp_get_ability( 'aafm/seo-update-schema' )->execute(
+			array(
+				'post_id' => $post_id,
+				'schema'  => 'not-an-array',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'A non-array schema payload must be refused.' );
+	}
+
+	public function test_seo_get_schema_degrades_gracefully_on_non_rank_math(): void {
+		// Schema is Rank Math-primary, so on Yoast the schema abilities return a documented
+		// generic error rather than guessing at Yoast's storage. Pin yoast through the active-
+		// plugin filter: an earlier schema test defines the RankMath marker class process-wide,
+		// so detection order alone would otherwise still report rankmath here.
+		add_filter( 'aafm_seo_active_plugin', static fn() => 'yoast' );
+		$this->acting_as( 'administrator' );
+		$post_id = (int) self::factory()->post->create();
+		$res     = wp_get_ability( 'aafm/seo-get-schema' )->execute( array( 'post_id' => $post_id ) );
+		$this->assertInstanceOf( WP_Error::class, $res, 'Schema read on a non-Rank-Math plugin must degrade to an error.' );
+	}
+
 	public function test_seo_abilities_absent_when_host_inactive(): void {
 		// HIGH-2: assert at the REGISTRY level, not via aafm_user_can_discover_ability().
 		// The discovery helper falls through to aafm_user_can_call_ability → the process-wide
