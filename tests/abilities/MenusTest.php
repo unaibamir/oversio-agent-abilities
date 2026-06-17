@@ -89,4 +89,46 @@ final class MenusTest extends TestCase {
 		$this->acting_as( 'administrator' );
 		$this->assertInstanceOf( WP_Error::class, wp_get_ability( 'aafm/get-menu' )->execute( array( 'menu_id' => 999999 ) ) );
 	}
+
+	public function test_create_then_update_then_delete_menu(): void {
+		$this->register_menus();
+		$this->acting_as( 'administrator' );
+
+		$created = wp_get_ability( 'aafm/create-menu' )->execute( array( 'name' => 'New Menu' ) );
+		$this->assertArrayHasKey( 'id', $created );
+		$menu_id = (int) $created['id'];
+
+		$renamed = wp_get_ability( 'aafm/update-menu' )->execute(
+			array(
+				'menu_id' => $menu_id,
+				'name'    => 'Renamed',
+			)
+		);
+		$this->assertSame( 'Renamed', $renamed['name'] );
+
+		$deleted = wp_get_ability( 'aafm/delete-menu' )->execute( array( 'menu_id' => $menu_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $deleted );
+		$this->assertFalse( wp_get_nav_menu_object( $menu_id ), 'menu permanently removed.' );
+	}
+
+	public function test_menu_writes_deny_an_editor(): void {
+		$this->register_menus();
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue( wp_get_ability( 'aafm/create-menu' )->check_permissions( array() ) );
+		$this->assertNotTrue( wp_get_ability( 'aafm/delete-menu' )->check_permissions( array() ) );
+	}
+
+	public function test_create_menu_rejects_a_smuggled_field(): void {
+		$this->register_menus();
+		$this->acting_as( 'administrator' );
+		$this->assertInstanceOf(
+			WP_Error::class,
+			wp_get_ability( 'aafm/create-menu' )->execute(
+				array(
+					'name'     => 'x',
+					'taxonomy' => 'category',
+				)
+			)
+		);
+	}
 }

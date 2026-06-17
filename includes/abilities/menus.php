@@ -1,16 +1,23 @@
 <?php
 /**
- * Navigation-menu READ abilities.
+ * Navigation-menu READ + WRITE abilities.
  *
- * Exposes the WordPress nav-menu core API read-only: list every menu, read one menu's
- * metadata by id, and list the items inside a menu. All three gate on edit_theme_options —
- * the capability WordPress puts on the Appearance > Menus screen, so an agent is held to the
- * same bar a human editor is.
+ * Exposes the WordPress nav-menu core API: list every menu, read one menu's metadata by id,
+ * and list the items inside a menu (reads); create/rename/delete a menu and create/update/
+ * delete a menu item (writes). Every ability gates on edit_theme_options — the capability
+ * WordPress puts on the Appearance > Menus screen, so an agent is held to the same bar a human
+ * editor is.
  *
  * The permission is object-INDEPENDENT: WordPress has no per-menu capability (a menu is a
  * nav_menu term, and the whole Menus screen sits behind one site-wide cap). So the discovery
  * layer falls through to this callback with no per-object case in server.php — there is
- * nothing to scope per menu id.
+ * nothing to scope per menu id, reads and writes alike.
+ *
+ * The destructive writes are PERMANENT: navigation menus and their items have no Trash, so
+ * wp_delete_nav_menu() removes a menu and all its items outright, and a menu item (a
+ * nav_menu_item post) is deleted with no recoverable copy. Neither uses a force-delete
+ * trash-bypass flag in our source — wp_delete_post() is called with no second argument, which
+ * deletes the trash-less nav_menu_item directly without matching the banned ,true pattern.
  *
  * @package AgentAbilitiesForMCP
  */
@@ -28,7 +35,7 @@ add_filter( 'aafm_abilities_registry', 'aafm_register_menus_definitions' );
  * @return array<string,array<string,mixed>>
  */
 function aafm_register_menus_definitions( array $registry ): array {
-	$registry['aafm/list-menus']      = array(
+	$registry['aafm/list-menus']       = array(
 		'label'        => __( 'List menus', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'Lists the navigation menus by id, name, slug, and item count. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
@@ -36,7 +43,7 @@ function aafm_register_menus_definitions( array $registry ): array {
 		'subject'      => 'site',
 		'args_builder' => 'aafm_args_list_menus',
 	);
-	$registry['aafm/get-menu']        = array(
+	$registry['aafm/get-menu']         = array(
 		'label'        => __( 'Get menu', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'Reads one navigation menu by id: its name, slug, and item count. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
@@ -44,13 +51,61 @@ function aafm_register_menus_definitions( array $registry ): array {
 		'subject'      => 'site',
 		'args_builder' => 'aafm_args_get_menu',
 	);
-	$registry['aafm/list-menu-items'] = array(
+	$registry['aafm/list-menu-items']  = array(
 		'label'        => __( 'List menu items', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'Lists the items in a navigation menu by id: each item id, title, URL, what it links to, and its place in the order. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
 		'risk'         => 'read',
 		'subject'      => 'site',
 		'args_builder' => 'aafm_args_list_menu_items',
+	);
+	$registry['aafm/create-menu']      = array(
+		'label'        => __( 'Create menu', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Creates a navigation menu by name. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'site',
+		'args_builder' => 'aafm_args_create_menu',
+	);
+	$registry['aafm/update-menu']      = array(
+		'label'        => __( 'Update menu', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Renames a navigation menu by id. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'site',
+		'args_builder' => 'aafm_args_update_menu',
+	);
+	$registry['aafm/delete-menu']      = array(
+		'label'        => __( 'Delete menu', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Permanently deletes a navigation menu and all of its items. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'destructive',
+		'subject'      => 'site',
+		'args_builder' => 'aafm_args_delete_menu',
+	);
+	$registry['aafm/create-menu-item'] = array(
+		'label'        => __( 'Create menu item', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Adds an item (link) to a navigation menu. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'site',
+		'args_builder' => 'aafm_args_create_menu_item',
+	);
+	$registry['aafm/update-menu-item'] = array(
+		'label'        => __( 'Update menu item', 'agent-abilities-for-mcp' ),
+		'description'  => __( "Updates a menu item's title or URL by id. Requires the edit-theme-options capability.", 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'site',
+		'args_builder' => 'aafm_args_update_menu_item',
+	);
+	$registry['aafm/delete-menu-item'] = array(
+		'label'        => __( 'Delete menu item', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Permanently removes one item from a navigation menu. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'destructive',
+		'subject'      => 'site',
+		'args_builder' => 'aafm_args_delete_menu_item',
 	);
 	return $registry;
 }
@@ -238,4 +293,193 @@ function aafm_exec_list_menu_items( array $input ): array {
 		$items[] = aafm_redact_menu_item( $item );
 	}
 	return array( 'items' => $items );
+}
+
+/**
+ * Args for aafm/create-menu.
+ *
+ * Closed schema: the only input is the menu name. There is no taxonomy/term/parent field, so a
+ * smuggled key (e.g. taxonomy) is rejected before execute ever runs.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_create_menu(): array {
+	return array(
+		'label'               => __( 'Create menu', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Creates a navigation menu by name. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'name' => array( 'type' => 'string' ),
+			),
+			'required'             => array( 'name' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => aafm_menu_output_properties(),
+		),
+		'execute_callback'    => 'aafm_exec_create_menu',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/create-menu.
+ *
+ * Creates a new nav menu via the core nav-menu API (id 0 means "create"). The name is
+ * sanitized; a duplicate name or other failure returns a generic error. The created menu is
+ * returned in the redacted id/name/slug/count shape.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_create_menu( array $input ) {
+	$name = sanitize_text_field( (string) ( $input['name'] ?? '' ) );
+	$id   = wp_update_nav_menu_object( 0, array( 'menu-name' => $name ) );
+	if ( is_wp_error( $id ) || 0 === (int) $id ) {
+		return aafm_generic_error();
+	}
+	$menu = wp_get_nav_menu_object( (int) $id );
+	if ( ! $menu instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+	return aafm_redact_menu( $menu );
+}
+
+/**
+ * Args for aafm/update-menu.
+ *
+ * Closed schema: a menu id plus the new name. No other menu field is writable here.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_update_menu(): array {
+	return array(
+		'label'               => __( 'Update menu', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Renames a navigation menu by id. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'menu_id' => array( 'type' => 'integer' ),
+				'name'    => array( 'type' => 'string' ),
+			),
+			'required'             => array( 'menu_id', 'name' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => aafm_menu_output_properties(),
+		),
+		'execute_callback'    => 'aafm_exec_update_menu',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/update-menu.
+ *
+ * Resolves the menu by id first (an unknown id, or a term that is not a nav menu, returns a
+ * generic error rather than leaking which ids exist), then renames it. The renamed menu is
+ * returned in the redacted shape.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_update_menu( array $input ) {
+	$menu_id = (int) ( $input['menu_id'] ?? 0 );
+	$menu    = wp_get_nav_menu_object( $menu_id );
+	if ( ! $menu instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+	$name   = sanitize_text_field( (string) ( $input['name'] ?? '' ) );
+	$result = wp_update_nav_menu_object( $menu_id, array( 'menu-name' => $name ) );
+	if ( is_wp_error( $result ) || 0 === (int) $result ) {
+		return aafm_generic_error();
+	}
+	$updated = wp_get_nav_menu_object( $menu_id );
+	if ( ! $updated instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+	return aafm_redact_menu( $updated );
+}
+
+/**
+ * Args for aafm/delete-menu.
+ *
+ * Closed schema: just the menu id. This is the disclosed destructive menu ability — deleting a
+ * menu permanently removes it AND every item inside it (nav menus have no Trash).
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_delete_menu(): array {
+	return array(
+		'label'               => __( 'Delete menu', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Permanently deletes a navigation menu and all of its items. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'menu_id' => array( 'type' => 'integer' ),
+			),
+			'required'             => array( 'menu_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'id'      => array( 'type' => 'integer' ),
+				'deleted' => array( 'type' => 'boolean' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_delete_menu',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => true,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/delete-menu.
+ *
+ * Resolves the menu by id (unknown id → generic error), then permanently deletes it with the
+ * core nav-menu wrapper, which removes the menu term and all of its items. Returns the id and a
+ * deleted flag. wp_delete_nav_menu() is a core wrapper, not a force-delete primitive, so this
+ * adds no banned trash-bypass call to our source.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_delete_menu( array $input ) {
+	$menu_id = (int) ( $input['menu_id'] ?? 0 );
+	$menu    = wp_get_nav_menu_object( $menu_id );
+	if ( ! $menu instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+	$result = wp_delete_nav_menu( $menu_id );
+	if ( is_wp_error( $result ) || true !== $result ) {
+		return aafm_generic_error();
+	}
+	return array(
+		'id'      => $menu_id,
+		'deleted' => true,
+	);
 }
