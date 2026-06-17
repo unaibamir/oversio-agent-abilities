@@ -293,4 +293,53 @@ final class RevisionsTest extends TestCase {
 		// Diff is null when not requested.
 		$this->assertNull( $out['revision']['diff'] );
 	}
+
+	public function test_get_revision_diff_against_current_content(): void {
+		require_once ABSPATH . 'wp-admin/includes/revision.php'; // wp_text_diff lives here.
+		$author = self::factory()->user->create( array( 'role' => 'author' ) );
+		wp_set_current_user( $author );
+		$pid = self::factory()->post->create(
+			array(
+				'post_author'  => $author,
+				'post_content' => 'alpha line',
+			)
+		);
+		// WordPress snapshots the NEW content on each update, so the oldest revision holds
+		// the content from the first update. Two more updates leave the oldest revision
+		// ('beta line') genuinely different from the post's current content ('gamma line').
+		wp_update_post(
+			array(
+				'ID'           => $pid,
+				'post_content' => 'beta line',
+			)
+		);
+		wp_update_post(
+			array(
+				'ID'           => $pid,
+				'post_content' => 'gamma line', // current content differs from the oldest revision.
+			)
+		);
+		$revs = wp_get_post_revisions( $pid );
+		$rev  = end( $revs ); // oldest snapshot holds 'beta line'.
+
+		// Without with_diff: diff is null.
+		$out = aafm_exec_get_revision(
+			array(
+				'post_id'     => $pid,
+				'revision_id' => (int) $rev->ID,
+			)
+		);
+		$this->assertNull( $out['revision']['diff'] );
+
+		// With with_diff: a non-empty HTML diff table is returned.
+		$with = aafm_exec_get_revision(
+			array(
+				'post_id'     => $pid,
+				'revision_id' => (int) $rev->ID,
+				'with_diff'   => true,
+			)
+		);
+		$this->assertIsString( $with['revision']['diff'] );
+		$this->assertStringContainsString( '<table', $with['revision']['diff'] );
+	}
 }

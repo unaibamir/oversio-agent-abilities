@@ -872,7 +872,17 @@ function aafm_get_revision_payload( WP_Post $revision, array $input ): array {
 	$payload            = aafm_redact_revision( $revision );
 	$payload['content'] = $content;
 	$payload['excerpt'] = (string) $revision->post_excerpt;
-	$payload['diff']    = null; // Populated by the diff task only when with_diff is requested.
+	$payload['diff']    = null;
+	if ( ! empty( $input['with_diff'] ) ) {
+		if ( ! function_exists( 'wp_text_diff' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/revision.php';
+		}
+		$current         = get_post( (int) $revision->post_parent );
+		$current_content = $current instanceof WP_Post ? (string) $current->post_content : '';
+		// wp_text_diff returns '' when there is no difference; we surface that empty string
+		// (a string, not null) so the agent can tell "no change" from "not requested".
+		$payload['diff'] = (string) wp_text_diff( $raw, $current_content );
+	}
 
 	return $payload;
 }

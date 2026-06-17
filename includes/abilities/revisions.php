@@ -177,6 +177,10 @@ function aafm_args_get_revision(): array {
 					'enum'    => array( 'rendered', 'raw' ),
 					'default' => 'rendered',
 				),
+				'with_diff'      => array(
+					'type'    => 'boolean',
+					'default' => false,
+				),
 			),
 			'required'             => array( 'post_id', 'revision_id' ),
 			'additionalProperties' => false,
