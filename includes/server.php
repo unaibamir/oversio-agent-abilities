@@ -109,6 +109,10 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		case 'aafm/get-page':
 			return static fn(): bool => current_user_can( 'read' );
 
+		// aafm/get-user gates on list_users (object-independent), so it needs no case
+		// here — it falls through to its real permission_callback with empty input,
+		// which is the correct answer (same as the get-users list sibling).
+
 		// Post writes: the floor cap that the per-object edit_post()/delete_post() refine.
 		case 'aafm/update-post':
 		case 'aafm/replace-in-post':

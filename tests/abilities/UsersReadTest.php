@@ -1,10 +1,11 @@
 <?php
 /**
- * User read ability: list_users gating + strict redaction (no email/login/pass).
+ * User read abilities: list_users gating + redaction.
  *
  * This is the most PII-sensitive read in the catalog — competitors leaked user
- * data here. The tests prove a low-privilege caller is denied (and audited) and
- * that the redacted output never carries email, login, or a password hash.
+ * data here. The tests prove a low-privilege caller is denied (and audited). Email
+ * is exposed by a locked decision (gated upstream by list_users + audited), but the
+ * output never carries the login or the password hash.
  *
  * @package AgentAbilitiesForMCP
  */
