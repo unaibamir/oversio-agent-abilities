@@ -171,15 +171,16 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		case 'aafm/acf-get-user-fields':
 		case 'aafm/acf-update-user-fields':
 			return static fn(): bool => current_user_can( 'edit_users' );
-		// WooCommerce integration: every product, product-variation, and global product-attribute
-		// ability (wc-list-products, wc-get-product, wc-create-product, wc-update-product,
+		// WooCommerce integration: every product, product-variation, global product-attribute, and
+		// order read ability (wc-list-products, wc-get-product, wc-create-product, wc-update-product,
 		// wc-delete-product, wc-list-product-variations, wc-get-product-variation,
 		// wc-create-product-variation, wc-update-product-variation, wc-delete-product-variation,
 		// wc-list-product-attributes, wc-get-product-attribute, wc-create-product-attribute,
-		// wc-update-product-attribute, wc-delete-product-attribute) gates on the object-independent
-		// manage_woocommerce capability, so NONE needs a server.php case — each falls through to its
-		// real permission_callback with empty input, the correct discovery answer. Proven in
-		// WooProductsTest / WooVariationsTest / WooAttributesTest (an admin discovers, an editor does not).
+		// wc-update-product-attribute, wc-delete-product-attribute, wc-list-orders, wc-get-order)
+		// gates on the object-independent manage_woocommerce capability, so NONE needs a server.php
+		// case — each falls through to its real permission_callback with empty input, the correct
+		// discovery answer. Proven in WooProductsTest / WooVariationsTest / WooAttributesTest /
+		// WooOrdersTest (an admin discovers, an editor does not).
 
 		case 'aafm/get-block':
 		case 'aafm/update-block':

@@ -2183,8 +2183,8 @@ function aafm_args_wc_get_order(): array {
 					'additionalProperties' => false,
 				),
 				'billing'       => array(
-					'type'       => 'object',
-					'properties' => array(
+					'type'                 => 'object',
+					'properties'           => array(
 						'first_name' => array( 'type' => 'string' ),
 						'last_name'  => array( 'type' => 'string' ),
 						'company'    => array( 'type' => 'string' ),
@@ -2197,10 +2197,11 @@ function aafm_args_wc_get_order(): array {
 						'email'      => array( 'type' => 'string' ),
 						'phone'      => array( 'type' => 'string' ),
 					),
+					'additionalProperties' => false,
 				),
 				'shipping'      => array(
-					'type'       => 'object',
-					'properties' => array(
+					'type'                 => 'object',
+					'properties'           => array(
 						'first_name' => array( 'type' => 'string' ),
 						'last_name'  => array( 'type' => 'string' ),
 						'company'    => array( 'type' => 'string' ),
@@ -2211,6 +2212,7 @@ function aafm_args_wc_get_order(): array {
 						'postcode'   => array( 'type' => 'string' ),
 						'country'    => array( 'type' => 'string' ),
 					),
+					'additionalProperties' => false,
 				),
 			),
 		),
