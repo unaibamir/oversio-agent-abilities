@@ -262,6 +262,22 @@ final class SecurityRegressionTest extends TestCase {
 			'aafm/update-term-meta',
 			'aafm/delete-term-meta',
 		);
+		// User CRUD is the sanctioned exception to the create-user/update-user/delete-user
+		// needles: each is capability-gated (create_users/edit_users/delete_users), default-OFF,
+		// audited, and closed-schema. create-user forces the site default role (never admin);
+		// update-user gates any role change behind promote_users and refuses to demote the last
+		// admin; delete-user requires a reassign target and refuses self / the last admin. A
+		// *generic* role/capability surface stays banned. get-user trips no needle, but listing
+		// it here self-documents the whole user surface in one place.
+		$sanctioned = array_merge(
+			$sanctioned,
+			array(
+				'aafm/get-user',
+				'aafm/create-user',
+				'aafm/update-user',
+				'aafm/delete-user',
+			)
+		);
 		foreach ( array_keys( $registry ) as $name ) {
 			if ( in_array( $name, $sanctioned, true ) ) {
 				continue;
