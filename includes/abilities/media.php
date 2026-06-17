@@ -27,6 +27,22 @@ function aafm_register_media_definitions( array $registry ): array {
 		'subject'      => 'media',
 		'args_builder' => 'aafm_args_get_media',
 	);
+	$registry['aafm/get-media-item']     = array(
+		'label'        => __( 'Get media item', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Read one media item by id: caption, description, date, filesize, parent, and all image sizes.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'media',
+		'args_builder' => 'aafm_args_get_media_item',
+	);
+	$registry['aafm/count-media']        = array(
+		'label'        => __( 'Count media', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Count media library items, total and broken down by mime type.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'media',
+		'args_builder' => 'aafm_args_count_media',
+	);
 	$registry['aafm/set-featured-image'] = array(
 		'label'        => __( 'Set featured image', 'agent-abilities-for-mcp' ),
 		'description'  => __( "Set a post's featured image to an existing image attachment ID.", 'agent-abilities-for-mcp' ),
@@ -136,6 +152,126 @@ function aafm_exec_get_media( array $input ): array {
 	);
 
 	return array( 'media' => array_values( array_map( 'aafm_redact_media', $attachments ) ) );
+}
+
+/**
+ * Args for aafm/get-media-item — one attachment by id, rich shape.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_get_media_item(): array {
+	return array(
+		'label'               => __( 'Get media item', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Read one media item by id: caption, description, date, filesize, parent, and all image sizes.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'attachment_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'attachment_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'media' => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_get_media_item',
+		'permission_callback' => 'aafm_perm_get_media',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/get-media-item — rich shape by attachment id.
+ *
+ * The id must resolve to a real attachment; anything else returns a generic error.
+ * The absolute server file path and uploader PII are never returned.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_get_media_item( array $input ) {
+	$att_id     = isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0;
+	$attachment = $att_id ? get_post( $att_id ) : null;
+	if ( ! $attachment instanceof WP_Post || 'attachment' !== $attachment->post_type ) {
+		return aafm_generic_error();
+	}
+
+	return array( 'media' => aafm_media_item_payload( $attachment ) );
+}
+
+/**
+ * Args for aafm/count-media — total plus per-mime breakdown, optional mime filter.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_count_media(): array {
+	return array(
+		'label'               => __( 'Count media', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Count media library items, total and broken down by mime type.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'mime_type' => array( 'type' => 'string' ),
+			),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'total'   => array( 'type' => 'integer' ),
+				'by_mime' => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_count_media',
+		'permission_callback' => 'aafm_perm_get_media',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/count-media — wp_count_attachments() returns counts keyed by mime
+ * type; sum for the total. An optional mime_type narrows the breakdown to one type.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>
+ */
+function aafm_exec_count_media( array $input ): array {
+	$counts = (array) wp_count_attachments();
+	$filter = isset( $input['mime_type'] ) ? sanitize_text_field( (string) $input['mime_type'] ) : '';
+
+	$by_mime = array();
+	$total   = 0;
+	foreach ( $counts as $mime => $n ) {
+		$n = (int) $n;
+		if ( '' !== $filter && $filter !== $mime ) {
+			continue;
+		}
+		$by_mime[ (string) $mime ] = $n;
+		$total                    += $n;
+	}
+
+	return array(
+		'total'   => $total,
+		'by_mime' => $by_mime,
+	);
 }
 
 /**

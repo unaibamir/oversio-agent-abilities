@@ -833,6 +833,57 @@ function aafm_redact_media( WP_Post $attachment ): array {
 }
 
 /**
+ * Build the RICH single-item media payload: the lean redact_media fields PLUS
+ * caption, description, GMT date, byte filesize, parent id, and a per-size map.
+ *
+ * Intentionally NOT folded into aafm_redact_media(): that redactor stays lean for
+ * the get-media LIST, which must not carry this extra weight. As with the lean
+ * shape, the absolute server file path and uploader PII are never exposed — only
+ * the public URL(s).
+ *
+ * @param WP_Post $attachment Attachment post.
+ * @return array<string,mixed>
+ */
+function aafm_media_item_payload( WP_Post $attachment ): array {
+	$base = aafm_redact_media( $attachment );
+	$meta = wp_get_attachment_metadata( $attachment->ID );
+
+	// Filesize in bytes: prefer the value already in attachment metadata, else stat
+	// the file. wp_filesize() returns 0 if the path is unreadable; never expose the path.
+	$filesize = isset( $meta['filesize'] ) ? (int) $meta['filesize'] : 0;
+	if ( 0 === $filesize ) {
+		$path     = get_attached_file( $attachment->ID );
+		$filesize = is_string( $path ) && '' !== $path ? (int) wp_filesize( $path ) : 0;
+	}
+
+	// Per-size map: each registered intermediate size plus 'full', resolved to a
+	// public { url, width, height }. Sizes that don't exist for this attachment are skipped.
+	$sizes = array();
+	foreach ( array_merge( get_intermediate_image_sizes(), array( 'full' ) ) as $size ) {
+		$src = wp_get_attachment_image_src( $attachment->ID, $size );
+		if ( is_array( $src ) && ! empty( $src[0] ) ) {
+			$sizes[ $size ] = array(
+				'url'    => (string) $src[0],
+				'width'  => (int) $src[1],
+				'height' => (int) $src[2],
+			);
+		}
+	}
+
+	return array_merge(
+		$base,
+		array(
+			'caption'     => (string) $attachment->post_excerpt,
+			'description' => (string) $attachment->post_content,
+			'date_gmt'    => (string) $attachment->post_date_gmt,
+			'filesize'    => $filesize,
+			'parent'      => (int) $attachment->post_parent,
+			'sizes'       => $sizes,
+		)
+	);
+}
+
+/**
  * Reduce a revision to a safe, metadata-only shape. Deliberately omits post_content,
  * excerpt, and link — the plugin never exposes raw bodies; revision diffs/content are a
  * post-launch change-history concern.
