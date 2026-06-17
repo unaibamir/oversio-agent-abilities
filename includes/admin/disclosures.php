@@ -67,6 +67,8 @@ function aafm_ability_disclosures(): array {
 		'aafm/acf-get-post-fields'    => __( "Reads all of a post's ACF field values, hydrated by field key. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
 		'aafm/acf-get-term-fields'    => __( "Reads all of a term's ACF field values, hydrated by field key. Requires edit access to that term.", 'agent-abilities-for-mcp' ),
 		'aafm/acf-get-user-fields'    => __( "Reads all of a user's ACF field values, hydrated by field key. If a field stores an email address (a user_email-type field), the real address is returned under the integration disclaimer. Requires edit access to that user.", 'agent-abilities-for-mcp' ),
+		'aafm/wc-list-products'       => __( 'Lists your WooCommerce products with their id, name, SKU, price, stock status, status, categories, and featured flag, and the total count. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-get-product'         => __( 'Reads one WooCommerce product by id: description, prices, stock, images, attributes, variation ids, and categories. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
 
 		// Writes.
 		'aafm/create-draft'           => __( 'Creates a new draft post. The agent drafts, a human publishes. It never goes live on its own.', 'agent-abilities-for-mcp' ),
@@ -103,6 +105,8 @@ function aafm_ability_disclosures(): array {
 		'aafm/acf-update-post-fields' => __( 'Writes ACF field values on a post by field key. Each value is sanitized for its field type before it is saved. Requires edit access to that post.', 'agent-abilities-for-mcp' ),
 		'aafm/acf-update-term-fields' => __( 'Writes ACF field values on a term by field key. Each value is sanitized for its field type. Requires edit access to that term.', 'agent-abilities-for-mcp' ),
 		'aafm/acf-update-user-fields' => __( "Writes ACF field values on a user by field key, each value sanitized for its field type. It only writes ACF fields, never the account's role or login. Requires edit access to that user.", 'agent-abilities-for-mcp' ),
+		'aafm/wc-create-product'      => __( 'Creates a WooCommerce product from a name, plus optional type, status, description, prices, SKU, stock, categories, tags, images, and attributes. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-update-product'      => __( 'Updates a WooCommerce product by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
 
 		// Destructive (still recoverable).
 		'aafm/trash-post'             => __( 'Moves a post the agent can edit to the Trash, where you can restore it. Never a permanent delete.', 'agent-abilities-for-mcp' ),
@@ -123,5 +127,6 @@ function aafm_ability_disclosures(): array {
 		'aafm/update-site-settings'   => __( 'Writes a small allowlist of site settings only (name, tagline, timezone, formats, posts per page). It can never change the site URL, admin email, default role, or open registration. Requires manage-options. Off by default.', 'agent-abilities-for-mcp' ),
 		'aafm/delete-menu'            => __( 'Permanently deletes a navigation menu and all of its items. This cannot be undone — menus have no Trash. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'aafm/delete-menu-item'       => __( 'Permanently removes one item from a navigation menu. This cannot be undone. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-delete-product'      => __( 'Permanently deletes a WooCommerce product, bypassing the Trash. This cannot be undone. Requires the manage-WooCommerce capability. Off by default.', 'agent-abilities-for-mcp' ),
 	);
 }
