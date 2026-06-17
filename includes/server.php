@@ -116,6 +116,13 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		case 'aafm/trash-post':
 			return static fn(): bool => current_user_can( 'delete_posts' );
 
+		// CPT writes: the type isn't known at discovery time (empty input), so use the
+		// object-independent authoring floor. The execute-time permission_callback still
+		// enforces the exact type's caps + allowlist + per-object edit.
+		case 'aafm/create-cpt-item':
+		case 'aafm/update-cpt-item':
+			return static fn(): bool => current_user_can( 'edit_posts' );
+
 		// Governed post-meta (get/update/delete): all gate on per-object edit_post (reads
 		// included — meta can hold private data), so discovery uses the same edit_posts floor
 		// as update-post, refined per-object at execute time.

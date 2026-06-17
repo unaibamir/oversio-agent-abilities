@@ -280,4 +280,18 @@ final class CptWritesTest extends TestCase {
 
 		$this->assertSame( 'enriched', get_post_meta( $post_id, 'aafm_demo_key', true ) );
 	}
+
+	public function test_cpt_writes_are_discoverable_by_a_capable_user(): void {
+		// edit_posts is the coarse discovery floor; an author holds it.
+		$this->acting_as( 'author' );
+		$this->assertTrue( aafm_user_can_discover_ability( 'aafm/create-cpt-item' ) );
+		$this->assertTrue( aafm_user_can_discover_ability( 'aafm/update-cpt-item' ) );
+	}
+
+	public function test_cpt_writes_are_not_discoverable_without_the_authoring_floor(): void {
+		// A subscriber lacks edit_posts → cannot even discover the tools.
+		$this->acting_as( 'subscriber' );
+		$this->assertFalse( aafm_user_can_discover_ability( 'aafm/create-cpt-item' ) );
+		$this->assertFalse( aafm_user_can_discover_ability( 'aafm/update-cpt-item' ) );
+	}
 }
