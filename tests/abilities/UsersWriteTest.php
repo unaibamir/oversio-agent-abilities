@@ -55,6 +55,26 @@ final class UsersWriteTest extends TestCase {
 		$this->assertContains( 'subscriber', (array) $new->roles, 'default role must be subscriber, not caller-chosen.' );
 	}
 
+	/**
+	 * An empty-string default_role option (get_option's fallback only fires when the option
+	 * is ABSENT) must still floor to subscriber, never create a roleless user. The option
+	 * change lives inside the test transaction — the suite rolls it back.
+	 */
+	public function test_create_user_floors_empty_default_role_to_subscriber(): void {
+		$this->acting_as( 'administrator' );
+		update_option( 'default_role', '' );
+		$res = wp_get_ability( 'aafm/create-user' )->execute(
+			array(
+				'username' => 'empty_default',
+				'email'    => 'empty_default@example.com',
+			)
+		);
+		$this->assertIsArray( $res );
+		$new = get_user_by( 'login', 'empty_default' );
+		$this->assertInstanceOf( \WP_User::class, $new );
+		$this->assertContains( 'subscriber', (array) $new->roles, 'an empty default_role must floor to subscriber, never roleless.' );
+	}
+
 	public function test_create_user_is_destructive_and_closed_schema(): void {
 		$ability = wp_get_ability( 'aafm/create-user' );
 		$ann     = $ability->get_meta_item( 'annotations' );

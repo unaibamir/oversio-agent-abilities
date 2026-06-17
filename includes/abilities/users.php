@@ -333,12 +333,17 @@ function aafm_exec_create_user( array $input ) {
 		? (string) $input['password']
 		: wp_generate_password( 24, true );
 
+	// Role is forced to the site default — never caller-chosen, so an agent can't mint an
+	// admin. get_option()'s fallback only fires when the option is ABSENT; an empty-string
+	// default_role would slip through and create a roleless user, so floor it to subscriber.
+	$default_role = (string) get_option( 'default_role', 'subscriber' );
+	$default_role = '' !== $default_role ? $default_role : 'subscriber';
+
 	$userdata = array(
 		'user_login'   => $username,
 		'user_email'   => $email,
 		'user_pass'    => $password,
-		// Role is forced to the site default — never caller-chosen, so an agent can't mint an admin.
-		'role'         => (string) get_option( 'default_role', 'subscriber' ),
+		'role'         => $default_role,
 		'display_name' => sanitize_text_field( (string) ( $input['display_name'] ?? $username ) ),
 		'first_name'   => sanitize_text_field( (string) ( $input['first_name'] ?? '' ) ),
 		'last_name'    => sanitize_text_field( (string) ( $input['last_name'] ?? '' ) ),
