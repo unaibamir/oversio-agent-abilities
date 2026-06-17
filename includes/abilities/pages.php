@@ -58,6 +58,14 @@ function aafm_register_pages_definitions( array $registry ): array {
 		'subject'      => 'content',
 		'args_builder' => 'aafm_args_trash_page',
 	);
+	$registry['aafm/delete-page'] = array(
+		'label'        => __( 'Delete page', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Permanently delete a page, bypassing the Trash. This cannot be undone — use trash-page to remove a page recoverably instead.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'destructive',
+		'subject'      => 'content',
+		'args_builder' => 'aafm_args_delete_page',
+	);
 	return $registry;
 }
 
@@ -417,4 +425,68 @@ function aafm_exec_trash_page( array $input ) {
 		return aafm_generic_error();
 	}
 	return array( 'trashed' => true );
+}
+
+/**
+ * Args for aafm/delete-page.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_delete_page(): array {
+	return array(
+		'label'               => __( 'Delete page', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Permanently delete a page, bypassing the Trash. This cannot be undone — use trash-page to remove a page recoverably instead.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'page_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'page_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array( 'deleted' => array( 'type' => 'boolean' ) ),
+		),
+		'execute_callback'    => 'aafm_exec_delete_page',
+		'permission_callback' => 'aafm_perm_delete_page',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => true,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/delete-page: type-pin to a page, then per-object delete_page.
+ *
+ * @param array<string,mixed> $input Input.
+ * @return bool
+ */
+function aafm_perm_delete_page( array $input ): bool {
+	$id   = isset( $input['page_id'] ) ? absint( $input['page_id'] ) : 0;
+	$post = $id ? get_post( $id ) : null;
+	// Keep the type pin so a non-page id is rejected, then delegate to the shared delete gate.
+	if ( ! $post instanceof WP_Post || 'page' !== $post->post_type ) {
+		return false;
+	}
+	return aafm_can_delete_post_object( $post );
+}
+
+/**
+ * Execute aafm/delete-page — delegates to the single sanctioned force-delete executor
+ * with the page type pinned, so pages.php never calls wp_delete_post directly (one call
+ * site, in posts.php).
+ *
+ * @param array<string,mixed> $input Input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_delete_page( array $input ) {
+	return aafm_force_delete_post( absint( $input['page_id'] ?? 0 ), 'page' );
 }
