@@ -66,6 +66,14 @@ function aafm_register_posts_definitions( array $registry ): array {
 		'subject'      => 'content',
 		'args_builder' => 'aafm_args_update_post',
 	);
+	$registry['aafm/replace-in-post'] = array(
+		'label'        => __( 'Replace in post', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Literal find-and-replace inside a post\'s content. Sanitizes the result and edits only the body; status is never touched. Reversible via revisions.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'content',
+		'args_builder' => 'aafm_args_replace_in_post',
+	);
 	$registry['aafm/trash-post']      = array(
 		'label'        => __( 'Trash post', 'agent-abilities-for-mcp' ),
 		'description'  => __( 'Move a post to trash (recoverable, never permanently deleted).', 'agent-abilities-for-mcp' ),
@@ -829,6 +837,125 @@ function aafm_exec_update_post( array $input ) {
 		return aafm_generic_error();
 	}
 	return array( 'post' => aafm_redact_post( $updated ) );
+}
+
+/**
+ * Args for aafm/replace-in-post.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_replace_in_post(): array {
+	return array(
+		'label'               => __( 'Replace in post', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Literal find-and-replace inside a post\'s content (no regex). Result is sanitized; status is never changed.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'post_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'search'  => array(
+					'type'      => 'string',
+					'minLength' => 1,
+				),
+				'replace' => array( 'type' => 'string' ),
+			),
+			'required'             => array( 'post_id', 'search', 'replace' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'post'         => array( 'type' => 'object' ),
+				'replacements' => array( 'type' => 'integer' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_replace_in_post',
+		'permission_callback' => 'aafm_perm_replace_in_post',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/replace-in-post: per-object edit_post on the target post — the
+ * established edit chokepoint. Reuses aafm_can_edit_post_object (floor + allowlist +
+ * map_meta_cap + current_user_can edit_post).
+ *
+ * @param array<string,mixed> $input Ability input.
+ * @return bool
+ */
+function aafm_perm_replace_in_post( array $input ): bool {
+	$id   = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+	$post = $id ? get_post( $id ) : null;
+	return $post instanceof WP_Post && aafm_can_edit_post_object( $post );
+}
+
+/**
+ * Execute aafm/replace-in-post.
+ *
+ * Literal str_replace (no regex — avoids ReDoS/injection). Counts occurrences of the
+ * search term BEFORE replacing. The replaced body is run through wp_kses_post so an agent
+ * cannot inject script even via the replacement string, then written with
+ * wp_update_post( wp_slash(...) ). Only post_content is written — status is never touched,
+ * so this inherits nothing status-related and can never publish/unpublish. A search term
+ * that does not occur is a no-op (replacements:0) returning the unchanged post, not an error.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_replace_in_post( array $input ) {
+	$id   = absint( $input['post_id'] );
+	$post = get_post( $id );
+	if ( ! $post instanceof WP_Post ) {
+		return aafm_generic_error();
+	}
+
+	$search  = (string) $input['search'];
+	$replace = (string) $input['replace'];
+	$content = (string) $post->post_content;
+
+	// Count occurrences against the original body; '' search is barred by schema minLength.
+	$replacements = substr_count( $content, $search );
+
+	if ( 0 === $replacements ) {
+		// No-op: return the unchanged post with a zero count, never an error.
+		return array(
+			'post'         => aafm_redact_post( $post ),
+			'replacements' => 0,
+		);
+	}
+
+	$new = wp_kses_post( str_replace( $search, $replace, $content ) );
+
+	$result = wp_update_post(
+		wp_slash(
+			array(
+				'ID'           => $id,
+				'post_content' => $new,
+			)
+		),
+		true
+	);
+	if ( is_wp_error( $result ) ) {
+		return aafm_generic_error();
+	}
+
+	$updated = get_post( (int) $result );
+	if ( ! $updated instanceof WP_Post ) {
+		return aafm_generic_error();
+	}
+
+	return array(
+		'post'         => aafm_redact_post( $updated ),
+		'replacements' => $replacements,
+	);
 }
 
 /**
