@@ -33,7 +33,7 @@ function aafm_integration_active( string $slug ): bool {
 			$active = aafm_acf_active();
 			break;
 		case 'woocommerce':
-			$active = class_exists( 'WooCommerce' );
+			$active = aafm_woocommerce_active();
 			break;
 		default:
 			return false;
@@ -100,6 +100,34 @@ function aafm_acf_active(): bool {
 	 * @param bool $active Detected active state.
 	 */
 	return (bool) apply_filters( 'aafm_acf_active', $active );
+}
+
+/**
+ * Whether WooCommerce is active, behind a filterable seam.
+ *
+ * Real detection is class_exists('WooCommerce'). This is wrapped in its own filter for the same
+ * reason the ACF sub-detection is: the PHPUnit suite stubs the WooCommerce host API by defining a
+ * WooCommerce marker class process-wide, and a defined class can never be undefined. So a test that
+ * needs WooCommerce reported INACTIVE (the host-absent default, the tab "Not installed" state)
+ * cannot flip detection back off by removing the aafm_integration_active_woocommerce force filter
+ * alone — real detection would still see the stubbed class and report WooCommerce active. Driving
+ * this seam to false through aafm_woocommerce_active lets those tests force detection OFF
+ * deterministically, mirroring how aafm_acf_active and aafm_seo_active_plugin are pinned.
+ * Production passes the real detection through unchanged.
+ *
+ * @return bool
+ */
+function aafm_woocommerce_active(): bool {
+	$active = class_exists( 'WooCommerce' );
+
+	/**
+	 * Filters whether WooCommerce is reported active. Production passes real detection through; the
+	 * test suite uses this to pin WooCommerce inactive deterministically (the WooCommerce marker
+	 * class the stub defines is process-permanent, so removing the force filter alone is not enough).
+	 *
+	 * @param bool $active Detected active state.
+	 */
+	return (bool) apply_filters( 'aafm_woocommerce_active', $active );
 }
 
 /**

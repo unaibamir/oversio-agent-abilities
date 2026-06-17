@@ -29,7 +29,14 @@ final class IntegrationDetectionTest extends TestCase {
 		add_filter( 'aafm_acf_active', '__return_false', 99 );
 		$this->assertFalse( aafm_integration_active( 'acf' ) );
 		remove_filter( 'aafm_acf_active', '__return_false', 99 );
+		// WooCommerce detection keys on class_exists('WooCommerce'); the WooProductsTest fixture
+		// defines a WooCommerce marker class process-wide (and a defined class cannot be undefined),
+		// so once that suite has run real WC detection legitimately reports active here. Pin the
+		// aafm_woocommerce_active seam off — the same seam production detection passes through — to
+		// assert the host-absent default.
+		add_filter( 'aafm_woocommerce_active', '__return_false', 99 );
 		$this->assertFalse( aafm_integration_active( 'woocommerce' ) );
+		remove_filter( 'aafm_woocommerce_active', '__return_false', 99 );
 	}
 
 	public function test_per_slug_filter_forces_active_for_tests(): void {

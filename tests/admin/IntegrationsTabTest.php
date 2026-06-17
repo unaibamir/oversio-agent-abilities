@@ -26,9 +26,15 @@ final class IntegrationsTabTest extends TestCase {
 		// detection reports active. Pin SEO inactive through its own filter — the seam production
 		// detection passes through — so the "Not installed" state is deterministic here.
 		add_filter( 'aafm_integration_active_seo', '__return_false', 99 );
+		// WooProductsTest defines a WooCommerce marker class process-wide (a class cannot be
+		// undefined), so once that suite has run real WC detection reports active. Pin the
+		// aafm_woocommerce_active seam off — the same seam production detection passes through — so
+		// the "Not installed" state stays deterministic regardless of test order.
+		add_filter( 'aafm_woocommerce_active', '__return_false', 99 );
 		ob_start();
 		aafm_render_integrations_tab();
 		$html = (string) ob_get_clean();
+		remove_filter( 'aafm_woocommerce_active', '__return_false', 99 );
 		remove_filter( 'aafm_integration_active_seo', '__return_false', 99 );
 
 		// One card per integration, reusing the shared component class.
@@ -50,8 +56,13 @@ final class IntegrationsTabTest extends TestCase {
 		// detection markers (WPSEO_VERSION / a RankMath class) process-wide, so pin SEO inactive
 		// through its filter to keep this status deterministic regardless of test order.
 		add_filter( 'aafm_integration_active_seo', '__return_false', 99 );
+		// WooProductsTest defines a WooCommerce marker class process-wide, so pin the WC seam off too
+		// (the same seam production detection passes through) to keep the not_installed status
+		// deterministic regardless of test order.
+		add_filter( 'aafm_woocommerce_active', '__return_false', 99 );
 		$this->assertSame( 'not_installed', aafm_integration_status( 'woocommerce' ) );
 		$this->assertSame( 'not_installed', aafm_integration_status( 'seo' ) );
+		remove_filter( 'aafm_woocommerce_active', '__return_false', 99 );
 		remove_filter( 'aafm_integration_active_seo', '__return_false', 99 );
 	}
 
