@@ -130,6 +130,90 @@ if ( ! class_exists( 'WC_Product' ) ) {
 	}
 }
 
+if ( ! class_exists( 'WC_Product_Variation' ) ) {
+	/**
+	 * Minimal WooCommerce product-variation signature for static analysis only.
+	 */
+	class WC_Product_Variation {
+		public function __construct( $variation = 0 ) {}
+		public function get_id(): int {
+			return 0;
+		}
+		public function get_parent_id(): int {
+			return 0;
+		}
+		public function get_type(): string {
+			return 'variation';
+		}
+		public function get_status(): string {
+			return '';
+		}
+		public function get_sku(): string {
+			return '';
+		}
+		public function get_description(): string {
+			return '';
+		}
+		public function get_price(): string {
+			return '';
+		}
+		public function get_regular_price(): string {
+			return '';
+		}
+		public function get_sale_price(): string {
+			return '';
+		}
+		public function get_stock_status(): string {
+			return '';
+		}
+		/** @return int|null */
+		public function get_stock_quantity() {
+			return null;
+		}
+		public function get_manage_stock(): bool {
+			return false;
+		}
+		public function get_image_id(): int {
+			return 0;
+		}
+		/** @return array<int|string,mixed> */
+		public function get_attributes(): array {
+			return array();
+		}
+		/** @param mixed $value @return void */
+		public function set_parent_id( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_status( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_sku( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_description( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_regular_price( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_sale_price( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_price( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_stock_status( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_stock_quantity( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_manage_stock( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_image_id( $value ) {}
+		/** @param mixed $value @return void */
+		public function set_attributes( $value ) {}
+		public function save(): int {
+			return 0;
+		}
+		/** @param bool $force_delete @return bool */
+		public function delete( $force_delete = false ): bool {
+			return true;
+		}
+	}
+}
+
 if ( ! function_exists( 'wc_get_product' ) ) {
 	/**
 	 * @param int|false $the_product

@@ -200,6 +200,13 @@ trait IntegrationStubs {
 			// abilities call are implemented. A test-only stub, never shipped.
 			eval( $this->aafm_wc_product_class_source() ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- a class stub for tests; never shipped.
 		}
+		if ( ! class_exists( 'WC_Product_Variation' ) ) {
+			// A minimal WC_Product_Variation backed by the same WcStubStore (a variation is a product
+			// row carrying type='variation' and a parent_id). Its get_attributes() returns the flat
+			// name=>value map a real variation exposes (NOT the WC_Product_Attribute objects a variable
+			// parent returns). Defined after WC_Product so the parent class exists. A test-only stub.
+			eval( $this->aafm_wc_variation_class_source() ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- a class stub for tests; never shipped.
+		}
 		if ( ! function_exists( 'wc_get_product' ) ) {
 			// phpcs:ignore Squiz.PHP.Eval.Discouraged -- function-only stub for tests; never shipped.
 			eval( 'function wc_get_product( $id = false ) { $id = (int) $id; return \AAFM\Tests\WcStubStore::exists( $id ) ? new \WC_Product( $id ) : false; }' );
@@ -263,6 +270,56 @@ class WC_Product {
 	public function set_image_id( $v ) { $this->data['image_id'] = (int) $v; }
 	public function set_attributes( $v ) { $this->data['attributes'] = (array) $v; }
 	public function save() { $id = \AAFM\Tests\WcStubStore::save( $this->data ); $this->data['id'] = $id; return $id; }
+	public function delete( $force = false ) { \AAFM\Tests\WcStubStore::delete( (int) ( $this->data['id'] ?? 0 ) ); return true; }
+}
+PHP;
+	}
+
+	/**
+	 * The source of the stub WC_Product_Variation class. Kept as a string so the eval definition is
+	 * guarded by class_exists and the trait file still holds exactly one object structure (the trait).
+	 *
+	 * A variation is a product row with type='variation' and a parent_id; its attributes are a flat
+	 * name=>value map (the variation's chosen values), unlike a variable parent's attribute objects.
+	 *
+	 * @return string
+	 */
+	private function aafm_wc_variation_class_source(): string {
+		return <<<'PHP'
+class WC_Product_Variation {
+	private $data = array();
+	public function __construct( $id = 0 ) {
+		$id = (int) $id;
+		$stored = \AAFM\Tests\WcStubStore::get( $id );
+		$this->data = is_array( $stored ) ? $stored : array( 'id' => 0, 'type' => 'variation' );
+	}
+	public function get_id() { return (int) ( $this->data['id'] ?? 0 ); }
+	public function get_parent_id() { return (int) ( $this->data['parent_id'] ?? 0 ); }
+	public function get_type() { return 'variation'; }
+	public function get_status() { return (string) ( $this->data['status'] ?? 'publish' ); }
+	public function get_sku() { return (string) ( $this->data['sku'] ?? '' ); }
+	public function get_description() { return (string) ( $this->data['description'] ?? '' ); }
+	public function get_price() { return (string) ( $this->data['price'] ?? '' ); }
+	public function get_regular_price() { return (string) ( $this->data['regular_price'] ?? '' ); }
+	public function get_sale_price() { return (string) ( $this->data['sale_price'] ?? '' ); }
+	public function get_stock_status() { return (string) ( $this->data['stock_status'] ?? 'instock' ); }
+	public function get_stock_quantity() { return $this->data['stock_quantity'] ?? null; }
+	public function get_manage_stock() { return (bool) ( $this->data['manage_stock'] ?? false ); }
+	public function get_image_id() { return (int) ( $this->data['image_id'] ?? 0 ); }
+	public function get_attributes() { return (array) ( $this->data['attributes'] ?? array() ); }
+	public function set_parent_id( $v ) { $this->data['parent_id'] = (int) $v; }
+	public function set_status( $v ) { $this->data['status'] = (string) $v; }
+	public function set_sku( $v ) { $this->data['sku'] = (string) $v; }
+	public function set_description( $v ) { $this->data['description'] = (string) $v; }
+	public function set_regular_price( $v ) { $this->data['regular_price'] = (string) $v; $this->data['price'] = (string) $v; } // price tracks regular only.
+	public function set_sale_price( $v ) { $this->data['sale_price'] = (string) $v; }
+	public function set_price( $v ) { $this->data['price'] = (string) $v; }
+	public function set_stock_status( $v ) { $this->data['stock_status'] = (string) $v; }
+	public function set_stock_quantity( $v ) { $this->data['stock_quantity'] = ( null === $v ? null : (int) $v ); }
+	public function set_manage_stock( $v ) { $this->data['manage_stock'] = (bool) $v; }
+	public function set_image_id( $v ) { $this->data['image_id'] = (int) $v; }
+	public function set_attributes( $v ) { $this->data['attributes'] = (array) $v; }
+	public function save() { $this->data['type'] = 'variation'; $id = \AAFM\Tests\WcStubStore::save( $this->data ); $this->data['id'] = $id; return $id; }
 	public function delete( $force = false ) { \AAFM\Tests\WcStubStore::delete( (int) ( $this->data['id'] ?? 0 ) ); return true; }
 }
 PHP;

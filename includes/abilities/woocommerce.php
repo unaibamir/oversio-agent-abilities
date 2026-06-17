@@ -72,6 +72,48 @@ function aafm_register_woocommerce_definitions( array $registry ): array {
 		'args_builder' => 'aafm_args_wc_delete_product',
 	);
 
+	// Variations (sub-slice W4-WC1b) — a variable product's child variations, parent_id-scoped.
+	$registry['aafm/wc-list-product-variations']  = array(
+		'label'        => __( 'List WooCommerce product variations', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Lists a variable product\'s variations by parent product id, each with its id, parent id, SKU, price, stock status, and status, plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_list_product_variations',
+	);
+	$registry['aafm/wc-get-product-variation']    = array(
+		'label'        => __( 'Get WooCommerce product variation', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Reads one product variation by id, including its parent id, prices, stock, description, image, and its chosen attribute values. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_get_product_variation',
+	);
+	$registry['aafm/wc-create-product-variation'] = array(
+		'label'        => __( 'Create WooCommerce product variation', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Creates a variation under a variable product (parent product id required) from optional status, description, prices, SKU, stock, image, and attribute values. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_create_product_variation',
+	);
+	$registry['aafm/wc-update-product-variation'] = array(
+		'label'        => __( 'Update WooCommerce product variation', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Updates a product variation by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_update_product_variation',
+	);
+	$registry['aafm/wc-delete-product-variation'] = array(
+		'label'        => __( 'Delete WooCommerce product variation', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Permanently deletes a product variation by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'destructive',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_delete_product_variation',
+	);
+
 	return $registry;
 }
 
@@ -754,4 +796,262 @@ function aafm_exec_wc_delete_product( array $input ) {
 		'id'      => $id,
 		'deleted' => true,
 	);
+}
+
+/*
+ * --------------------------------------------------------------------------
+ * Variations (sub-slice W4-WC1b) — a variable product's child variations.
+ *
+ * A variation is parent_id-scoped: list takes the parent product id and returns its children; get /
+ * create / update / delete operate on a single variation by its own id. Everything flows through the
+ * WC CRUD layer (wc_get_product / new WC_Product_Variation + getters/setters/save/delete), never a
+ * raw $wpdb query. A variation's attributes are a flat name=>value map (the variation's chosen
+ * values), unlike a variable parent's attribute objects.
+ * --------------------------------------------------------------------------
+ */
+
+/**
+ * Resolve a variation id to a WC_Product_Variation, or null when WooCommerce is unavailable, the id
+ * is unknown, or the product at that id is not actually a variation.
+ *
+ * @param int $id Variation id.
+ * @return \WC_Product_Variation|null
+ */
+function aafm_wc_get_variation( int $id ): ?\WC_Product_Variation {
+	if ( $id < 1 || ! function_exists( 'wc_get_product' ) ) {
+		return null;
+	}
+	$variation = wc_get_product( $id );
+	if ( $variation instanceof \WC_Product_Variation ) {
+		return $variation;
+	}
+	// A non-variation product (or false) at this id is not a valid variation target.
+	if ( $variation instanceof \WC_Product && 'variation' === $variation->get_type() && class_exists( 'WC_Product_Variation' ) ) {
+		return new \WC_Product_Variation( $id );
+	}
+	return null;
+}
+
+/**
+ * The lean list shape for a variation: id, parent_id, sku, price, stock_status, status. No
+ * description, no attributes (list rows stay lean).
+ *
+ * @param \WC_Product_Variation $variation Variation.
+ * @return array<string,mixed>
+ */
+function aafm_redact_wc_variation( \WC_Product_Variation $variation ): array {
+	return array(
+		'id'           => (int) $variation->get_id(),
+		'parent_id'    => (int) $variation->get_parent_id(),
+		'sku'          => (string) $variation->get_sku(),
+		'price'        => (string) $variation->get_price(),
+		'stock_status' => (string) $variation->get_stock_status(),
+		'status'       => (string) $variation->get_status(),
+	);
+}
+
+/**
+ * The full single-variation shape: the lean fields plus description, prices, stock, image, and the
+ * variation's chosen attribute values (a flat name=>value map cast to object so an empty one encodes
+ * as {}). Never a filesystem path — the image is an attachment id, not a file path.
+ *
+ * @param \WC_Product_Variation $variation Variation.
+ * @return array<string,mixed>
+ */
+function aafm_rich_wc_variation( \WC_Product_Variation $variation ): array {
+	$attributes = array();
+	foreach ( (array) $variation->get_attributes() as $key => $value ) {
+		$attributes[ (string) $key ] = is_scalar( $value ) ? (string) $value : '';
+	}
+
+	$base = aafm_redact_wc_variation( $variation );
+
+	return array_merge(
+		$base,
+		array(
+			'description'    => (string) $variation->get_description(),
+			'regular_price'  => (string) $variation->get_regular_price(),
+			'sale_price'     => (string) $variation->get_sale_price(),
+			'manage_stock'   => (bool) $variation->get_manage_stock(),
+			'stock_quantity' => null === $variation->get_stock_quantity() ? null : (int) $variation->get_stock_quantity(),
+			'image_id'       => (int) $variation->get_image_id(),
+			// Cast so an empty attributes map encodes to "{}" (object) per the schema, never "[]".
+			'attributes'     => (object) $attributes,
+		)
+	);
+}
+
+/**
+ * The shared output_schema properties for the full single-variation shape — the exact field set
+ * aafm_rich_wc_variation() emits. Reused by the get/create/update output_schemas so all three stay in
+ * lockstep with the rich assembler. `attributes` is an object (an empty map encodes as {}).
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_variation_output_properties(): array {
+	return array(
+		'id'             => array( 'type' => 'integer' ),
+		'parent_id'      => array( 'type' => 'integer' ),
+		'sku'            => array( 'type' => 'string' ),
+		'price'          => array( 'type' => 'string' ),
+		'stock_status'   => array( 'type' => 'string' ),
+		'status'         => array( 'type' => 'string' ),
+		'description'    => array( 'type' => 'string' ),
+		'regular_price'  => array( 'type' => 'string' ),
+		'sale_price'     => array( 'type' => 'string' ),
+		'manage_stock'   => array( 'type' => 'boolean' ),
+		'stock_quantity' => array( 'type' => array( 'integer', 'null' ) ),
+		'image_id'       => array( 'type' => 'integer' ),
+		'attributes'     => array( 'type' => 'object' ),
+	);
+}
+
+/**
+ * Args for aafm/wc-list-product-variations.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_list_product_variations(): array {
+	return array(
+		'label'               => __( 'List WooCommerce product variations', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Lists a variable product's variations by parent product id (id, parent id, SKU, price, stock status, status) plus a total. Requires the manage-WooCommerce capability.", 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'product_id' => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => 'The parent (variable) product id.',
+				),
+				'page'       => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'per_page'   => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+					'maximum' => 100,
+				),
+			),
+			'required'             => array( 'product_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'variations' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'                 => 'object',
+						'properties'           => array(
+							'id'           => array( 'type' => 'integer' ),
+							'parent_id'    => array( 'type' => 'integer' ),
+							'sku'          => array( 'type' => 'string' ),
+							'price'        => array( 'type' => 'string' ),
+							'stock_status' => array( 'type' => 'string' ),
+							'status'       => array( 'type' => 'string' ),
+						),
+						'additionalProperties' => false,
+					),
+				),
+				'total'      => array( 'type' => 'integer' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_list_product_variations',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-list-product-variations.
+ *
+ * Resolves the parent product, then loads each child id as a variation. Supports page/per_page
+ * paging over the child id list, with `total` reporting the full child count for pagination.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_wc_list_product_variations( array $input ) {
+	$parent = aafm_wc_get_product( (int) ( $input['product_id'] ?? 0 ) );
+	if ( null === $parent ) {
+		return aafm_generic_error();
+	}
+
+	$child_ids = array_map( 'intval', (array) $parent->get_children() );
+	$total     = count( $child_ids );
+
+	$per_page = isset( $input['per_page'] ) ? min( 100, max( 1, (int) $input['per_page'] ) ) : 20;
+	$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
+	$offset   = ( $page - 1 ) * $per_page;
+	$page_ids = array_slice( $child_ids, $offset, $per_page );
+
+	$variations = array();
+	foreach ( $page_ids as $child_id ) {
+		$variation = aafm_wc_get_variation( (int) $child_id );
+		if ( null !== $variation ) {
+			$variations[] = aafm_redact_wc_variation( $variation );
+		}
+	}
+
+	return array(
+		'variations' => $variations,
+		'total'      => $total,
+	);
+}
+
+/**
+ * Args for aafm/wc-get-product-variation.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_get_product_variation(): array {
+	return array(
+		'label'               => __( 'Get WooCommerce product variation', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Reads one product variation by id (full shape incl. parent id, prices, stock, image, attribute values). Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'variation_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'variation_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => aafm_wc_variation_output_properties(),
+		),
+		'execute_callback'    => 'aafm_exec_wc_get_product_variation',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-get-product-variation.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_wc_get_product_variation( array $input ) {
+	$variation = aafm_wc_get_variation( (int) ( $input['variation_id'] ?? 0 ) );
+	if ( null === $variation ) {
+		return aafm_generic_error();
+	}
+	return aafm_rich_wc_variation( $variation );
 }

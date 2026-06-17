@@ -58,6 +58,7 @@ class WcStubStore {
 	public static function seed( int $id, array $data ): void {
 		$data['id']            = $id;
 		self::$products[ $id ] = self::with_defaults( $data );
+		self::link_child_to_parent( $id, (int) ( self::$products[ $id ]['parent_id'] ?? 0 ) );
 	}
 
 	/**
@@ -83,6 +84,10 @@ class WcStubStore {
 	/**
 	 * Persist a product's data (create when id is 0/absent, else update), returning the id.
 	 *
+	 * When the row carries a parent_id (a variation), the parent product's children list is kept in
+	 * sync so a following $parent->get_children() returns the new id — mirroring how a real variable
+	 * product owns its variations.
+	 *
 	 * @param array<string,mixed> $data Product data, including 'id' (0 to create).
 	 * @return int The persisted id.
 	 */
@@ -94,17 +99,60 @@ class WcStubStore {
 		}
 		$data['id']            = $id;
 		self::$products[ $id ] = self::with_defaults( $data );
+
+		self::link_child_to_parent( $id, (int) ( self::$products[ $id ]['parent_id'] ?? 0 ) );
+
 		return $id;
 	}
 
 	/**
-	 * Permanently remove a product id.
+	 * Permanently remove a product id, unlinking it from its parent's children list if it is a
+	 * variation.
 	 *
 	 * @param int $id Product id.
 	 * @return void
 	 */
 	public static function delete( int $id ): void {
+		$parent_id = (int) ( self::$products[ $id ]['parent_id'] ?? 0 );
 		unset( self::$products[ $id ] );
+		if ( $parent_id > 0 ) {
+			self::unlink_child_from_parent( $id, $parent_id );
+		}
+	}
+
+	/**
+	 * Ensure a parent product's children list contains the child id (idempotent).
+	 *
+	 * @param int $child_id  The variation id.
+	 * @param int $parent_id The parent product id (0 = not a variation).
+	 * @return void
+	 */
+	private static function link_child_to_parent( int $child_id, int $parent_id ): void {
+		if ( $parent_id <= 0 || ! isset( self::$products[ $parent_id ] ) ) {
+			return;
+		}
+		$children = array_map( 'intval', (array) ( self::$products[ $parent_id ]['children'] ?? array() ) );
+		if ( ! in_array( $child_id, $children, true ) ) {
+			$children[]                               = $child_id;
+			self::$products[ $parent_id ]['children'] = $children;
+		}
+	}
+
+	/**
+	 * Remove a child id from a parent product's children list.
+	 *
+	 * @param int $child_id  The variation id.
+	 * @param int $parent_id The parent product id.
+	 * @return void
+	 */
+	private static function unlink_child_from_parent( int $child_id, int $parent_id ): void {
+		if ( ! isset( self::$products[ $parent_id ] ) ) {
+			return;
+		}
+		$children                                 = array_map( 'intval', (array) ( self::$products[ $parent_id ]['children'] ?? array() ) );
+		self::$products[ $parent_id ]['children'] = array_values(
+			array_filter( $children, static fn( int $cid ): bool => $cid !== $child_id )
+		);
 	}
 
 	/**
@@ -182,6 +230,7 @@ class WcStubStore {
 		return array_merge(
 			array(
 				'id'                => 0,
+				'parent_id'         => 0,
 				'name'              => '',
 				'type'              => 'simple',
 				'status'            => 'publish',
