@@ -561,6 +561,45 @@ final class PostsWriteTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $out );
 	}
 
+	public function test_update_denies_term_assign_without_assign_terms_cap(): void {
+		// Symmetric to the create-path gate: the update path shares the same
+		// aafm_validate_write_enrichment()->aafm_validate_term_ids_for_taxonomy() gate, so a
+		// user lacking the taxonomy's primitive assign_terms cap must be denied before any
+		// write. A custom public taxonomy whose assign_terms is a cap no standard role holds
+		// isolates the gate; this test locks the update path against a refactor that drops it.
+		register_taxonomy(
+			'aafm_gated_tax',
+			'post',
+			array(
+				'public'       => true,
+				'hierarchical' => true,
+				'capabilities' => array(
+					'assign_terms' => 'aafm_assign_gated_terms',
+				),
+			)
+		);
+
+		// The acting editor CAN edit this post but lacks the gated assign_terms cap.
+		$editor = $this->acting_as( 'editor' );
+		$post   = self::factory()->post->create( array( 'post_author' => $editor ) );
+		$term   = self::factory()->term->create( array( 'taxonomy' => 'aafm_gated_tax' ) );
+
+		$out = wp_get_ability( 'aafm/update-post' )->execute(
+			array(
+				'post_id' => $post,
+				'terms'   => array( 'aafm_gated_tax' => array( $term ) ),
+			)
+		);
+
+		$assigned = wp_get_post_terms( $post, 'aafm_gated_tax', array( 'fields' => 'ids' ) );
+
+		unregister_taxonomy( 'aafm_gated_tax' );
+
+		$this->assertInstanceOf( WP_Error::class, $out );
+		// The gate denied before the write — the post's terms in that taxonomy are unchanged.
+		$this->assertSame( array(), $assigned );
+	}
+
 	public function test_create_rejects_non_allowlisted_meta_at_ability_level(): void {
 		$this->acting_as( 'editor' );
 		update_option( 'aafm_allowed_meta_keys', array( 'subtitle' ) );
