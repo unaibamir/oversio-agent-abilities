@@ -63,6 +63,10 @@ function aafm_ability_disclosures(): array {
 		'aafm/seo-get-post'         => __( "Reads a post's SEO fields (title, description, focus keyword, canonical URL, robots, and social tags) from whichever SEO plugin is active. Full field coverage is Yoast and Rank Math; on All in One SEO only the title and description are read. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
 		'aafm/seo-get-schema'       => __( "Reads a post's structured-data schema (JSON-LD) from Rank Math. On a site running Yoast or another SEO plugin it returns an error rather than guessing at that plugin's schema storage. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
 		'aafm/seo-get-head'         => __( 'Reads the rendered SEO head markup for a post when the active plugin offers one, and an empty string when it does not. Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
+		'aafm/acf-list-field-groups' => __( 'Lists your ACF field groups and the fields inside each one (key, label, and type) so an agent can discover what fields exist. It returns structure only, never stored values. Requires the edit-posts capability.', 'agent-abilities-for-mcp' ),
+		'aafm/acf-get-post-fields'  => __( "Reads all of a post's ACF field values, hydrated by field key. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'aafm/acf-get-term-fields'  => __( "Reads all of a term's ACF field values, hydrated by field key. Requires edit access to that term.", 'agent-abilities-for-mcp' ),
+		'aafm/acf-get-user-fields'  => __( "Reads all of a user's ACF field values, hydrated by field key. If a field stores an email address (a user_email-type field), the real address is returned under the integration disclaimer. Requires edit access to that user.", 'agent-abilities-for-mcp' ),
 
 		// Writes.
 		'aafm/create-draft'         => __( 'Creates a new draft post. The agent drafts, a human publishes. It never goes live on its own.', 'agent-abilities-for-mcp' ),
@@ -96,6 +100,9 @@ function aafm_ability_disclosures(): array {
 		'aafm/update-template'      => __( 'Updates a database block template by id. Its markup is sanitized, and theme-file templates cannot be edited. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
 		'aafm/seo-update-post'      => __( "Writes a post's SEO fields to the active plugin's meta keys. URL fields are sanitized as URLs. Full field coverage is Yoast and Rank Math; on All in One SEO only the title and description are written. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
 		'aafm/seo-update-schema'    => __( "Writes a post's structured-data schema (JSON-LD) to Rank Math. The whole object is sanitized, top to bottom. On a site running Yoast or another SEO plugin it returns an error. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'aafm/acf-update-post-fields' => __( 'Writes ACF field values on a post by field key. Each value is sanitized for its field type before it is saved. Requires edit access to that post.', 'agent-abilities-for-mcp' ),
+		'aafm/acf-update-term-fields' => __( 'Writes ACF field values on a term by field key. Each value is sanitized for its field type. Requires edit access to that term.', 'agent-abilities-for-mcp' ),
+		'aafm/acf-update-user-fields' => __( "Writes ACF field values on a user by field key, each value sanitized for its field type. It only writes ACF fields, never the account's role or login. Requires edit access to that user.", 'agent-abilities-for-mcp' ),
 
 		// Destructive (still recoverable).
 		'aafm/trash-post'           => __( 'Moves a post the agent can edit to the Trash, where you can restore it. Never a permanent delete.', 'agent-abilities-for-mcp' ),

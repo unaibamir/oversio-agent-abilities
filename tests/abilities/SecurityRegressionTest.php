@@ -336,6 +336,16 @@ final class SecurityRegressionTest extends TestCase {
 		// The other FSE abilities (list-templates, get-template, update-template, get-global-styles)
 		// trip no needle, so they need no sanction.
 		$sanctioned = array_merge( $sanctioned, array( 'aafm/get-active-theme', 'aafm/list-themes' ) );
+		// acf-update-user-fields trips the update-user needle but is an ACF custom-field write
+		// gated per-object on edit_user($id), default-OFF, audited, closed-schema — it never
+		// touches the role/account surface the needle bans. The closed top-level schema accepts
+		// only user_id + a fields object, so a smuggled role/login/capabilities key is rejected
+		// before execute, and the field map values are type-sanitized. A generic user-write surface
+		// (aafm/update-user, aafm/create-user, aafm/delete-user) stays banned. The other ACF names
+		// trip no needle: acf-list-field-groups / acf-get-*-fields / acf-update-post-fields /
+		// acf-update-term-fields contain none of meta/option/role/setting/plugin/theme/create-user/
+		// update-user/delete-user.
+		$sanctioned = array_merge( $sanctioned, array( 'aafm/acf-update-user-fields' ) );
 		foreach ( array_keys( $registry ) as $name ) {
 			if ( in_array( $name, $sanctioned, true ) ) {
 				continue;

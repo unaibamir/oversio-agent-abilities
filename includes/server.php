@@ -155,6 +155,22 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		case 'aafm/seo-get-schema':
 		case 'aafm/seo-update-schema':
 			return static fn(): bool => current_user_can( 'edit_posts' );
+
+		// ACF integration: the post/term field abilities gate per-object on edit_post($id) /
+		// edit_term($term_id), false with empty input, so discovery uses the edit_posts authoring
+		// floor, refined per-object at execute (term meta is gated like post meta in this catalog).
+		// The user field abilities gate per-object on edit_user($id), so discovery uses the
+		// edit_users floor. acf-list-field-groups gates on the object-independent edit_posts floor
+		// directly, so it needs no case here: it falls through to aafm_perm_acf_list_field_groups
+		// with empty input, the correct discovery answer.
+		case 'aafm/acf-get-post-fields':
+		case 'aafm/acf-update-post-fields':
+		case 'aafm/acf-get-term-fields':
+		case 'aafm/acf-update-term-fields':
+			return static fn(): bool => current_user_can( 'edit_posts' );
+		case 'aafm/acf-get-user-fields':
+		case 'aafm/acf-update-user-fields':
+			return static fn(): bool => current_user_can( 'edit_users' );
 		case 'aafm/get-block':
 		case 'aafm/update-block':
 			return static fn(): bool => current_user_can( 'edit_posts' );
