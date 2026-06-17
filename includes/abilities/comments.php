@@ -695,3 +695,112 @@ function aafm_exec_moderate_comment( array $input ) {
 
 	return array( 'status' => wp_get_comment_status( $id ) );
 }
+
+/**
+ * Args for aafm/update-comment.
+ *
+ * Edits ONLY the comment body. The closed schema accepts comment_id + content; it
+ * never accepts comment_post_ID, email, IP, or author fields, so an edit can't be
+ * used to re-target, re-author, or de-redact a comment. Content is sanitized before
+ * the update. The moderate_comments floor plus per-object edit_comment is the gate.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_update_comment(): array {
+	return array(
+		'label'               => __( 'Update comment', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Edit a comment's content (requires edit access to that comment).", 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'comment_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'content'    => array(
+					'type'      => 'string',
+					'minLength' => 1,
+					'maxLength' => 65525,
+				),
+			),
+			'required'             => array( 'comment_id', 'content' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'comment' => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_update_comment',
+		'permission_callback' => 'aafm_perm_edit_comment_obj',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Per-object edit gate shared by update-comment and delete-comment.
+ *
+ * The site-wide moderate_comments cap is the floor — the same posture as
+ * aafm_perm_moderate_comment_obj() — so a low-cap user who happens to be able to
+ * edit their own comment can never reach these writes. On top of the floor the caller
+ * must be able to edit the specific comment (edit_comment maps through the parent
+ * post's edit caps), so a moderator can't touch a comment they couldn't edit in the
+ * dashboard. A missing id denies. Every denial is audited by the registration wrapper.
+ *
+ * @param array<string,mixed> $input Input.
+ * @return bool
+ */
+function aafm_perm_edit_comment_obj( array $input ): bool {
+	if ( ! current_user_can( 'moderate_comments' ) ) {
+		return false;
+	}
+	$id = isset( $input['comment_id'] ) ? absint( $input['comment_id'] ) : 0;
+	return $id > 0 && current_user_can( 'edit_comment', $id );
+}
+
+/**
+ * Execute aafm/update-comment.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_update_comment( array $input ) {
+	$id      = isset( $input['comment_id'] ) ? absint( $input['comment_id'] ) : 0;
+	$content = isset( $input['content'] ) ? wp_kses_post( (string) $input['content'] ) : '';
+
+	if ( ! get_comment( $id ) instanceof WP_Comment ) {
+		return aafm_generic_error();
+	}
+	if ( '' === trim( $content ) ) {
+		return aafm_generic_error();
+	}
+
+	// wp_update_comment() unslashes internally, so the content is slashed on the way in
+	// to match the post-writer convention. Only comment_content is written — never the
+	// post id, author, email, or IP.
+	$ok = wp_update_comment(
+		array(
+			'comment_ID'      => $id,
+			'comment_content' => wp_slash( $content ),
+		)
+	);
+
+	// wp_update_comment() returns 1 on success, 0 when unchanged, false/WP_Error on failure.
+	if ( false === $ok || is_wp_error( $ok ) ) {
+		return aafm_generic_error();
+	}
+
+	$updated = get_comment( $id );
+	if ( ! $updated instanceof WP_Comment ) {
+		return aafm_generic_error();
+	}
+
+	return array( 'comment' => aafm_redact_comment( $updated ) );
+}

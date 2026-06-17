@@ -181,4 +181,66 @@ final class CommentsCrudTest extends TestCase {
 		);
 		$this->assertInstanceOf( WP_Error::class, $out );
 	}
+
+	public function test_update_comment_edits_content_for_an_editor(): void {
+		$this->acting_as( 'editor' );
+		$post    = self::factory()->post->create();
+		$comment = self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $post,
+				'comment_content' => 'old body',
+			)
+		);
+
+		$out = wp_get_ability( 'aafm/update-comment' )->execute(
+			array(
+				'comment_id' => $comment,
+				'content'    => 'new body',
+			)
+		);
+
+		$this->assertSame( 'new body', $out['comment']['content'] );
+		$this->assertSame( 'new body', get_comment( $comment )->comment_content );
+	}
+
+	public function test_update_comment_sanitizes_script_content(): void {
+		$this->acting_as( 'editor' );
+		$post    = self::factory()->post->create();
+		$comment = self::factory()->comment->create( array( 'comment_post_ID' => $post ) );
+
+		$out = wp_get_ability( 'aafm/update-comment' )->execute(
+			array(
+				'comment_id' => $comment,
+				'content'    => 'keep <script>alert(1)</script> me',
+			)
+		);
+
+		$this->assertStringNotContainsString( '<script>', get_comment( $comment )->comment_content );
+	}
+
+	public function test_update_comment_denied_for_non_editor(): void {
+		$post    = self::factory()->post->create();
+		$comment = self::factory()->comment->create( array( 'comment_post_ID' => $post ) );
+
+		$this->acting_as( 'author' );
+		$this->assertFalse(
+			wp_get_ability( 'aafm/update-comment' )->check_permissions(
+				array(
+					'comment_id' => $comment,
+					'content'    => 'I should not be able to edit this',
+				)
+			)
+		);
+	}
+
+	public function test_update_comment_missing_id_returns_error(): void {
+		$this->acting_as( 'editor' );
+		$out = wp_get_ability( 'aafm/update-comment' )->execute(
+			array(
+				'comment_id' => 999999,
+				'content'    => 'nope',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $out );
+	}
 }
