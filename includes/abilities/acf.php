@@ -448,3 +448,148 @@ function aafm_exec_acf_update_post_fields( array $input ) {
 		'fields'  => aafm_acf_write_fields( $fields, $id ),
 	);
 }
+
+/**
+ * Per-object permission: the term exists and the caller may edit it. ACF term fields are term
+ * data, so the gate is edit_term on that specific term (mirrors the term-meta family).
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return bool
+ */
+function aafm_perm_acf_term( array $input ): bool {
+	$id = absint( $input['term_id'] ?? 0 );
+	if ( $id < 1 || ! get_term( $id ) instanceof WP_Term ) {
+		return false;
+	}
+	return current_user_can( 'edit_term', $id );
+}
+
+/**
+ * The ACF object selector for a term: "term_{$id}".
+ *
+ * @param int $id Term id.
+ * @return string
+ */
+function aafm_acf_term_selector( int $id ): string {
+	return 'term_' . $id;
+}
+
+/**
+ * Args for aafm/acf-get-term-fields.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_acf_get_term_fields(): array {
+	return array(
+		'label'               => __( 'Get term ACF fields', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Reads all of a term's ACF field values, hydrated by field key. Requires edit access to that term.", 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'term_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'term_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'term_id' => array( 'type' => 'integer' ),
+				'fields'  => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_acf_get_term_fields',
+		'permission_callback' => 'aafm_perm_acf_term',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/acf-get-term-fields.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_acf_get_term_fields( array $input ) {
+	$id = absint( $input['term_id'] ?? 0 );
+	if ( ! get_term( $id ) instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+	return array(
+		'term_id' => $id,
+		'fields'  => aafm_acf_read_fields( aafm_acf_term_selector( $id ) ),
+	);
+}
+
+/**
+ * Args for aafm/acf-update-term-fields.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_acf_update_term_fields(): array {
+	return array(
+		'label'               => __( 'Update term ACF fields', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Writes ACF field values on a term by field key, each value sanitized for its field type. Requires edit access to that term.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'term_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'fields'  => array(
+					'type'                 => 'object',
+					'additionalProperties' => true,
+				),
+			),
+			'required'             => array( 'term_id', 'fields' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'term_id' => array( 'type' => 'integer' ),
+				'fields'  => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_acf_update_term_fields',
+		'permission_callback' => 'aafm_perm_acf_term',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/acf-update-term-fields.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_acf_update_term_fields( array $input ) {
+	$id = absint( $input['term_id'] ?? 0 );
+	if ( ! get_term( $id ) instanceof WP_Term ) {
+		return aafm_generic_error();
+	}
+	$fields = $input['fields'] ?? null;
+	if ( ! is_array( $fields ) ) {
+		return aafm_generic_error();
+	}
+	return array(
+		'term_id' => $id,
+		'fields'  => aafm_acf_write_fields( $fields, aafm_acf_term_selector( $id ) ),
+	);
+}

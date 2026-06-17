@@ -252,4 +252,110 @@ final class AcfTest extends TestCase {
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/acf-update-post-fields', $abilities );
 	}
+
+	// --- A3: term fields ---------------------------------------------------------------------
+
+	public function test_get_term_fields_returns_hydrated_values_per_object_gated(): void {
+		$this->acting_as( 'administrator' );
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+
+		$res = wp_get_ability( 'aafm/acf-get-term-fields' )->execute( array( 'term_id' => $term_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( $term_id, $res['term_id'] );
+		$this->assertArrayHasKey( 'fields', $res );
+		$this->assertSame( 'Hello', $res['fields']['field_1'] );
+	}
+
+	public function test_get_term_fields_denies_a_subscriber(): void {
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+		$this->acting_as( 'subscriber' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/acf-get-term-fields' )->check_permissions( array( 'term_id' => $term_id ) )
+		);
+	}
+
+	public function test_update_term_fields_writes_through_the_term_selector_and_round_trips(): void {
+		$this->acting_as( 'administrator' );
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+
+		$res = wp_get_ability( 'aafm/acf-update-term-fields' )->execute(
+			array(
+				'term_id' => $term_id,
+				'fields'  => array( 'field_1' => 'Term value' ),
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'Term value', $res['fields']['field_1'] );
+
+		// The write was recorded under the "term_{id}" ACF selector, not the post bucket.
+		$this->assertSame(
+			'Term value',
+			\AAFM\Tests\AcfStubStore::value( 'field_1', 'term_' . $term_id ),
+			'The term write must use the term_{id} selector.'
+		);
+
+		$read = wp_get_ability( 'aafm/acf-get-term-fields' )->execute( array( 'term_id' => $term_id ) );
+		$this->assertSame( 'Term value', $read['fields']['field_1'] );
+	}
+
+	public function test_update_term_fields_rejects_a_smuggled_top_level_field(): void {
+		$this->acting_as( 'administrator' );
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+		$res     = wp_get_ability( 'aafm/acf-update-term-fields' )->execute(
+			array(
+				'term_id' => $term_id,
+				'fields'  => array( 'field_1' => 'ok' ),
+				'parent'  => 1,
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'A closed schema rejects a smuggled top-level field.' );
+	}
+
+	public function test_update_term_fields_denies_a_subscriber(): void {
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+		$this->acting_as( 'subscriber' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/acf-update-term-fields' )->check_permissions( array( 'term_id' => $term_id ) )
+		);
+	}
+
+	public function test_update_term_fields_denies_an_author_without_edit_term(): void {
+		// Per-object gate at execute: an author clears the edit_posts discovery floor yet lacks
+		// edit_term (manage_categories) on the target term, so the real callback denies.
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+		$this->acting_as( 'author' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/acf-update-term-fields' )->check_permissions( array( 'term_id' => $term_id ) ),
+			'An author without edit_term must be denied the term ACF write.'
+		);
+	}
+
+	public function test_update_term_fields_write_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+
+		$res = wp_get_ability( 'aafm/acf-update-term-fields' )->execute(
+			array(
+				'term_id' => $term_id,
+				'fields'  => array( 'field_1' => 'Audited' ),
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/acf-update-term-fields', $abilities );
+	}
+
+	public function test_update_term_fields_denied_is_audited(): void {
+		$term_id = (int) self::factory()->term->create( array( 'taxonomy' => 'category' ) );
+		$this->acting_as( 'subscriber' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/acf-update-term-fields' )->check_permissions( array( 'term_id' => $term_id ) )
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/acf-update-term-fields', $abilities );
+	}
 }
