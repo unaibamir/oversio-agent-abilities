@@ -170,6 +170,17 @@ final class CatalogTest extends TestCase {
 		// the custom table, so it must exist before any ability is registered/invoked.
 		aafm_install_activity_log();
 		aafm_clear_activity_log();
+
+		// Wave 4: integration abilities only contribute to the registry when their host
+		// plugin is active, and the host plugins are not installed on the test site. Force
+		// all three active so later slices' integration abilities are counted here. The
+		// registry is memoized (includes/registry.php static $cache), so the flush is
+		// MANDATORY — a force filter added without it is a no-op against the cached
+		// host-inactive registry. No integration ability exists yet, so the count stays 83.
+		add_filter( 'aafm_integration_active_seo', '__return_true' );
+		add_filter( 'aafm_integration_active_acf', '__return_true' );
+		add_filter( 'aafm_integration_active_woocommerce', '__return_true' );
+		aafm_registry_cache_should_flush( true );
 	}
 
 	/**
@@ -198,6 +209,15 @@ final class CatalogTest extends TestCase {
 		$this->in_action( 'wp_abilities_api_categories_init', 'aafm_register_categories' );
 		update_option( 'aafm_enabled_abilities', array_keys( aafm_get_abilities_registry() ) );
 		$this->in_action( 'wp_abilities_api_init', 'aafm_register_enabled_abilities' );
+	}
+
+	public function test_integrations_are_forced_active_in_this_suite(): void {
+		// Documents the W4-0.3 convention: the catalog-lock suite forces all three
+		// integrations active (+ flushes the registry memo) so later slices' integration
+		// abilities are counted here instead of vanishing when the host plugin is absent.
+		$this->assertTrue( aafm_integration_active( 'seo' ) );
+		$this->assertTrue( aafm_integration_active( 'acf' ) );
+		$this->assertTrue( aafm_integration_active( 'woocommerce' ) );
 	}
 
 	public function test_registry_has_the_exact_expected_count(): void {

@@ -13,6 +13,19 @@ use AAFM\Tests\TestCase;
 
 final class AbilitiesDisclosureTest extends TestCase {
 
+	public function set_up(): void {
+		parent::set_up();
+
+		// Wave 4: the no-orphan check would fail if a disclosed integration ability were
+		// absent from the registry (host inactive). Force all three integrations active
+		// (+ the mandatory registry-memo flush) so disclosure ↔ registry stays 1:1 once the
+		// SEO/ACF/WC slices add both ends. No integration ability exists yet in this slice.
+		add_filter( 'aafm_integration_active_seo', '__return_true' );
+		add_filter( 'aafm_integration_active_acf', '__return_true' );
+		add_filter( 'aafm_integration_active_woocommerce', '__return_true' );
+		aafm_registry_cache_should_flush( true );
+	}
+
 	public function test_every_ability_has_a_disclosure(): void {
 		$disclosures = aafm_ability_disclosures();
 		foreach ( array_keys( aafm_get_abilities_registry() ) as $name ) {

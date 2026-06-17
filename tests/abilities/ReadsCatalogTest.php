@@ -71,6 +71,15 @@ final class ReadsCatalogTest extends TestCase {
 		// custom table, so it must exist before any ability is registered/invoked.
 		aafm_install_activity_log();
 		aafm_clear_activity_log();
+
+		// Wave 4: integration abilities only contribute to the registry when their host
+		// plugin is active. Force all three active (+ the mandatory registry-memo flush, the
+		// registry is cached) so later slices' integration reads are counted here. No
+		// integration ability exists yet, so the reads count stays 38.
+		add_filter( 'aafm_integration_active_seo', '__return_true' );
+		add_filter( 'aafm_integration_active_acf', '__return_true' );
+		add_filter( 'aafm_integration_active_woocommerce', '__return_true' );
+		aafm_registry_cache_should_flush( true );
 	}
 
 	/**

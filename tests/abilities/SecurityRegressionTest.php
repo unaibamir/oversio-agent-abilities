@@ -53,6 +53,16 @@ final class SecurityRegressionTest extends TestCase {
 		parent::set_up();
 		aafm_install_activity_log();
 		aafm_clear_activity_log();
+
+		// Wave 4: force all three integrations active (+ the mandatory registry-memo flush)
+		// so test_no_arbitrary_option_or_meta_ability_exists scans a registry that INCLUDES
+		// the integration names once the SEO/ACF/WC slices land. Without this, those names
+		// never appear and their needle/sanction checks would be dead code (HIGH-3). No
+		// integration ability exists yet, so nothing new is scanned in this slice.
+		add_filter( 'aafm_integration_active_seo', '__return_true' );
+		add_filter( 'aafm_integration_active_acf', '__return_true' );
+		add_filter( 'aafm_integration_active_woocommerce', '__return_true' );
+		aafm_registry_cache_should_flush( true );
 	}
 
 	/**
