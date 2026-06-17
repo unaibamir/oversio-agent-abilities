@@ -341,6 +341,12 @@ final class RevisionsTest extends TestCase {
 		);
 		$this->assertIsString( $with['revision']['diff'] );
 		$this->assertStringContainsString( '<table', $with['revision']['diff'] );
+		// wp_text_diff( $raw_revision, $current_content ) renders the revision as the
+		// removed (left) side and the current content as the added (right) side. Assert
+		// both tokens land in the diff so an argument swap or wrong-direction regression
+		// would fail here, not slip past the bare '<table' check.
+		$this->assertStringContainsString( 'beta', $with['revision']['diff'], 'Removed token (old revision content) should appear in the diff.' );
+		$this->assertStringContainsString( 'gamma', $with['revision']['diff'], 'Added token (current content) should appear in the diff.' );
 	}
 
 	public function test_delete_revision_removes_one_revision(): void {
