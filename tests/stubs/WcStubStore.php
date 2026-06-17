@@ -125,10 +125,14 @@ class WcStubStore {
 	 * The wc_get_products() stub: returns WC_Product objects for the seeded products, honouring the
 	 * status filter and limit/page paging. Mirrors WC's default return ('objects').
 	 *
-	 * @param array<string,mixed> $args Query args (status, limit, page).
-	 * @return array<int,\WC_Product>
+	 * When `paginate` is set, mirrors WC's paginated return: a stdClass with `->products` (the page
+	 * slice) and `->total` (the full matching count, before the page slice). Without `paginate` it
+	 * returns the plain page-sliced array (back-compat).
+	 *
+	 * @param array<string,mixed> $args Query args (status, limit, page, paginate).
+	 * @return array<int,\WC_Product>|object
 	 */
-	public static function query( array $args = array() ): array {
+	public static function query( array $args = array() ) {
 		$status = $args['status'] ?? '';
 		$rows   = self::all();
 
@@ -142,6 +146,9 @@ class WcStubStore {
 			);
 		}
 
+		// The full matching count, captured before the page slice so paginate->total is the grand total.
+		$total = count( $rows );
+
 		$limit = isset( $args['limit'] ) ? (int) $args['limit'] : -1;
 		if ( $limit > 0 ) {
 			$page   = isset( $args['page'] ) ? max( 1, (int) $args['page'] ) : 1;
@@ -153,6 +160,14 @@ class WcStubStore {
 		foreach ( $rows as $row ) {
 			$out[] = new \WC_Product( (int) $row['id'] );
 		}
+
+		if ( ! empty( $args['paginate'] ) ) {
+			$result           = new \stdClass();
+			$result->products = $out;
+			$result->total    = $total;
+			return $result;
+		}
+
 		return $out;
 	}
 

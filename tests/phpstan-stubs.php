@@ -142,10 +142,13 @@ if ( ! function_exists( 'wc_get_product' ) ) {
 
 if ( ! function_exists( 'wc_get_products' ) ) {
 	/**
+	 * Mirrors real WooCommerce: an array of products by default, or a stdClass carrying ->products and
+	 * ->total when called with 'paginate' => true.
+	 *
 	 * @param array<string,mixed> $args
-	 * @return WC_Product[]
+	 * @return WC_Product[]|\stdClass
 	 */
-	function wc_get_products( $args = array() ): array {
+	function wc_get_products( $args = array() ) {
 		return array();
 	}
 }

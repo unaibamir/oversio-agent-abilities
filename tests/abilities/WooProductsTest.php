@@ -88,6 +88,101 @@ final class WooProductsTest extends TestCase {
 		$this->assertNotTrue( wp_get_ability( 'aafm/wc-list-products' )->check_permissions( array() ) );
 	}
 
+	public function test_list_products_total_is_the_grand_total_not_the_page_count(): void {
+		// Seed more products than one page holds; `total` must report the full matching count so an
+		// agent can paginate, not the number of rows on the page it got back.
+		$this->stub_woocommerce( $this->seed_many_products( 25 ) );
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-products' )->execute( array( 'per_page' => 5 ) );
+
+		$this->assertCount( 5, $res['products'], 'A page holds at most per_page rows.' );
+		$this->assertSame( 25, $res['total'], 'total is the grand total, not the page size.' );
+		$this->assertGreaterThan( count( $res['products'] ), $res['total'] );
+	}
+
+	public function test_list_products_filters_by_status_and_totals_only_matches(): void {
+		// One publish + one draft. Filtering to draft returns only the draft, and `total` counts only
+		// the matching rows — not every product in the store.
+		$this->stub_woocommerce(
+			array(
+				array(
+					'id'     => 201,
+					'name'   => 'Published One',
+					'status' => 'publish',
+				),
+				array(
+					'id'     => 202,
+					'name'   => 'Drafted One',
+					'status' => 'draft',
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-products' )->execute( array( 'status' => 'draft' ) );
+
+		$this->assertCount( 1, $res['products'] );
+		$this->assertSame( 202, $res['products'][0]['id'] );
+		$this->assertSame( 'draft', $res['products'][0]['status'] );
+		$this->assertSame( 1, $res['total'], 'total counts only the status matches.' );
+	}
+
+	public function test_list_products_pages_through_two_products_one_per_page(): void {
+		$this->stub_woocommerce(
+			array(
+				array(
+					'id'   => 301,
+					'name' => 'First',
+				),
+				array(
+					'id'   => 302,
+					'name' => 'Second',
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+
+		$page1 = wp_get_ability( 'aafm/wc-list-products' )->execute(
+			array(
+				'per_page' => 1,
+				'page'     => 1,
+			)
+		);
+		$page2 = wp_get_ability( 'aafm/wc-list-products' )->execute(
+			array(
+				'per_page' => 1,
+				'page'     => 2,
+			)
+		);
+
+		$this->assertCount( 1, $page1['products'] );
+		$this->assertCount( 1, $page2['products'] );
+		$this->assertSame( 301, $page1['products'][0]['id'] );
+		$this->assertSame( 302, $page2['products'][0]['id'] );
+		$this->assertSame( 2, $page1['total'], 'total is the grand total on every page.' );
+		$this->assertSame( 2, $page2['total'] );
+	}
+
+	/**
+	 * Build a seed array of N publish products with sequential ids.
+	 *
+	 * @param int $count How many products to seed.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function seed_many_products( int $count ): array {
+		$products = array();
+		for ( $i = 1; $i <= $count; $i++ ) {
+			$products[] = array(
+				'id'     => 400 + $i,
+				'name'   => 'Bulk ' . $i,
+				'status' => 'publish',
+			);
+		}
+		return $products;
+	}
+
 	public function test_get_product_returns_full_shape(): void {
 		$this->acting_as( 'administrator' );
 		$res = wp_get_ability( 'aafm/wc-get-product' )->execute( array( 'product_id' => 101 ) );

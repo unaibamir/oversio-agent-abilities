@@ -315,20 +315,26 @@ function aafm_exec_wc_list_products( array $input ): array {
 	$page     = isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1;
 	$status   = isset( $input['status'] ) ? sanitize_key( (string) $input['status'] ) : 'any';
 
-	$products = (array) wc_get_products(
+	$query = wc_get_products(
 		array(
-			'limit'  => $per_page,
-			'page'   => $page,
-			'status' => $status,
+			'limit'    => $per_page,
+			'page'     => $page,
+			'status'   => $status,
+			'paginate' => true,
 		)
 	);
+
+	// With paginate => true WooCommerce returns an object carrying ->products (the page) and ->total
+	// (the full matching count); total is the grand total for pagination, not the page row count.
+	$products = is_object( $query ) ? (array) $query->products : (array) $query;
+	$total    = is_object( $query ) ? (int) $query->total : count( $products );
 
 	foreach ( $products as $product ) {
 		if ( $product instanceof \WC_Product ) {
 			$out['products'][] = aafm_redact_wc_product( $product );
 		}
 	}
-	$out['total'] = count( $out['products'] );
+	$out['total'] = $total;
 
 	return $out;
 }
