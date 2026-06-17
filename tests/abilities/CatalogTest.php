@@ -38,6 +38,8 @@ final class CatalogTest extends TestCase {
 		'aafm/get-comments',
 		'aafm/get-pending-comments',
 		'aafm/get-media',
+		'aafm/get-media-item',
+		'aafm/count-media',
 		'aafm/get-users',
 		'aafm/list-revisions',
 		'aafm/get-revision',
@@ -62,6 +64,8 @@ final class CatalogTest extends TestCase {
 		'aafm/moderate-comment',
 		'aafm/set-featured-image',
 		'aafm/upload-media',
+		'aafm/update-media',
+		'aafm/delete-media',
 		'aafm/update-post-meta',
 		'aafm/delete-post-meta',
 		'aafm/restore-revision',
@@ -82,6 +86,7 @@ final class CatalogTest extends TestCase {
 		'aafm/moderate-comment',
 		'aafm/delete-post-meta',
 		'aafm/delete-revision',
+		'aafm/delete-media',
 	);
 
 	public function set_up(): void {
@@ -123,9 +128,9 @@ final class CatalogTest extends TestCase {
 	public function test_registry_has_the_exact_expected_count(): void {
 		$registry = aafm_get_abilities_registry();
 		$this->assertCount(
-			34,
+			38,
 			$registry,
-			'The catalog must contain exactly 34 abilities — 16 reads + 18 writes.'
+			'The catalog must contain exactly 38 abilities — 18 reads + 20 writes.'
 		);
 	}
 
@@ -140,8 +145,8 @@ final class CatalogTest extends TestCase {
 		$expected = self::READS;
 		sort( $expected );
 
-		$this->assertSame( $expected, $reads, 'The reads group must be exactly the 16 reads — no drift.' );
-		$this->assertCount( 16, $reads, 'Exactly 16 read abilities.' );
+		$this->assertSame( $expected, $reads, 'The reads group must be exactly the 18 reads — no drift.' );
+		$this->assertCount( 18, $reads, 'Exactly 18 read abilities.' );
 	}
 
 	public function test_writes_are_exactly_the_expected_writes(): void {
@@ -155,8 +160,8 @@ final class CatalogTest extends TestCase {
 		$expected = self::WRITES;
 		sort( $expected );
 
-		$this->assertSame( $expected, $writes, 'The writes group must be exactly the 18 writes — no drift.' );
-		$this->assertCount( 18, $writes, 'Exactly 18 write abilities.' );
+		$this->assertSame( $expected, $writes, 'The writes group must be exactly the 20 writes — no drift.' );
+		$this->assertCount( 20, $writes, 'Exactly 20 write abilities.' );
 	}
 
 	public function test_catalog_is_only_reads_plus_writes_no_extras(): void {
@@ -165,7 +170,7 @@ final class CatalogTest extends TestCase {
 		// Every catalog key is one of the known names — no stray ability slipped in.
 		$known = array_merge( self::READS, self::WRITES );
 		foreach ( array_keys( $registry ) as $name ) {
-			$this->assertContains( $name, $known, $name . ' is not one of the 34 sanctioned abilities.' );
+			$this->assertContains( $name, $known, $name . ' is not one of the 38 sanctioned abilities.' );
 		}
 
 		// And every group is one of exactly two values.
@@ -179,9 +184,9 @@ final class CatalogTest extends TestCase {
 
 		// reads + writes accounts for the whole catalog.
 		$this->assertSame(
-			34,
+			38,
 			count( self::READS ) + count( self::WRITES ),
-			'reads(16) + writes(18) must equal the full catalog (34).'
+			'reads(18) + writes(20) must equal the full catalog (38).'
 		);
 	}
 
