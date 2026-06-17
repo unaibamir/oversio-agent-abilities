@@ -303,13 +303,34 @@ function aafm_write_content_schema( bool $require_title ): array {
 	$schema = array(
 		'type'                 => 'object',
 		'properties'           => array(
-			'title'   => array(
+			'title'          => array(
 				'type'      => 'string',
 				'minLength' => 1,
 			),
-			'content' => array( 'type' => 'string' ),
-			'excerpt' => array( 'type' => 'string' ),
-			'status'  => array( 'type' => 'string' ),
+			'content'        => array( 'type' => 'string' ),
+			'excerpt'        => array( 'type' => 'string' ),
+			'status'         => array( 'type' => 'string' ),
+			'slug'           => array( 'type' => 'string' ),
+			'featured_media' => array(
+				'type'    => 'integer',
+				'minimum' => 1,
+			),
+			'terms'          => array(
+				'type'                 => 'object',
+				'additionalProperties' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+					),
+				),
+			),
+			'meta'           => array(
+				'type'                 => 'object',
+				'additionalProperties' => array(
+					'type' => array( 'string', 'number', 'boolean', 'integer' ),
+				),
+			),
 		),
 		'additionalProperties' => false,
 	);

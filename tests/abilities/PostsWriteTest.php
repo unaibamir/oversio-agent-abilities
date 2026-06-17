@@ -246,4 +246,30 @@ final class PostsWriteTest extends TestCase {
 		// Still recoverable — not permanently deleted.
 		$this->assertInstanceOf( WP_Post::class, get_post( $post ) );
 	}
+
+	public function test_write_schema_exposes_optional_enrichment_fields(): void {
+		$props = aafm_write_content_schema( true )['properties'];
+
+		// terms: object whose values are arrays of integers.
+		$this->assertSame( 'object', $props['terms']['type'] );
+		$this->assertSame( 'array', $props['terms']['additionalProperties']['type'] );
+		$this->assertSame( 'integer', $props['terms']['additionalProperties']['items']['type'] );
+
+		// featured_media: integer >= 1.
+		$this->assertSame( 'integer', $props['featured_media']['type'] );
+		$this->assertSame( 1, $props['featured_media']['minimum'] );
+
+		// slug: string.
+		$this->assertSame( 'string', $props['slug']['type'] );
+
+		// meta: object of scalar values.
+		$this->assertSame( 'object', $props['meta']['type'] );
+		$this->assertSame(
+			array( 'string', 'number', 'boolean', 'integer' ),
+			$props['meta']['additionalProperties']['type']
+		);
+
+		// Schema stays closed — the first anti-escalation layer.
+		$this->assertFalse( aafm_write_content_schema( true )['additionalProperties'] );
+	}
 }
