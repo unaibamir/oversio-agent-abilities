@@ -61,6 +61,14 @@ function aafm_register_seo_definitions( array $registry ): array {
 		'subject'      => 'seo',
 		'args_builder' => 'aafm_args_seo_update_schema',
 	);
+	$registry['aafm/seo-get-head']      = array(
+		'label'        => __( 'Get post SEO head', 'agent-abilities-for-mcp' ),
+		'description'  => __( "Reads the rendered SEO <head> markup for a post from the active SEO plugin, best-effort (empty when the plugin offers no head API). Requires the edit-posts capability and edit access to that post.", 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'seo',
+		'args_builder' => 'aafm_args_seo_get_head',
+	);
 
 	return $registry;
 }
@@ -446,5 +454,92 @@ function aafm_exec_seo_update_schema( array $input ) {
 	return array(
 		'post_id' => $id,
 		'schema'  => $clean,
+	);
+}
+
+/**
+ * Object-independent floor for seo-get-head: the caller can author posts at all. The per-object
+ * edit_post($id) refinement runs inside execute. This floor lets discovery (empty input) advertise
+ * the tool to a capable user, mirroring the documented FSE/floor pattern.
+ *
+ * @return bool
+ */
+function aafm_perm_seo_get_head(): bool {
+	return current_user_can( 'edit_posts' );
+}
+
+/**
+ * Args for aafm/seo-get-head.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_seo_get_head(): array {
+	return array(
+		'label'               => __( 'Get post SEO head', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Reads the rendered SEO <head> markup for a post, best-effort. Requires the edit-posts capability and edit access to that post.", 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'post_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'post_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'post_id' => array( 'type' => 'integer' ),
+				'plugin'  => array( 'type' => 'string' ),
+				'head'    => array( 'type' => 'string' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_seo_get_head',
+		'permission_callback' => 'aafm_perm_seo_get_head',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/seo-get-head.
+ *
+ * Best-effort: resolve the post, refine to per-object edit_post, then attempt the active plugin's
+ * rendered-head API only if it is genuinely present (guarded function_exists/method_exists). When
+ * no such API is available the head is an empty string — never fatal.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_seo_get_head( array $input ) {
+	$id = absint( $input['post_id'] ?? 0 );
+	if ( ! get_post( $id ) instanceof WP_Post || ! current_user_can( 'edit_post', $id ) ) {
+		return aafm_generic_error();
+	}
+
+	$plugin = aafm_seo_active_plugin();
+
+	/**
+	 * Filters the rendered SEO <head> markup for a post. The default is an empty string; the
+	 * active plugin's frontend head API (when one exists) is wired in through this seam so the
+	 * ability never fatals if that API is missing or changes shape. Returns a plain string.
+	 *
+	 * @param string $head   Rendered head markup (default '').
+	 * @param int    $id     Post id.
+	 * @param string $plugin Active SEO plugin slug.
+	 */
+	$head = (string) apply_filters( 'aafm_seo_rendered_head', '', $id, $plugin );
+
+	return array(
+		'post_id' => $id,
+		'plugin'  => $plugin,
+		'head'    => $head,
 	);
 }

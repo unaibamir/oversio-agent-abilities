@@ -279,6 +279,27 @@ final class SeoTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $res, 'Schema read on a non-Rank-Math plugin must degrade to an error.' );
 	}
 
+	public function test_seo_get_head_returns_a_head_string_best_effort(): void {
+		$editor_id = $this->acting_as( 'administrator' );
+		$post_id   = (int) self::factory()->post->create( array( 'post_author' => $editor_id ) );
+
+		$res = wp_get_ability( 'aafm/seo-get-head' )->execute( array( 'post_id' => $post_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( $post_id, $res['post_id'] );
+		$this->assertArrayHasKey( 'head', $res );
+		// No host frontend-head API is stubbed, so head is an empty string — never fatal.
+		$this->assertIsString( $res['head'] );
+		$this->assertSame( '', $res['head'] );
+	}
+
+	public function test_seo_get_head_denies_a_subscriber(): void {
+		$post_id = (int) self::factory()->post->create();
+		$this->acting_as( 'subscriber' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/seo-get-head' )->check_permissions( array( 'post_id' => $post_id ) )
+		);
+	}
+
 	public function test_seo_abilities_absent_when_host_inactive(): void {
 		// HIGH-2: assert at the REGISTRY level, not via aafm_user_can_discover_ability().
 		// The discovery helper falls through to aafm_user_can_call_ability → the process-wide
