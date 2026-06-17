@@ -4,11 +4,13 @@
  *
  * The update-site-settings ability is the single most dangerous write in the catalog: getting it
  * wrong could change siteurl/home/admin_email and lock out or take over the whole site.
- * It is contained three ways: (1) a fixed allowlist (aafm_allowed_site_settings) that
- * excludes every takeover-class key, (2) a closed input schema, and (3) a fail-closed
- * execute that rejects the WHOLE call the moment a submitted key is not on the allowlist —
- * it never falls back to a raw update_option(). The two integer settings are clamped into
- * their legal ranges server-side so a 0 or a 99 can never be persisted.
+ * It is contained four ways: (1) a fixed allowlist (aafm_allowed_site_settings) that excludes
+ * every takeover-class key and is re-stripped after any filter, (2) a closed input schema,
+ * (3) a fail-closed execute that re-checks every submitted key against the allowlist and
+ * rejects the WHOLE call the moment one is not on it — it never falls back to a raw
+ * update_option(), and (4) a non-scalar value (array/object) is refused outright before any
+ * write, so a structure can never be stored. The two integer settings are clamped into their
+ * legal ranges server-side so a 0 or a 99 can never be persisted.
  *
  * Both abilities gate on manage_options — site settings are administrator data, so the
  * read is held to the same bar WordPress puts on the Settings screen.
@@ -156,9 +158,10 @@ function aafm_args_update_site_settings(): array {
  *
  * Fail-closed: every submitted key is checked against the allowlist BEFORE any write, and
  * a single non-allowlisted key rejects the whole call — there is no partial apply and no
- * raw update_option() of an arbitrary key. Values are sanitized per type; the two integers
- * are clamped into their legal ranges server-side (posts_per_page floored to >=1 and capped
- * at 100 so a 0 cannot break WP_Query; start_of_week clamped to 0..6).
+ * raw update_option() of an arbitrary key. A non-scalar value (array/object) is likewise
+ * refused outright before any write, so a structure can never be stored. Values are sanitized
+ * per type; the two integers are clamped into their legal ranges server-side (posts_per_page
+ * floored to >=1 and capped at 100 so a 0 cannot break WP_Query; start_of_week clamped to 0..6).
  *
  * @param array<string,mixed> $input Validated input.
  * @return array<string,mixed>|WP_Error
