@@ -334,12 +334,24 @@ final class SecurityRegressionTest extends TestCase {
 	 * Post writes never force-delete: wp_delete_post(...,true) must not appear anywhere —
 	 * posts and pages are only ever trashed (recoverable).
 	 *
-	 * Comments are the one sanctioned exception. aafm/delete-comment is an explicit,
+	 * Three primitives are governed here:
+	 *   - wp_delete_post(...,true)       → absolute ban (posts/pages are only ever trashed).
+	 *   - wp_delete_comment(...,true)    → allowed ONLY in includes/abilities/comments.php.
+	 *   - wp_delete_attachment(...,true) → allowed ONLY in includes/abilities/media.php.
+	 *
+	 * Comments are one sanctioned exception. aafm/delete-comment is an explicit,
 	 * separately-disclosed destructive ability (risk=destructive, in DESTRUCTIVE_WRITES,
 	 * filed under "Destructive (permanent)") that uses wp_delete_comment(...,true) by
 	 * design — moderators routinely purge spam permanently, and aafm/moderate-comment
 	 * still offers the recoverable 'trash' path. That single call is allowed only in
-	 * includes/abilities/comments.php; a force-delete in any other file is still a CVE.
+	 * includes/abilities/comments.php.
+	 *
+	 * Media is the other. aafm/delete-media is the disclosed destructive media ability
+	 * (risk=destructive) that uses wp_delete_attachment(...,true) by design — an
+	 * attachment has no Trash path, so removing a media file is inherently permanent.
+	 * That single call is allowed only in includes/abilities/media.php.
+	 *
+	 * A force-delete of any of these primitives in any other file is still a CVE.
 	 */
 	public function test_no_force_delete_in_source(): void {
 		$dir   = dirname( __DIR__, 2 ) . '/includes';
@@ -347,6 +359,8 @@ final class SecurityRegressionTest extends TestCase {
 
 		// The one file permitted to force-delete a comment (the disclosed destructive ability).
 		$comment_force_delete_allowed = 'includes/abilities/comments.php';
+		// The one file permitted to force-delete an attachment (the disclosed delete-media ability).
+		$media_force_delete_allowed = 'includes/abilities/media.php';
 
 		foreach ( $files as $file ) {
 			if ( 'php' !== $file->getExtension() ) {
@@ -358,8 +372,9 @@ final class SecurityRegressionTest extends TestCase {
 			$path = str_replace( '\\', '/', $file->getPathname() );
 
 			// A force-delete of a post/page with the trash-bypass flag must never appear.
+			// The /s flag makes a multiline call match too, so it can't slip past the sweep.
 			$this->assertDoesNotMatchRegularExpression(
-				'/wp_delete_post\s*\([^)]*,\s*true\s*\)/',
+				'/wp_delete_post\s*\([^)]*,\s*true\s*\)/s',
 				$src,
 				'Permanent wp_delete_post(...,true) in ' . $file->getFilename()
 			);
@@ -367,9 +382,18 @@ final class SecurityRegressionTest extends TestCase {
 			// Permanent comment delete is allowed ONLY in the sanctioned comments file.
 			if ( ! str_ends_with( $path, $comment_force_delete_allowed ) ) {
 				$this->assertDoesNotMatchRegularExpression(
-					'/wp_delete_comment\s*\([^)]*,\s*true\s*\)/',
+					'/wp_delete_comment\s*\([^)]*,\s*true\s*\)/s',
 					$src,
 					'Permanent wp_delete_comment(...,true) in ' . $file->getFilename() . ' (only the disclosed delete-comment ability may force-delete)'
+				);
+			}
+
+			// Permanent attachment delete is allowed ONLY in the sanctioned media file.
+			if ( ! str_ends_with( $path, $media_force_delete_allowed ) ) {
+				$this->assertDoesNotMatchRegularExpression(
+					'/wp_delete_attachment\s*\([^)]*,\s*true\s*\)/s',
+					$src,
+					'Permanent wp_delete_attachment(...,true) in ' . $file->getFilename() . ' (only the disclosed delete-media ability may force-delete)'
 				);
 			}
 		}
