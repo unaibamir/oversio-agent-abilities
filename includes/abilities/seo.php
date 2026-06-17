@@ -124,8 +124,14 @@ function aafm_seo_read_fields( int $id ): array {
 		'post_id' => $id,
 	);
 	foreach ( aafm_seo_fields() as $field ) {
-		$meta_key      = $map[ $field ] ?? '';
-		$out[ $field ] = '' === $meta_key ? '' : (string) get_post_meta( $id, $meta_key, true );
+		$meta_key = $map[ $field ] ?? '';
+		if ( '' === $meta_key ) {
+			$out[ $field ] = '';
+			continue;
+		}
+		// Guard the cast: a mapped key holding array meta would throw an Array-to-string warning.
+		$val           = get_post_meta( $id, $meta_key, true );
+		$out[ $field ] = is_scalar( $val ) ? (string) $val : '';
 	}
 	return $out;
 }

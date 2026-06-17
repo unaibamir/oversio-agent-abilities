@@ -85,6 +85,18 @@ final class SeoTest extends TestCase {
 		$this->assertArrayHasKey( 'og_title', $res );
 	}
 
+	public function test_seo_get_post_reads_array_meta_as_empty_without_warning(): void {
+		// SecOps Info-1: if a mapped key happens to hold array meta, the read must coerce it to an
+		// empty string, never throw an Array-to-string warning. Store an array under the title key.
+		$admin_id = $this->acting_as( 'administrator' );
+		$post_id  = (int) self::factory()->post->create( array( 'post_author' => $admin_id ) );
+		update_post_meta( $post_id, '_yoast_wpseo_title', array( 'unexpected', 'array' ) );
+
+		$res = wp_get_ability( 'aafm/seo-get-post' )->execute( array( 'post_id' => $post_id ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( '', $res['title'], 'Array meta must read as an empty string, not a warning.' );
+	}
+
 	public function test_seo_get_post_denies_a_subscriber(): void {
 		$post_id = (int) self::factory()->post->create();
 		$this->acting_as( 'subscriber' );
