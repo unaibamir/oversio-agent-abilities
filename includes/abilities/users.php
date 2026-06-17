@@ -48,7 +48,7 @@ function aafm_register_users_definitions( array $registry ): array {
 function aafm_args_get_users(): array {
 	return array(
 		'label'               => __( 'Get users', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List users (id, display name, roles, post count only — no email or login).', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'List users: id, display name, email, roles, and post count. Email is gated by the list-users capability. Never login or password.', 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -164,7 +164,7 @@ function aafm_perm_list_users(): bool {
 /**
  * Execute aafm/get-users.
  *
- * Lists users redacted to id, display name, roles, and post count. Email, login,
+ * Lists users redacted to id, display name, email, roles, and post count. Login,
  * password hash, registration date, IP, capabilities, and meta are never
  * returned — only the safe whitelist produced by aafm_redact_user().
  *
