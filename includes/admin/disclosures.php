@@ -41,7 +41,7 @@ function aafm_ability_disclosures(): array {
 		'aafm/get-post-types'       => __( 'Lists the public post types registered on the site.', 'agent-abilities-for-mcp' ),
 		'aafm/get-site-info'        => __( 'Reads the site name, tagline, URL, and language.', 'agent-abilities-for-mcp' ),
 		'aafm/list-revisions'       => __( "Lists a post's revisions by id, author, and date. No body content.", 'agent-abilities-for-mcp' ),
-		'aafm/get-revision'         => __( "Reads one revision's id, author, and date. No body content.", 'agent-abilities-for-mcp' ),
+		'aafm/get-revision'         => __( "Reads one revision's id, author, date, and body content (rendered by default, raw on request), plus an optional diff against the current post. Gated by edit access to the parent post.", 'agent-abilities-for-mcp' ),
 		'aafm/search-content'       => __( 'Searches the content types you have exposed in a single query, returning the same curated fields.', 'agent-abilities-for-mcp' ),
 
 		// Writes.
