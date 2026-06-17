@@ -50,6 +50,14 @@ function aafm_register_users_definitions( array $registry ): array {
 		'subject'      => 'users',
 		'args_builder' => 'aafm_args_create_user',
 	);
+	$registry['aafm/update-user'] = array(
+		'label'        => __( 'Update user', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Edit a user\'s display name, name, or email by id. Changing a role needs the promote-users capability and never demotes the last administrator.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'users',
+		'args_builder' => 'aafm_args_update_user',
+	);
 	return $registry;
 }
 
@@ -334,4 +342,143 @@ function aafm_exec_create_user( array $input ) {
 	}
 
 	return array( 'user' => aafm_rich_user( get_userdata( (int) $result ) ) );
+}
+
+/**
+ * Args for aafm/update-user.
+ *
+ * Closed schema: user_id required; display_name/first_name/last_name/email/role optional.
+ * A role change is honored only for a caller who can promote_users, and never demotes the
+ * last administrator (enforced in the execute callback).
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_update_user(): array {
+	return array(
+		'label'               => __( 'Update user', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Edit a user by id: display name, name, or email. A role change needs the promote-users capability and never demotes the last administrator.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'user_id'      => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+				'display_name' => array(
+					'type' => 'string',
+				),
+				'first_name'   => array(
+					'type' => 'string',
+				),
+				'last_name'    => array(
+					'type' => 'string',
+				),
+				'email'        => array(
+					'type'   => 'string',
+					'format' => 'email',
+				),
+				'role'         => array(
+					'type' => 'string',
+				),
+			),
+			'required'             => array( 'user_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'user' => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_update_user',
+		'permission_callback' => 'aafm_perm_update_user',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/update-user: per-object edit_user on the target id.
+ *
+ * Returns false with empty input (no id), so discovery uses the object-independent
+ * edit_users floor in server.php; this per-object check still runs at execute time.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return bool
+ */
+function aafm_perm_update_user( array $input ): bool {
+	$id = isset( $input['user_id'] ) ? absint( $input['user_id'] ) : 0;
+	return $id > 0 && current_user_can( 'edit_user', $id );
+}
+
+/**
+ * Execute aafm/update-user.
+ *
+ * Edits the safe profile fields by id. A role change is honored ONLY when the caller can
+ * promote_users (the admin cap WP gates the role dropdown behind) and the target role is
+ * a real role. Reviewer note M2: a role change that would demote the SOLE remaining
+ * administrator is refused — a lockout is as damaging as deleting the last admin. Uses
+ * core wp_update_user().
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_update_user( array $input ) {
+	$id     = isset( $input['user_id'] ) ? absint( $input['user_id'] ) : 0;
+	$target = $id ? get_userdata( $id ) : false;
+	if ( ! $target instanceof WP_User ) {
+		return aafm_generic_error();
+	}
+
+	$data = array( 'ID' => $id );
+	foreach ( array( 'display_name', 'first_name', 'last_name' ) as $field ) {
+		if ( isset( $input[ $field ] ) ) {
+			$data[ $field ] = sanitize_text_field( (string) $input[ $field ] );
+		}
+	}
+	if ( isset( $input['email'] ) ) {
+		$email = sanitize_email( (string) $input['email'] );
+		if ( ! is_email( $email ) ) {
+			return aafm_generic_error();
+		}
+		$data['user_email'] = $email;
+	}
+
+	if ( isset( $input['role'] ) ) {
+		// Role change is admin-only (promote_users) and must target a real role.
+		$role = sanitize_key( (string) $input['role'] );
+		if ( ! current_user_can( 'promote_users' ) || null === get_role( $role ) ) {
+			return aafm_generic_error();
+		}
+		// M2: never demote the sole remaining administrator (a lockout guard mirroring
+		// the delete-user last-admin floor). Only relevant when the new role is NOT admin
+		// and the target currently IS an admin.
+		if ( 'administrator' !== $role ) {
+			if ( in_array( 'administrator', (array) $target->roles, true ) ) {
+				$admins = get_users(
+					array(
+						'role'   => 'administrator',
+						'fields' => 'ID',
+						'number' => 2,
+					)
+				);
+				if ( count( $admins ) <= 1 ) {
+					return aafm_generic_error();
+				}
+			}
+		}
+		$data['role'] = $role;
+	}
+
+	$result = wp_update_user( $data );
+	if ( is_wp_error( $result ) ) {
+		return aafm_generic_error();
+	}
+
+	return array( 'user' => aafm_rich_user( get_userdata( $id ) ) );
 }
