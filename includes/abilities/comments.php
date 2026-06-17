@@ -42,6 +42,38 @@ function aafm_register_comments_definitions( array $registry ): array {
 		'subject'      => 'comments',
 		'args_builder' => 'aafm_args_moderate_comment',
 	);
+	$registry['aafm/get-comment']          = array(
+		'label'        => __( 'Get comment', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Read one comment by id (email and IP are never returned).', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'comments',
+		'args_builder' => 'aafm_args_get_comment',
+	);
+	$registry['aafm/create-comment']       = array(
+		'label'        => __( 'Create comment', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Add a pending comment to a post as the agent user (requires moderate_comments).', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'comments',
+		'args_builder' => 'aafm_args_create_comment',
+	);
+	$registry['aafm/update-comment']       = array(
+		'label'        => __( 'Update comment', 'agent-abilities-for-mcp' ),
+		'description'  => __( "Edit a comment's content (requires edit access to that comment).", 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'comments',
+		'args_builder' => 'aafm_args_update_comment',
+	);
+	$registry['aafm/delete-comment']       = array(
+		'label'        => __( 'Delete comment', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Permanently delete a comment (not recoverable; use moderate-comment to trash recoverably).', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'destructive',
+		'subject'      => 'comments',
+		'args_builder' => 'aafm_args_delete_comment',
+	);
 	return $registry;
 }
 
@@ -213,6 +245,101 @@ function aafm_redact_comments( $comments ): array {
 	);
 
 	return array_values( array_map( 'aafm_redact_comment', $objects ) );
+}
+
+/**
+ * Args for aafm/get-comment.
+ *
+ * One comment by id, returned in the same redacted shape as the list reads — never
+ * the author email or IP. The read is gated by the parent post's visibility, exactly
+ * like aafm/get-comments, so an approved comment on a hidden post never leaks.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_get_comment(): array {
+	return array(
+		'label'               => __( 'Get comment', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Read one comment by id (email and IP are never returned).', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'comment_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'comment_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'comment' => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_get_comment',
+		'permission_callback' => 'aafm_perm_get_comment',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Permission for aafm/get-comment.
+ *
+ * A comment is only as visible as the post it belongs to. Approved comments on a
+ * public, non-password-protected post are readable by any logged-in caller; every
+ * other comment (pending, spam, trash, or on a hidden post) requires the caller to
+ * be able to read that post AND to moderate/edit the comment — the same posture as
+ * aafm/get-comments, refined to a single object. A missing comment default-denies
+ * so the ability can't be used to probe for ids.
+ *
+ * @param array<string,mixed> $input Input.
+ * @return bool
+ */
+function aafm_perm_get_comment( array $input ): bool {
+	$id = isset( $input['comment_id'] ) ? absint( $input['comment_id'] ) : 0;
+	if ( $id <= 0 ) {
+		return current_user_can( 'read' );
+	}
+
+	$comment = get_comment( $id );
+	if ( ! $comment instanceof WP_Comment ) {
+		// Default-deny on a missing comment so the ability can't probe for ids.
+		return current_user_can( 'read' );
+	}
+
+	$post_id     = (int) $comment->comment_post_ID;
+	$is_approved = '1' === (string) $comment->comment_approved || 'approve' === (string) $comment->comment_approved;
+
+	// Approved comment on a readable post: the same floor as the list read.
+	if ( $is_approved && aafm_comment_post_is_readable( $post_id ) ) {
+		return true;
+	}
+
+	// Non-approved (hold/spam/trash) or on a hidden post: require moderation rights
+	// on the specific comment.
+	return current_user_can( 'moderate_comments' ) && current_user_can( 'edit_comment', $id );
+}
+
+/**
+ * Execute aafm/get-comment.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_get_comment( array $input ) {
+	$id      = isset( $input['comment_id'] ) ? absint( $input['comment_id'] ) : 0;
+	$comment = get_comment( $id );
+	if ( ! $comment instanceof WP_Comment ) {
+		return aafm_generic_error();
+	}
+	return array( 'comment' => aafm_redact_comment( $comment ) );
 }
 
 /**
