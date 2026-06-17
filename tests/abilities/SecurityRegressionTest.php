@@ -295,6 +295,22 @@ final class SecurityRegressionTest extends TestCase {
 				'aafm/delete-user-meta',
 			)
 		);
+		// The site-settings abilities are the sanctioned exception to the generic 'setting'
+		// needle. Both gate on manage_options (the Settings-screen capability) and are
+		// default-OFF, audited, and closed-schema. They never touch an ARBITRARY option:
+		// update-site-settings writes ONLY a fixed allowlist (name, tagline, timezone, the
+		// date/time formats, week start, posts per page), fail-closed on any other key, and
+		// the takeover-class keys (siteurl, home, admin_email, default_role,
+		// users_can_register) are excluded and re-stripped even from a rogue filter. A
+		// *generic* option/setting write (e.g. aafm/update-option, aafm/set-option) stays
+		// banned by the needle.
+		$sanctioned = array_merge(
+			$sanctioned,
+			array(
+				'aafm/get-site-settings',
+				'aafm/update-site-settings',
+			)
+		);
 		foreach ( array_keys( $registry ) as $name ) {
 			if ( in_array( $name, $sanctioned, true ) ) {
 				continue;
