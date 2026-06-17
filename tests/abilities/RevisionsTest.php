@@ -245,4 +245,52 @@ final class RevisionsTest extends TestCase {
 			)
 		);
 	}
+
+	public function test_get_revision_returns_content_rendered_and_raw(): void {
+		$author = self::factory()->user->create( array( 'role' => 'author' ) );
+		wp_set_current_user( $author );
+		$pid = self::factory()->post->create(
+			array(
+				'post_author'  => $author,
+				'post_content' => 'first body',
+				'post_excerpt' => 'first excerpt',
+			)
+		);
+		wp_update_post(
+			array(
+				'ID'           => $pid,
+				'post_content' => 'second body **bold**',
+				'post_excerpt' => 'second excerpt',
+			)
+		);
+		$revs = wp_get_post_revisions( $pid ); // newest first.
+		$rev  = array_shift( $revs );
+
+		// Default format is rendered: the_content wraps paragraphs.
+		$out = aafm_exec_get_revision(
+			array(
+				'post_id'     => $pid,
+				'revision_id' => (int) $rev->ID,
+			)
+		);
+		$this->assertArrayHasKey( 'content', $out['revision'] );
+		$this->assertArrayHasKey( 'excerpt', $out['revision'] );
+		$this->assertStringContainsString( 'second body', $out['revision']['content'] );
+		$this->assertSame( 'second excerpt', $out['revision']['excerpt'] );
+		// Rendered output is wrapped in a paragraph tag by the_content.
+		$this->assertStringContainsString( '<p>', $out['revision']['content'] );
+
+		// Raw format returns the stored markup, unwrapped.
+		$raw = aafm_exec_get_revision(
+			array(
+				'post_id'        => $pid,
+				'revision_id'    => (int) $rev->ID,
+				'content_format' => 'raw',
+			)
+		);
+		$this->assertSame( 'second body **bold**', $raw['revision']['content'] );
+
+		// Diff is null when not requested.
+		$this->assertNull( $out['revision']['diff'] );
+	}
 }

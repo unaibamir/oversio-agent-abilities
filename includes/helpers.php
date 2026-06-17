@@ -847,6 +847,37 @@ function aafm_redact_revision( WP_Post $revision ): array {
 }
 
 /**
+ * Build the get-revision payload: the lean metadata shape plus the revision's body
+ * content, excerpt, and an optional diff. This is intentionally NOT folded into
+ * aafm_redact_revision(): that redactor stays metadata-only for list-revisions, which
+ * must never carry body content. The caller (aafm_perm_get_revision) has already proven
+ * the parent is editable, so exposing the revision body here is safe — password
+ * protection is a front-end visitor gate, not an editor gate, and does not apply.
+ *
+ * @param WP_Post             $revision The validated revision (belongs to its parent).
+ * @param array<string,mixed> $input    Validated input: content_format, with_diff.
+ * @return array<string,mixed>
+ */
+function aafm_get_revision_payload( WP_Post $revision, array $input ): array {
+	$format = isset( $input['content_format'] ) ? (string) $input['content_format'] : 'rendered';
+	$raw    = (string) $revision->post_content;
+
+	if ( 'raw' === $format ) {
+		$content = $raw;
+	} else {
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- core filter, applied so blocks/shortcodes render.
+		$content = (string) apply_filters( 'the_content', $raw );
+	}
+
+	$payload            = aafm_redact_revision( $revision );
+	$payload['content'] = $content;
+	$payload['excerpt'] = (string) $revision->post_excerpt;
+	$payload['diff']    = null; // Populated by the diff task only when with_diff is requested.
+
+	return $payload;
+}
+
+/**
  * Resolve a revision id, enforcing that it is a real revision of $post_id.
  *
  * @param int $revision_id Candidate revision id.

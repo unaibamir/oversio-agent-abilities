@@ -31,7 +31,7 @@ function aafm_register_revisions_definitions( array $registry ): array {
 	);
 	$registry['aafm/get-revision']     = array(
 		'label'        => __( 'Get revision', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Get a single revision of a post the agent can edit (metadata only — no body content).', 'agent-abilities-for-mcp' ),
+		'description'  => __( "Get a single revision of a post the agent can edit, including its body content (rendered or raw) and an optional diff against the post's current content.", 'agent-abilities-for-mcp' ),
 		'group'        => 'reads',
 		'risk'         => 'read',
 		'subject'      => 'content',
@@ -159,18 +159,23 @@ function aafm_exec_list_revisions( array $input ) {
 function aafm_args_get_revision(): array {
 	return array(
 		'label'               => __( 'Get revision', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Get a single revision of a post the agent can edit (metadata only — no body content).', 'agent-abilities-for-mcp' ),
+		'description'         => __( "Get a single revision of a post the agent can edit. Returns the revision's id, parent post_id, author, dates, and title, plus its body content (rendered HTML by default, or raw markup via content_format), its excerpt, and an optional unified diff against the post's current content (request with with_diff). Requires edit access to the parent post.", 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
 			'properties'           => array(
-				'post_id'     => array(
+				'post_id'        => array(
 					'type'    => 'integer',
 					'minimum' => 1,
 				),
-				'revision_id' => array(
+				'revision_id'    => array(
 					'type'    => 'integer',
 					'minimum' => 1,
+				),
+				'content_format' => array(
+					'type'    => 'string',
+					'enum'    => array( 'rendered', 'raw' ),
+					'default' => 'rendered',
 				),
 			),
 			'required'             => array( 'post_id', 'revision_id' ),
@@ -212,9 +217,9 @@ function aafm_perm_get_revision( array $input ): bool {
 /**
  * Execute aafm/get-revision.
  *
- * Returns the single revision reduced to the metadata-only shape by
- * aafm_redact_revision(). The validator guarantees the revision belongs to the
- * named parent before anything is returned.
+ * Returns the single revision's metadata plus its body content, excerpt, and an optional
+ * diff, assembled by aafm_get_revision_payload(). The validator guarantees the revision
+ * belongs to the named parent before anything is returned.
  *
  * @param array<string,mixed> $input Validated input.
  * @return array<string,mixed>|WP_Error
@@ -224,7 +229,7 @@ function aafm_exec_get_revision( array $input ) {
 	if ( is_wp_error( $revision ) ) {
 		return aafm_generic_error();
 	}
-	return array( 'revision' => aafm_redact_revision( $revision ) );
+	return array( 'revision' => aafm_get_revision_payload( $revision, $input ) );
 }
 
 /**
