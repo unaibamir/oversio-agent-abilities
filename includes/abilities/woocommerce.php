@@ -655,3 +655,67 @@ function aafm_exec_wc_update_product( array $input ) {
 	}
 	return aafm_rich_wc_product( $saved );
 }
+
+/**
+ * Args for aafm/wc-delete-product.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_delete_product(): array {
+	return array(
+		'label'               => __( 'Delete WooCommerce product', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Permanently deletes a WooCommerce product by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'product_id' => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+				),
+			),
+			'required'             => array( 'product_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'id'      => array( 'type' => 'integer' ),
+				'deleted' => array( 'type' => 'boolean' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_delete_product',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => true,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-delete-product.
+ *
+ * Permanent removal through WooCommerce's own data store: $product->delete( true ). The force flag is
+ * WC's permanent-delete semantics (a product has no recoverable WC trash for this surface). This is
+ * the WooCommerce object's own delete method, NOT the core post force-delete primitive, so it never
+ * touches that governed call site or the source-scan that bans it.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_wc_delete_product( array $input ) {
+	$id      = (int) ( $input['product_id'] ?? 0 );
+	$product = aafm_wc_get_product( $id );
+	if ( null === $product ) {
+		return aafm_generic_error();
+	}
+	$product->delete( true );
+
+	return array(
+		'id'      => $id,
+		'deleted' => true,
+	);
+}

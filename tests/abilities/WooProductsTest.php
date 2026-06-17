@@ -356,4 +356,68 @@ final class WooProductsTest extends TestCase {
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-update-product', $abilities );
 	}
+
+	/**
+	 * WC1.3: delete (destructive, permanent via the WC data store).
+	 */
+	public function test_delete_product_removes_it_permanently(): void {
+		$this->acting_as( 'administrator' );
+		$this->assertTrue( \AAFM\Tests\WcStubStore::exists( 101 ) );
+
+		$res = wp_get_ability( 'aafm/wc-delete-product' )->execute( array( 'product_id' => 101 ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertTrue( $res['deleted'] );
+		$this->assertSame( 101, $res['id'] );
+
+		// Gone — a following read finds nothing.
+		$this->assertFalse( \AAFM\Tests\WcStubStore::exists( 101 ) );
+		$read = wp_get_ability( 'aafm/wc-get-product' )->execute( array( 'product_id' => 101 ) );
+		$this->assertInstanceOf( WP_Error::class, $read, 'A deleted product can no longer be read.' );
+	}
+
+	public function test_delete_product_is_annotated_destructive(): void {
+		$annotations = wp_get_ability( 'aafm/wc-delete-product' )->get_meta_item( 'annotations' );
+		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-product must be destructive.' );
+		$this->assertFalse( $annotations['readonly'] ?? true, 'wc-delete-product is not readonly.' );
+	}
+
+	public function test_delete_product_nonexistent_id_is_graceful_error(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-product' )->execute( array( 'product_id' => 999999 ) );
+		$this->assertInstanceOf( WP_Error::class, $res );
+	}
+
+	public function test_delete_product_requires_product_id(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-product' )->execute( array() );
+		$this->assertInstanceOf( WP_Error::class, $res, 'product_id is required on delete.' );
+	}
+
+	public function test_delete_product_denies_an_editor(): void {
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/wc-delete-product' )->check_permissions( array( 'product_id' => 101 ) )
+		);
+	}
+
+	public function test_delete_product_write_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-product' )->execute( array( 'product_id' => 101 ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-delete-product', $abilities );
+	}
+
+	public function test_delete_product_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/wc-delete-product' )->check_permissions( array( 'product_id' => 101 ) )
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-delete-product', $abilities );
+	}
 }
