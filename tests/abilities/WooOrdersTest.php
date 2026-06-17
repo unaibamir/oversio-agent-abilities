@@ -237,6 +237,18 @@ final class WooOrdersTest extends TestCase {
 		$this->assertFalse( $annotations['destructive'] ?? true, 'wc-list-orders must be annotated non-destructive.' );
 	}
 
+	public function test_list_orders_empty_store_returns_empty(): void {
+		// With no orders in the store the ability must return orders:[] and total:0.
+		// This pins both the plain-array fallback path and the paginate object path on an empty result.
+		WcOrderStubStore::reset();
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-orders' )->execute( array() );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( array(), $res['orders'], 'orders must be an empty array when the store is empty.' );
+		$this->assertSame( 0, $res['total'], 'total must be 0 when the store is empty.' );
+	}
+
 	public function test_list_orders_closed_schema_rejects_unknown_field(): void {
 		$this->acting_as( 'administrator' );
 		$res = wp_get_ability( 'aafm/wc-list-orders' )->execute( array( 'evil_field' => 'x' ) );
@@ -359,6 +371,14 @@ final class WooOrdersTest extends TestCase {
 	public function test_get_order_unknown_id_returns_generic_error(): void {
 		$this->acting_as( 'administrator' );
 		$res = wp_get_ability( 'aafm/wc-get-order' )->execute( array( 'order_id' => 999999 ) );
+		$this->assertInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'aafm_error', $res->get_error_code() );
+	}
+
+	public function test_get_order_rejects_zero_id(): void {
+		// The minimum:1 schema constraint must reject order_id:0 before execute runs.
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-get-order' )->execute( array( 'order_id' => 0 ) );
 		$this->assertInstanceOf( WP_Error::class, $res );
 	}
 
