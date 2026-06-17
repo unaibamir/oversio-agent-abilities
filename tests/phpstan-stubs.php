@@ -236,4 +236,64 @@ if ( ! function_exists( 'wc_get_products' ) ) {
 		return array();
 	}
 }
+
+if ( ! function_exists( 'wc_get_attribute_taxonomies' ) ) {
+	/**
+	 * @return \stdClass[]
+	 */
+	function wc_get_attribute_taxonomies() {
+		return array();
+	}
+}
+
+if ( ! function_exists( 'wc_attribute_taxonomy_name' ) ) {
+	/**
+	 * @param string $attribute_name
+	 * @return string
+	 */
+	function wc_attribute_taxonomy_name( $attribute_name ) {
+		return '';
+	}
+}
+
+if ( ! function_exists( 'wc_sanitize_taxonomy_name' ) ) {
+	/**
+	 * @param string $taxonomy
+	 * @return string
+	 */
+	function wc_sanitize_taxonomy_name( $taxonomy ) {
+		return '';
+	}
+}
+
+if ( ! function_exists( 'wc_create_attribute' ) ) {
+	/**
+	 * @param array<string,mixed> $args
+	 * @return int|\WP_Error
+	 */
+	function wc_create_attribute( $args ) {
+		return 0;
+	}
+}
+
+if ( ! function_exists( 'wc_update_attribute' ) ) {
+	/**
+	 * @param int                 $id
+	 * @param array<string,mixed> $args
+	 * @return int|\WP_Error
+	 */
+	function wc_update_attribute( $id, $args ) {
+		return 0;
+	}
+}
+
+if ( ! function_exists( 'wc_delete_attribute' ) ) {
+	/**
+	 * @param int $id
+	 * @return bool
+	 */
+	function wc_delete_attribute( $id ) {
+		return false;
+	}
+}
 // phpcs:enable

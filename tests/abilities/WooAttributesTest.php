@@ -39,11 +39,6 @@ final class WooAttributesTest extends TestCase {
 		$this->reset_integration_stubs();
 		parent::tear_down();
 	}
-
-	// -----------------------------------------------------------------------
-	// Helpers.
-	// -----------------------------------------------------------------------
-
 	/**
 	 * Run a callback inside a simulated Abilities API init action.
 	 *
@@ -74,11 +69,6 @@ final class WooAttributesTest extends TestCase {
 		);
 		$this->in_action( 'wp_abilities_api_init', 'aafm_register_enabled_abilities' );
 	}
-
-	// -----------------------------------------------------------------------
-	// List.
-	// -----------------------------------------------------------------------
-
 	public function test_list_attributes_requires_manage_woocommerce(): void {
 		$this->acting_as( 'editor' );
 		$this->assertNotTrue(
@@ -125,11 +115,6 @@ final class WooAttributesTest extends TestCase {
 			wp_get_ability( 'aafm/wc-list-product-attributes' )->check_permissions( array() )
 		);
 	}
-
-	// -----------------------------------------------------------------------
-	// Get.
-	// -----------------------------------------------------------------------
-
 	public function test_get_attribute_returns_the_rich_row(): void {
 		$this->acting_as( 'administrator' );
 		$res = wp_get_ability( 'aafm/wc-get-product-attribute' )->execute( array( 'attribute_id' => 1 ) );
@@ -171,11 +156,6 @@ final class WooAttributesTest extends TestCase {
 			);
 		}
 	}
-
-	// -----------------------------------------------------------------------
-	// Create.
-	// -----------------------------------------------------------------------
-
 	public function test_create_attribute_returns_rich_shape_and_is_recorded(): void {
 		$this->acting_as( 'administrator' );
 		$res = wp_get_ability( 'aafm/wc-create-product-attribute' )->execute(
@@ -256,11 +236,6 @@ final class WooAttributesTest extends TestCase {
 		$this->assertSame( $get, $create, 'create-attribute shares the rich get output schema.' );
 		$this->assertSame( $get, $update, 'update-attribute shares the rich get output schema.' );
 	}
-
-	// -----------------------------------------------------------------------
-	// Update.
-	// -----------------------------------------------------------------------
-
 	public function test_update_attribute_patches_by_id(): void {
 		$this->acting_as( 'administrator' );
 		$res = wp_get_ability( 'aafm/wc-update-product-attribute' )->execute(
@@ -342,11 +317,6 @@ final class WooAttributesTest extends TestCase {
 		$abilities = wp_list_pluck( $success, 'ability' );
 		$this->assertContains( 'aafm/wc-update-product-attribute', $abilities );
 	}
-
-	// -----------------------------------------------------------------------
-	// Delete.
-	// -----------------------------------------------------------------------
-
 	public function test_delete_attribute_removes_it_permanently(): void {
 		$this->acting_as( 'administrator' );
 		$this->assertNotNull( WcAttributeStubStore::get( 1 ) );
@@ -412,11 +382,6 @@ final class WooAttributesTest extends TestCase {
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-delete-product-attribute', $abilities );
 	}
-
-	// -----------------------------------------------------------------------
-	// Host-inactive registry absence.
-	// -----------------------------------------------------------------------
-
 	public function test_wc_attribute_abilities_absent_when_host_inactive(): void {
 		// Mirror WooProductsTest / WooVariationsTest: pin detection OFF through the seam so the
 		// class WooCommerce marker (defined process-wide) does not falsely report WC active.
@@ -428,11 +393,6 @@ final class WooAttributesTest extends TestCase {
 		$this->assertArrayNotHasKey( 'aafm/wc-list-product-attributes', aafm_get_abilities_registry() );
 		remove_filter( 'aafm_woocommerce_active', '__return_false', 99 );
 	}
-
-	// -----------------------------------------------------------------------
-	// Discovery.
-	// -----------------------------------------------------------------------
-
 	public function test_list_attributes_discovery_admin_yes_editor_no(): void {
 		$this->acting_as( 'administrator' );
 		$this->assertTrue( aafm_user_can_discover_ability( 'aafm/wc-list-product-attributes' ) );

@@ -1517,10 +1517,12 @@ function aafm_args_wc_list_product_attributes(): array {
 /**
  * Execute aafm/wc-list-product-attributes.
  *
- * @param array<string,mixed> $input Validated input.
+ * Takes no input (the global attribute list is unscoped and unpaged), so it declares no parameter —
+ * matching the no-arg read execs elsewhere (e.g. aafm_exec_list_themes).
+ *
  * @return array<string,mixed>
  */
-function aafm_exec_wc_list_product_attributes( array $input ): array {
+function aafm_exec_wc_list_product_attributes(): array {
 	$all  = wc_get_attribute_taxonomies();
 	$rows = array_map( 'aafm_redact_wc_attribute', $all );
 	return array(

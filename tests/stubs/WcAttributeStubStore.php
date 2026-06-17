@@ -54,13 +54,13 @@ class WcAttributeStubStore {
 	/**
 	 * Seed one attribute directly (the test fixture's setup path).
 	 *
-	 * @param int      $id  Attribute id.
+	 * @param int       $id  Attribute id.
 	 * @param \stdClass $row Row with real WC field names.
 	 * @return void
 	 */
 	public static function seed( int $id, \stdClass $row ): void {
-		$row->attribute_id          = $id;
-		self::$attributes[ $id ]    = $row;
+		$row->attribute_id       = $id;
+		self::$attributes[ $id ] = $row;
 		if ( $id >= self::$next_id ) {
 			self::$next_id = $id + 1;
 		}
@@ -95,13 +95,13 @@ class WcAttributeStubStore {
 	/**
 	 * Create a new attribute row from a wc_create_attribute()-style args array, returning the new id.
 	 *
-	 * wc_create_attribute() accepts: name (label), slug (attribute_name), type, order_by, has_archives.
+	 * The wc_create_attribute() args are name (label), slug (attribute_name), type, order_by, has_archives.
 	 *
 	 * @param array<string,mixed> $args Attribute args.
 	 * @return int New attribute id.
 	 */
 	public static function create( array $args ): int {
-		$id  = self::$next_id;
+		$id = self::$next_id;
 		++self::$next_id;
 
 		$row                    = new \stdClass();
