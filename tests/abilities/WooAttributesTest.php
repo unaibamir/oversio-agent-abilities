@@ -400,4 +400,71 @@ final class WooAttributesTest extends TestCase {
 		$this->acting_as( 'editor' );
 		$this->assertFalse( aafm_user_can_discover_ability( 'aafm/wc-list-product-attributes' ) );
 	}
+
+	public function test_delete_attribute_surfaces_failure_when_wc_delete_fails(): void {
+		$this->acting_as( 'administrator' );
+		// Seed confirms id 1 exists before the forced-failure attempt.
+		$this->assertNotNull( WcAttributeStubStore::get( 1 ) );
+
+		// Force the underlying store delete to return false on the next call.
+		WcAttributeStubStore::set_delete_should_fail( true );
+
+		$res = wp_get_ability( 'aafm/wc-delete-product-attribute' )->execute( array( 'attribute_id' => 1 ) );
+		$this->assertInstanceOf( WP_Error::class, $res, 'A failed wc_delete_attribute must surface as WP_Error, not {deleted:true}.' );
+
+		// The attribute must still be in the store (the failure left it untouched).
+		$this->assertNotNull( WcAttributeStubStore::get( 1 ), 'Failed delete must leave the attribute intact in the store.' );
+	}
+
+	public function test_update_attribute_surfaces_error_when_wc_update_fails(): void {
+		$this->acting_as( 'administrator' );
+		// Force the underlying store update to return false on the next call.
+		WcAttributeStubStore::set_update_should_fail( true );
+
+		$res = wp_get_ability( 'aafm/wc-update-product-attribute' )->execute(
+			array(
+				'attribute_id' => 1,
+				'name'         => 'Will Fail',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'A failed wc_update_attribute must surface as WP_Error.' );
+	}
+
+	public function test_update_attribute_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/wc-update-product-attribute' )->check_permissions( array( 'attribute_id' => 1 ) )
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-update-product-attribute', $abilities );
+	}
+
+	public function test_create_attribute_surfaces_error_when_wc_create_fails(): void {
+		$this->acting_as( 'administrator' );
+		WcAttributeStubStore::set_create_should_fail( true );
+
+		$res = wp_get_ability( 'aafm/wc-create-product-attribute' )->execute( array( 'name' => 'Doomed' ) );
+		$this->assertInstanceOf( WP_Error::class, $res, 'A failed wc_create_attribute must surface as WP_Error.' );
+	}
+
+	public function test_list_attributes_returns_empty_result_when_no_attributes_exist(): void {
+		$this->acting_as( 'administrator' );
+		// Clear the seeded attributes so the store is empty.
+		WcAttributeStubStore::reset();
+
+		$res = wp_get_ability( 'aafm/wc-list-product-attributes' )->execute( array() );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( array(), $res['attributes'] );
+		$this->assertSame( 0, $res['total'] );
+	}
+
+	public function test_create_attribute_derives_slug_from_name_when_omitted(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-create-product-attribute' )->execute( array( 'name' => 'My Fabric' ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		// sanitize_title( 'My Fabric' ) yields 'my-fabric'; wc_attribute_taxonomy_name adds 'pa_' prefix.
+		$this->assertSame( 'pa_my-fabric', $res['slug'] );
+	}
 }

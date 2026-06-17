@@ -146,8 +146,9 @@ trait IntegrationStubs {
 	/**
 	 * Seed the WcAttributeStubStore with the two default global attributes used across WC1c tests.
 	 *
-	 * Call this after stub_woocommerce() (which resets the attribute store via reset_integration_stubs)
-	 * to ensure the attributes are seeded for each test that needs them.
+	 * Call this after stub_woocommerce(), which resets the attribute store at the top of its own
+	 * body (via WcAttributeStubStore::reset()), to ensure the attributes are seeded for each test
+	 * that needs them.
 	 *
 	 * Seeded: id 1 = Color (pa_color, select), id 2 = Size (pa_size, select).
 	 *

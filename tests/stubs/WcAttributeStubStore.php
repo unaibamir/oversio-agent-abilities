@@ -42,13 +42,67 @@ class WcAttributeStubStore {
 	public static int $next_id = 1;
 
 	/**
+	 * When true, the next delete() call returns false (simulates a WC data-store failure).
+	 *
+	 * @var bool
+	 */
+	public static bool $fail_delete = false;
+
+	/**
+	 * When true, the next create() call returns 0 (simulates a WC create failure).
+	 *
+	 * @var bool
+	 */
+	public static bool $fail_create = false;
+
+	/**
+	 * When true, the next update() call returns false (simulates a WC data-store failure).
+	 *
+	 * @var bool
+	 */
+	public static bool $fail_update = false;
+
+	/**
 	 * Clear all state (called at the start of every test via stub_woocommerce).
 	 *
 	 * @return void
 	 */
 	public static function reset(): void {
-		self::$attributes = array();
-		self::$next_id    = 1;
+		self::$attributes  = array();
+		self::$next_id     = 1;
+		self::$fail_delete = false;
+		self::$fail_create = false;
+		self::$fail_update = false;
+	}
+
+	/**
+	 * Control whether the next delete() call should simulate a store failure.
+	 *
+	 * @param bool $should_fail Pass true to make the next delete() return false.
+	 * @return void
+	 */
+	public static function set_delete_should_fail( bool $should_fail ): void {
+		self::$fail_delete = $should_fail;
+	}
+
+	/**
+	 * Control whether the next create() call should simulate a store failure.
+	 *
+	 * @param bool $should_fail Pass true to make the next create() return 0.
+	 * @return void
+	 */
+	public static function set_create_should_fail( bool $should_fail ): void {
+		self::$fail_create = $should_fail;
+	}
+
+	/**
+	 * Control whether the next update() call should simulate a store failure.
+	 *
+	 * @param bool $should_fail Pass true to make the next update() return false.
+	 * @return void
+	 */
+	public static function set_update_should_fail( bool $should_fail ): void {
+		self::$fail_update = $should_fail;
 	}
 
 	/**
@@ -96,11 +150,17 @@ class WcAttributeStubStore {
 	 * Create a new attribute row from a wc_create_attribute()-style args array, returning the new id.
 	 *
 	 * The wc_create_attribute() args are name (label), slug (attribute_name), type, order_by, has_archives.
+	 * Returns 0 when $fail_create is set (simulates a WC data-store failure).
 	 *
 	 * @param array<string,mixed> $args Attribute args.
-	 * @return int New attribute id.
+	 * @return int New attribute id, or 0 on simulated failure.
 	 */
 	public static function create( array $args ): int {
+		if ( self::$fail_create ) {
+			self::$fail_create = false;
+			return 0;
+		}
+
 		$id = self::$next_id;
 		++self::$next_id;
 
@@ -120,12 +180,17 @@ class WcAttributeStubStore {
 	 * Update an existing attribute row from a wc_update_attribute()-style args array.
 	 *
 	 * Only keys present in $args are merged; absent keys are left unchanged.
+	 * Returns false when $fail_update is set (simulates a WC data-store failure).
 	 *
 	 * @param int                 $id   Attribute id.
 	 * @param array<string,mixed> $args Partial attribute args (same key set as create).
-	 * @return bool True on success, false when id is unknown.
+	 * @return bool True on success, false on simulated failure or when id is unknown.
 	 */
 	public static function update( int $id, array $args ): bool {
+		if ( self::$fail_update ) {
+			self::$fail_update = false;
+			return false;
+		}
 		if ( ! isset( self::$attributes[ $id ] ) ) {
 			return false;
 		}
@@ -152,10 +217,17 @@ class WcAttributeStubStore {
 	/**
 	 * Permanently delete an attribute by id.
 	 *
+	 * Returns false when $fail_delete is set (simulates a WC data-store failure without
+	 * actually removing the row — so a subsequent get() still finds the attribute).
+	 *
 	 * @param int $id Attribute id.
-	 * @return bool True on success, false when id is unknown.
+	 * @return bool True on success, false on simulated failure or when id is unknown.
 	 */
 	public static function delete( int $id ): bool {
+		if ( self::$fail_delete ) {
+			self::$fail_delete = false;
+			return false;
+		}
 		if ( ! isset( self::$attributes[ $id ] ) ) {
 			return false;
 		}
