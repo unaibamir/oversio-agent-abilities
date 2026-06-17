@@ -1447,3 +1447,33 @@ function aafm_menu_item_output_properties(): array {
 		'order'     => array( 'type' => 'integer' ),
 	);
 }
+
+/**
+ * JSON-schema property fragment for one block template in the list-templates output.
+ * Mirrors what aafm_redact_template() returns — every key, with its type — so the list-templates
+ * output_schema can describe its array element shape instead of leaving it open.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_template_output_properties(): array {
+	return array(
+		'id'     => array( 'type' => 'string' ),
+		'slug'   => array( 'type' => 'string' ),
+		'title'  => array( 'type' => 'string' ),
+		'type'   => array( 'type' => 'string' ),
+		'source' => array( 'type' => 'string' ),
+	);
+}
+
+/**
+ * JSON-schema property fragment for the rich single-template output (get/update-template).
+ * The lean template shape PLUS the block markup, so the get/update-template output_schema declares
+ * the full shape rather than under-describing it.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_rich_template_output_properties(): array {
+	$base            = aafm_template_output_properties();
+	$base['content'] = array( 'type' => 'string' );
+	return $base;
+}

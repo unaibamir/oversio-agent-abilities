@@ -205,3 +205,157 @@ function aafm_exec_list_themes(): array {
 	}
 	return array( 'themes' => $themes );
 }
+
+/**
+ * Resolve the template type from input, constrained to the two valid block-template types.
+ *
+ * The schema enum already rejects anything else, but coercing here keeps the core API calls
+ * fed a known value (wp_template by default) rather than trusting raw input.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return string Either 'wp_template' or 'wp_template_part'.
+ */
+function aafm_template_type( array $input ): string {
+	$type = isset( $input['type'] ) ? sanitize_key( (string) $input['type'] ) : 'wp_template';
+	return 'wp_template_part' === $type ? 'wp_template_part' : 'wp_template';
+}
+
+/**
+ * Safe shape for one block template — id, slug, title, type, and source only.
+ *
+ * No markup here (the list stays lean); get-template adds content. source is theme|custom: a
+ * theme-FILE template ('theme') has no backing post, a database-overridden one is 'custom'.
+ *
+ * @param WP_Block_Template $template Block template object.
+ * @return array<string,mixed>
+ */
+function aafm_redact_template( WP_Block_Template $template ): array {
+	return array(
+		'id'     => (string) $template->id,
+		'slug'   => (string) $template->slug,
+		'title'  => (string) $template->title,
+		'type'   => (string) $template->type,
+		'source' => (string) $template->source,
+	);
+}
+
+/**
+ * Args for aafm/list-templates.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_list_templates(): array {
+	return array(
+		'label'               => __( 'List templates', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Lists block templates (or template parts) by id, slug, title, type, and source. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'type' => array(
+					'type' => 'string',
+					'enum' => array( 'wp_template', 'wp_template_part' ),
+				),
+			),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'templates' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => aafm_template_output_properties(),
+					),
+				),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_list_templates',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/list-templates.
+ *
+ * Returns every block template (or template part) for the active theme, redacted to the lean
+ * shape (no markup). The type defaults to wp_template.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>
+ */
+function aafm_exec_list_templates( array $input ): array {
+	$type      = aafm_template_type( $input );
+	$templates = array();
+	foreach ( get_block_templates( array(), $type ) as $template ) {
+		if ( $template instanceof WP_Block_Template ) {
+			$templates[] = aafm_redact_template( $template );
+		}
+	}
+	return array( 'templates' => $templates );
+}
+
+/**
+ * Args for aafm/get-template.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_get_template(): array {
+	return array(
+		'label'               => __( 'Get template', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Reads one block template by id, including its markup. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'template_id' => array( 'type' => 'string' ),
+				'type'        => array(
+					'type' => 'string',
+					'enum' => array( 'wp_template', 'wp_template_part' ),
+				),
+			),
+			'required'             => array( 'template_id' ),
+			'additionalProperties' => false,
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => aafm_rich_template_output_properties(),
+		),
+		'execute_callback'    => 'aafm_exec_get_template',
+		'permission_callback' => 'aafm_perm_edit_theme_options',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/get-template.
+ *
+ * Resolves the template by its theme//slug id; an unknown id returns a generic error rather than
+ * leaking which ids exist. The rich shape adds the template markup to the lean fields.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|WP_Error
+ */
+function aafm_exec_get_template( array $input ) {
+	$id       = sanitize_text_field( (string) ( $input['template_id'] ?? '' ) );
+	$type     = aafm_template_type( $input );
+	$template = get_block_template( $id, $type );
+	if ( ! $template instanceof WP_Block_Template ) {
+		return aafm_generic_error();
+	}
+	$out            = aafm_redact_template( $template );
+	$out['content'] = (string) $template->content;
+	return $out;
+}

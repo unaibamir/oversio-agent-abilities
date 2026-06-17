@@ -21,6 +21,28 @@ use WP_Error;
 final class ThemesTest extends TestCase {
 
 	/**
+	 * The stylesheet active before this test switched themes, restored in tear_down().
+	 *
+	 * @var string|null
+	 */
+	private ?string $previous_stylesheet = null;
+
+	/**
+	 * Restore the original theme after each test that switched to a block theme.
+	 *
+	 * The WP test case rolls back database state transactionally, but switch_theme() writes the
+	 * stylesheet/template options through a path the rollback does not always reach, so the
+	 * original theme is restored explicitly here.
+	 */
+	public function tear_down(): void {
+		if ( null !== $this->previous_stylesheet ) {
+			switch_theme( $this->previous_stylesheet );
+			$this->previous_stylesheet = null;
+		}
+		parent::tear_down();
+	}
+
+	/**
 	 * Run a callback inside a simulated Abilities API init action.
 	 *
 	 * @param string   $action Action name to simulate.
@@ -34,11 +56,25 @@ final class ThemesTest extends TestCase {
 	}
 
 	/**
+	 * Switch the site to a block theme so the FSE template/global-styles abilities have real
+	 * data to act on. The WordPress test library boots with the non-block "default" theme, so the
+	 * block-theme bundled with core (twentytwentyfive) is activated for the duration of the test
+	 * and restored in tear_down().
+	 */
+	private function use_block_theme(): void {
+		if ( null === $this->previous_stylesheet ) {
+			$this->previous_stylesheet = get_stylesheet();
+		}
+		switch_theme( 'twentytwentyfive' );
+	}
+
+	/**
 	 * Enable + register the FSE abilities so they can be invoked.
 	 */
 	private function register_themes(): void {
 		aafm_install_activity_log();
 		aafm_clear_activity_log();
+		$this->use_block_theme();
 		$this->in_action( 'wp_abilities_api_categories_init', 'aafm_register_categories' );
 		update_option(
 			'aafm_enabled_abilities',
@@ -67,5 +103,18 @@ final class ThemesTest extends TestCase {
 		$this->assertArrayHasKey( 'themes', $res );
 		$active = array_filter( $res['themes'], static fn( $t ) => 'active' === $t['status'] );
 		$this->assertNotEmpty( $active, 'One theme must be marked active.' );
+	}
+
+	public function test_list_and_get_template(): void {
+		$this->register_themes();
+		$this->acting_as( 'administrator' );
+		$list = wp_get_ability( 'aafm/list-templates' )->execute( array() );
+		$this->assertArrayHasKey( 'templates', $list );
+		$this->assertNotEmpty( $list['templates'], 'A block theme has templates.' );
+		$id  = $list['templates'][0]['id'];
+		$one = wp_get_ability( 'aafm/get-template' )->execute( array( 'template_id' => $id ) );
+		$this->assertArrayHasKey( 'content', $one );
+
+		$this->assertInstanceOf( WP_Error::class, wp_get_ability( 'aafm/get-template' )->execute( array( 'template_id' => 'nope//missing' ) ) );
 	}
 }
