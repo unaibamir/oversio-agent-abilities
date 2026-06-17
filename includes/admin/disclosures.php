@@ -35,6 +35,8 @@ function aafm_ability_disclosures(): array {
 		'aafm/count-media'          => __( 'Counts media library items, total and by mime type. An optional mime filter narrows the breakdown.', 'agent-abilities-for-mcp' ),
 		'aafm/get-users'            => __( 'Lists users with their id, display name, roles, and post count. Never email or login.', 'agent-abilities-for-mcp' ),
 		'aafm/get-terms'            => __( 'Lists terms and their post counts in a public taxonomy.', 'agent-abilities-for-mcp' ),
+		'aafm/get-term'             => __( 'Reads a single term (name, slug, description, post count) from a public taxonomy.', 'agent-abilities-for-mcp' ),
+		'aafm/get-term-meta'        => __( 'Reads one allowlisted scalar meta value from a term. Protected and underscore keys are off limits, and nothing is exposed unless an allowlist is configured.', 'agent-abilities-for-mcp' ),
 		'aafm/get-taxonomies'       => __( 'Lists the public taxonomies registered on the site.', 'agent-abilities-for-mcp' ),
 		'aafm/get-post-types'       => __( 'Lists the public post types registered on the site.', 'agent-abilities-for-mcp' ),
 		'aafm/get-site-info'        => __( 'Reads the site name, tagline, URL, and language.', 'agent-abilities-for-mcp' ),
@@ -59,6 +61,8 @@ function aafm_ability_disclosures(): array {
 		'aafm/update-comment'       => __( "Edits a comment's text only. It cannot change the post, author, email, or IP. Requires edit access to that comment.", 'agent-abilities-for-mcp' ),
 		'aafm/create-term'          => __( 'Creates a term in a public taxonomy. Requires the manage_categories capability.', 'agent-abilities-for-mcp' ),
 		'aafm/update-term'          => __( 'Updates a term. Reparenting is guarded against hierarchy loops.', 'agent-abilities-for-mcp' ),
+		'aafm/add-post-terms'       => __( 'Adds terms to a post without removing its existing terms. Requires edit access to the post and the taxonomy\'s assign capability; only existing terms in that taxonomy can be added.', 'agent-abilities-for-mcp' ),
+		'aafm/update-term-meta'     => __( 'Writes one allowlisted scalar meta value to a term you can edit. Only allowlisted keys; protected keys are blocked.', 'agent-abilities-for-mcp' ),
 		'aafm/restore-revision'     => __( 'Restores a post to one of its revisions. The current state is saved as a fresh revision first, so the change is reversible.', 'agent-abilities-for-mcp' ),
 
 		// Destructive (still recoverable).
@@ -69,6 +73,7 @@ function aafm_ability_disclosures(): array {
 		// Destructive (permanent).
 		'aafm/delete-revision'      => __( "Permanently removes one revision from a post's history. The live post is unchanged, but the deleted revision cannot be recovered. Requires edit access to the parent post.", 'agent-abilities-for-mcp' ),
 		'aafm/delete-media'         => __( 'Permanently deletes an attachment: the file and its library entry are removed and cannot be recovered. Requires delete access to that attachment.', 'agent-abilities-for-mcp' ),
+		'aafm/delete-term-meta'     => __( 'Removes an allowlisted meta key and all its values from a term you can edit. This cannot be undone. Only allowlisted keys.', 'agent-abilities-for-mcp' ),
 		'aafm/delete-comment'       => __( 'Permanently deletes a comment. This bypasses the Trash and cannot be undone — use moderate-comment to trash a comment recoverably instead. Requires edit access to that comment.', 'agent-abilities-for-mcp' ),
 	);
 }
