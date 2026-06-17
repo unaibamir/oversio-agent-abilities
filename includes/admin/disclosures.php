@@ -59,5 +59,8 @@ function aafm_ability_disclosures(): array {
 		'aafm/trash-post'           => __( 'Moves a post the agent can edit to the Trash, where you can restore it. Never a permanent delete.', 'agent-abilities-for-mcp' ),
 		'aafm/trash-page'           => __( 'Moves a page to the Trash, where you can restore it. Never a permanent delete.', 'agent-abilities-for-mcp' ),
 		'aafm/delete-post-meta'     => __( 'Removes an allowlisted meta key and all its values from a post the agent can edit. Only allowlisted keys.', 'agent-abilities-for-mcp' ),
+
+		// Destructive (permanent).
+		'aafm/delete-revision'      => __( "Permanently removes one revision from a post's history. The live post is unchanged, but the deleted revision cannot be recovered. Requires edit access to the parent post.", 'agent-abilities-for-mcp' ),
 	);
 }
