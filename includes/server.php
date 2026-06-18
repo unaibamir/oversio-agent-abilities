@@ -181,7 +181,8 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		// wc-delete-order, wc-list-order-notes, wc-get-order-note, wc-create-order-note,
 		// wc-delete-order-note, wc-list-order-refunds, wc-get-order-refund, wc-create-order-refund,
 		// wc-delete-order-refund, wc-list-customers, wc-get-customer, wc-create-customer,
-		// wc-update-customer, wc-delete-customer) gates on the object-independent manage_woocommerce
+		// wc-update-customer, wc-delete-customer, wc-list-coupons, wc-get-coupon,
+		// wc-create-coupon, wc-update-coupon, wc-delete-coupon) gates on the object-independent manage_woocommerce
 		// capability, so NONE needs a server.php case — each falls through to its real
 		// permission_callback with empty input, the correct discovery answer. Proven in
 		// WooProductsTest / WooVariationsTest / WooAttributesTest / WooOrdersTest /

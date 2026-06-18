@@ -157,5 +157,10 @@ function aafm_ability_disclosures(): array {
 		'aafm/wc-delete-order-note'        => __( 'Permanently deletes a note from a WooCommerce order. Requires the order id and the note id. This cannot be undone. Requires the manage-WooCommerce capability. Off by default.', 'agent-abilities-for-mcp' ),
 		'aafm/wc-delete-order-refund'      => __( 'Permanently deletes a WooCommerce order refund by refund id. This cannot be undone. Requires the manage-WooCommerce capability. Off by default.', 'agent-abilities-for-mcp' ),
 		'aafm/wc-delete-customer'          => __( 'Permanently deletes a WooCommerce customer, which removes the underlying WordPress user. You must name another user to inherit their content. It will not delete you or the last administrator. This cannot be undone. Requires the manage-WooCommerce capability. Off by default.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-list-coupons'             => __( 'Lists WooCommerce coupons with their id, code, amount, discount type, expiry date, and usage count, plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-get-coupon'               => __( 'Reads one WooCommerce coupon by id: code, amount, discount type, expiry, usage limits, spend limits, product and email restrictions, and other config. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-create-coupon'            => __( 'Creates a WooCommerce coupon from a code and discount type, with optional amount, usage limits, spend limits, product restrictions, and email restrictions. Returns the full coupon shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-update-coupon'            => __( 'Updates a WooCommerce coupon by id, changing only the fields you send. An empty request body is a no-op success. Returns the full coupon shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'aafm/wc-delete-coupon'            => __( 'Permanently deletes a WooCommerce coupon by id. This cannot be undone. Requires the manage-WooCommerce capability. Off by default.', 'agent-abilities-for-mcp' ),
 	);
 }
