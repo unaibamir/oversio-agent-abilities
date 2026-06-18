@@ -474,8 +474,11 @@ if ( ! function_exists( 'wc_get_orders' ) ) {
 
 if ( ! function_exists( 'wc_get_order' ) ) {
 	/**
+	 * Real WooCommerce returns a WC_Order_Refund when given a refund post id, so the
+	 * stub return type includes it — the refund resolver's instanceof check needs it.
+	 *
 	 * @param int|false $id
-	 * @return \WC_Order|false
+	 * @return \WC_Order|\WC_Order_Refund|false
 	 */
 	function wc_get_order( $id = false ) {
 		return false;
