@@ -182,11 +182,15 @@ function aafm_ability_list_permission( string $name ): ?callable {
 		// wc-delete-order-note, wc-list-order-refunds, wc-get-order-refund, wc-create-order-refund,
 		// wc-delete-order-refund, wc-list-customers, wc-get-customer, wc-create-customer,
 		// wc-update-customer, wc-delete-customer, wc-list-coupons, wc-get-coupon,
-		// wc-create-coupon, wc-update-coupon, wc-delete-coupon) gates on the object-independent manage_woocommerce
-		// capability, so NONE needs a server.php case — each falls through to its real
-		// permission_callback with empty input, the correct discovery answer. Proven in
-		// WooProductsTest / WooVariationsTest / WooAttributesTest / WooOrdersTest /
-		// WooOrderNotesRefundsTest / WooCustomersTest (admin discovers, editor does not).
+		// wc-create-coupon, wc-update-coupon, wc-delete-coupon, wc-list-shipping-zones,
+		// wc-get-shipping-zone, wc-create-shipping-zone, wc-update-shipping-zone,
+		// wc-delete-shipping-zone, wc-list-shipping-methods, wc-get-shipping-method,
+		// wc-create-shipping-method, wc-update-shipping-method, wc-delete-shipping-method)
+		// gates on the object-independent manage_woocommerce capability, so NONE needs a
+		// server.php case — each falls through to its real permission_callback with empty
+		// input, the correct discovery answer. Proven in WooProductsTest / WooVariationsTest /
+		// WooAttributesTest / WooOrdersTest / WooOrderNotesRefundsTest / WooCustomersTest /
+		// WooCouponsTest / WooShippingTest (admin discovers, editor does not).
 
 		case 'aafm/get-block':
 		case 'aafm/update-block':
