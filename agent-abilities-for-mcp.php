@@ -178,6 +178,7 @@ function aafm_bootstrap() {
 
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/icons.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/notices.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/admin/components.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/dashboard.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/connection.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/admin/disclosures.php';
