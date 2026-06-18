@@ -4875,7 +4875,10 @@ function aafm_exec_wc_update_coupon( array $input ) {
 	$fields = $input;
 	unset( $fields['coupon_id'] );
 	aafm_wc_apply_coupon_input( $coupon, $fields );
-	$coupon->save();
+	$saved_id = (int) $coupon->save();
+	if ( $saved_id < 1 ) {
+		return aafm_generic_error();
+	}
 
 	$saved = aafm_wc_get_coupon_object( $id );
 	if ( null === $saved ) {

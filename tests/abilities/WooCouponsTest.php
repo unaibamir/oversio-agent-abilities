@@ -555,6 +555,28 @@ final class WooCouponsTest extends TestCase {
 	}
 
 	/**
+	 * Store failure on update surfaces as WP_Error, not a false success.
+	 */
+	public function test_update_coupon_store_failure_returns_error(): void {
+		$this->acting_as( 'administrator' );
+		// Seed a real coupon so we get past the "unknown id" guard.
+		$created = wp_get_ability( 'aafm/wc-create-coupon' )->execute( array( 'code' => 'UPDATEFAIL' ) );
+		$this->assertNotInstanceOf( \WP_Error::class, $created );
+		$new_id = $created['id'];
+
+		WcCouponStubStore::$force_save_failure = true;
+		$res                                   = wp_get_ability( 'aafm/wc-update-coupon' )->execute(
+			array(
+				'coupon_id' => $new_id,
+				'amount'    => '9.99',
+			)
+		);
+		WcCouponStubStore::$force_save_failure = false;
+
+		$this->assertInstanceOf( \WP_Error::class, $res, 'Save failure on update must not lie success.' );
+	}
+
+	/**
 	 * Create→update→get round-trip: a created coupon can be updated and the change is visible.
 	 */
 	public function test_create_update_get_round_trip(): void {
