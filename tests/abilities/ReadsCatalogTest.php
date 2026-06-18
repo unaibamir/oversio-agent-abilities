@@ -90,6 +90,10 @@ final class ReadsCatalogTest extends TestCase {
 		'aafm/wc-get-shipping-zone',
 		'aafm/wc-list-shipping-methods',
 		'aafm/wc-get-shipping-method',
+		'aafm/wc-list-tax-rates',
+		'aafm/wc-get-tax-rate',
+		'aafm/wc-list-tax-classes',
+		'aafm/wc-get-tax-class',
 	);
 
 	public function set_up(): void {
@@ -153,9 +157,9 @@ final class ReadsCatalogTest extends TestCase {
 		$this->assertSame(
 			$expected,
 			$reads,
-			'The read group must be exactly the 65 reads — no more, no fewer.'
+			'The read group must be exactly the 69 reads — no more, no fewer.'
 		);
-		$this->assertCount( 65, $reads, 'The read catalog ships exactly 65 read abilities.' );
+		$this->assertCount( 69, $reads, 'The read catalog ships exactly 69 read abilities.' );
 	}
 
 	public function test_each_read_is_in_the_registry_as_a_read(): void {

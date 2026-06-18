@@ -833,4 +833,35 @@ if ( ! class_exists( 'WC_Shipping_Zones' ) ) {
 		public static function get_zones( $args = array() ) { return array(); }
 	}
 }
+if ( ! class_exists( 'WC_Tax' ) ) {
+	/**
+	 * PHPStan stub for WC_Tax (W4-WC6). Never loaded in production; test-only.
+	 */
+	class WC_Tax {
+		/**
+		 * Return all custom tax class slugs (standard is NOT included).
+		 *
+		 * @return string[]
+		 */
+		public static function get_tax_classes(): array { return array(); }
+
+		/**
+		 * Create a tax class.
+		 *
+		 * @param string $name Class name.
+		 * @param string $slug Optional slug.
+		 * @return array<string,string>|\WP_Error
+		 */
+		public static function create_tax_class( string $name, string $slug = '' ): array|\WP_Error { return array(); }
+
+		/**
+		 * Delete a tax class by field/value.
+		 *
+		 * @param string $field Field name.
+		 * @param string $value Field value.
+		 * @return bool|\WP_Error
+		 */
+		public static function delete_tax_class_by( string $field, string $value ): bool|\WP_Error { return false; }
+	}
+}
 // phpcs:enable

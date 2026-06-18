@@ -1133,5 +1133,99 @@ PHP;
 		WcCustomerStubStore::reset();
 		WcCouponStubStore::reset();
 		WcShippingStubStore::reset();
+		WcTaxStubStore::reset();
+	}
+
+	/**
+	 * Seed the WcTaxStubStore with default tax class fixtures for WC6 tests.
+	 *
+	 * Call after stub_wc_tax() (which resets the class store), and before registering
+	 * the tax abilities.
+	 *
+	 * @return void
+	 */
+	protected function seed_wc_tax(): void {
+		WcTaxStubStore::reset();
+		WcTaxStubStore::seed();
+	}
+
+	/**
+	 * Define the minimal WooCommerce tax surface so the tax rate and class abilities can
+	 * list/read/create/delete through the WC_Tax API layer.
+	 *
+	 * WooCommerce's WC_Tax class is global and defined once per process; class state lives in
+	 * WcTaxStubStore. Tax rate CRUD goes through $wpdb against the temp table created by
+	 * WcTaxStubStore::create_tax_rates_table(). This helper must be called AFTER
+	 * stub_woocommerce() (which defines the WooCommerce marker class and grants the
+	 * manage_woocommerce capability).
+	 *
+	 * @return void
+	 */
+	protected function stub_wc_tax(): void {
+		if ( ! class_exists( 'WC_Tax' ) ) {
+			// phpcs:ignore Squiz.PHP.Eval.Discouraged -- a class stub for tests; never shipped.
+			eval( $this->aafm_wc_tax_class_source() );
+		}
+	}
+
+	/**
+	 * The source of the stub WC_Tax class. Kept as a string so the eval definition is
+	 * guarded by class_exists and the trait file holds exactly one object structure (the trait).
+	 *
+	 * @return string
+	 */
+	private function aafm_wc_tax_class_source(): string {
+		return <<<'PHP'
+class WC_Tax {
+	/**
+	 * Return all custom tax class slugs (standard is NOT included, mirroring real WC).
+	 *
+	 * @return string[]
+	 */
+	public static function get_tax_classes(): array {
+		return array_keys( \AAFM\Tests\WcTaxStubStore::$classes );
+	}
+
+	/**
+	 * Create a tax class.
+	 *
+	 * @param string $name Class name.
+	 * @param string $slug Optional slug; derived from name when empty.
+	 * @return array<string,string>|\WP_Error
+	 */
+	public static function create_tax_class( string $name, string $slug = '' ): array|\WP_Error {
+		if ( \AAFM\Tests\WcTaxStubStore::$force_save_failure ) {
+			return new \WP_Error( 'wc_tax', 'Tax class save failed.' );
+		}
+		$slug = $slug ? $slug : sanitize_title( $name );
+		if ( isset( \AAFM\Tests\WcTaxStubStore::$classes[ $slug ] ) ) {
+			return new \WP_Error( 'wc_tax', 'Tax class already exists.' );
+		}
+		\AAFM\Tests\WcTaxStubStore::$classes[ $slug ] = $name;
+		return array( 'name' => $name, 'slug' => $slug );
+	}
+
+	/**
+	 * Delete a tax class by a field/value pair.
+	 *
+	 * @param string $field Field name (only 'slug' is supported).
+	 * @param string $value Field value.
+	 * @return bool|\WP_Error
+	 */
+	public static function delete_tax_class_by( string $field, string $value ): bool|\WP_Error {
+		if ( \AAFM\Tests\WcTaxStubStore::$force_delete_failure ) {
+			return new \WP_Error( 'wc_tax', 'Tax class delete failed.' );
+		}
+		if ( 'slug' === $field ) {
+			if ( isset( \AAFM\Tests\WcTaxStubStore::$classes[ $value ] ) ) {
+				unset( \AAFM\Tests\WcTaxStubStore::$classes[ $value ] );
+				return true;
+			}
+			return new \WP_Error( 'wc_tax', 'Tax class not found.' );
+		}
+		return false;
+	}
+}
+PHP;
 	}
 }
