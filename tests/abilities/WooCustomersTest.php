@@ -868,4 +868,256 @@ final class WooCustomersTest extends TestCase {
 		);
 		$this->assertInstanceOf( WP_Error::class, $res );
 	}
+
+	// =========================================================================
+	// FIX-4: delete reassign actually moves content.
+	// =========================================================================
+
+	/**
+	 * A valid delete with reassign_to must transfer the victim's posts to the new owner.
+	 */
+	public function test_delete_customer_valid_delete_reassigns_content(): void {
+		$victim_id   = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+		$reassign_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
+
+		// Create a post authored by the victim so we can verify reassignment.
+		$post_id = self::factory()->post->create( array( 'post_author' => $victim_id ) );
+		$this->assertSame( $victim_id, (int) get_post( $post_id )->post_author );
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-customer' )->execute(
+			array(
+				'customer_id' => $victim_id,
+				'reassign_to' => $reassign_id,
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertTrue( $res['deleted'] );
+
+		// Post must now be owned by the reassign user, not the deleted victim.
+		$this->assertSame( $reassign_id, (int) get_post( $post_id )->post_author, 'wp_delete_user reassign must transfer post authorship.' );
+	}
+
+	// =========================================================================
+	// FIX-5: update store-failure guard.
+	// =========================================================================
+
+	/**
+	 * Store failure on update (update_should_fail) must surface as WP_Error, never false-success.
+	 */
+	public function test_update_customer_store_failure_returns_error(): void {
+		WcCustomerStubStore::$update_should_fail = true;
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-customer' )->execute(
+			array(
+				'customer_id' => 7001,
+				'first_name'  => 'ShouldFail',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'A store failure on update must not lie success.' );
+		WcCustomerStubStore::$update_should_fail = false;
+	}
+
+	// =========================================================================
+	// FIX-6: empty store returns empty array + zero total.
+	// =========================================================================
+
+	/**
+	 * With no customers in the store the ability must return customers:[] (array) and total:0.
+	 */
+	public function test_list_customers_empty_store_returns_empty(): void {
+		WcCustomerStubStore::reset();
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-customers' )->execute( array() );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( array(), $res['customers'], 'customers must be an empty array when the store is empty.' );
+		$this->assertSame( 0, $res['total'], 'total must be 0 when the store is empty.' );
+		// The customers value must encode as [] not {} in JSON.
+		$json = wp_json_encode( $res['customers'] );
+		$this->assertSame( '[]', $json, 'An empty customers list must JSON-encode as [] not {}.' );
+	}
+
+	// =========================================================================
+	// FIX-7: id fidelity and grand total across pages.
+	// =========================================================================
+
+	/**
+	 * Seeding two customers must surface both ids in the list and report total:2.
+	 * A paginated sub-request must still report total:2 (grand count, not page count).
+	 */
+	public function test_list_customers_returns_both_ids_and_grand_total(): void {
+		WcCustomerStubStore::reset();
+		WcCustomerStubStore::seed( 7001, array( 'email' => 'a@example.com' ) );
+		WcCustomerStubStore::seed( 7002, array( 'email' => 'b@example.com' ) );
+
+		$this->acting_as( 'administrator' );
+
+		// Full list: both ids present, total == 2.
+		$res = wp_get_ability( 'aafm/wc-list-customers' )->execute( array() );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$ids = wp_list_pluck( $res['customers'], 'id' );
+		$this->assertContains( 7001, $ids );
+		$this->assertContains( 7002, $ids );
+		$this->assertSame( 2, $res['total'] );
+
+		// Page 2 of per_page=1: only 1 row in page, but total is still the grand count (2).
+		$paged = wp_get_ability( 'aafm/wc-list-customers' )->execute(
+			array(
+				'per_page' => 1,
+				'page'     => 2,
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $paged );
+		$this->assertCount( 1, $paged['customers'], 'Page 2 of per_page=1 must contain exactly 1 row.' );
+		$this->assertSame( 2, $paged['total'], 'total must be the grand count (2), not the page slice length (1).' );
+	}
+
+	// =========================================================================
+	// FIX-8: pin error codes on unknown-id tests.
+	// =========================================================================
+
+	/**
+	 * Unknown customer id on get must return a WP_Error with code aafm_error.
+	 */
+	public function test_get_customer_unknown_id_returns_aafm_error_code(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-get-customer' )->execute( array( 'customer_id' => 99999 ) );
+		$this->assertInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'aafm_error', $res->get_error_code() );
+	}
+
+	/**
+	 * Unknown customer id on update must return a WP_Error with code aafm_error.
+	 */
+	public function test_update_customer_unknown_id_returns_aafm_error_code(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-customer' )->execute(
+			array(
+				'customer_id' => 99999,
+				'first_name'  => 'Ghost',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'aafm_error', $res->get_error_code() );
+	}
+
+	// =========================================================================
+	// FIX-9: update field-isolation — billing-only and shipping-only patches.
+	// =========================================================================
+
+	/**
+	 * Smuggling shipping.role on update must be rejected by the closed shipping schema.
+	 */
+	public function test_update_customer_nested_smuggle_shipping_role_is_rejected(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-customer' )->execute(
+			array(
+				'customer_id' => 7001,
+				'shipping'    => array(
+					'role' => 'administrator',
+				),
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'shipping.role smuggle must be rejected by the closed schema.' );
+	}
+
+	/**
+	 * Updating billing fields only must leave shipping intact.
+	 */
+	public function test_update_customer_billing_only_leaves_shipping_intact(): void {
+		// Seed a customer with known billing and shipping data.
+		WcCustomerStubStore::seed(
+			7050,
+			array(
+				'email'    => 'iso@example.com',
+				'billing'  => array(
+					'first_name' => 'OldBilling',
+					'last_name'  => '',
+					'company'    => '',
+					'address_1'  => '',
+					'address_2'  => '',
+					'city'       => 'OldCity',
+					'state'      => '',
+					'postcode'   => '',
+					'country'    => '',
+					'email'      => '',
+					'phone'      => '',
+				),
+				'shipping' => array(
+					'first_name' => 'KeepMe',
+					'last_name'  => '',
+					'company'    => '',
+					'address_1'  => '99 Ship St',
+					'address_2'  => '',
+					'city'       => 'ShipCity',
+					'state'      => '',
+					'postcode'   => '',
+					'country'    => '',
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-customer' )->execute(
+			array(
+				'customer_id' => 7050,
+				'billing'     => array( 'city' => 'NewCity' ),
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'NewCity', $res['billing']['city'], 'billing.city must be updated.' );
+		// Shipping fields must survive untouched.
+		$this->assertSame( 'KeepMe', $res['shipping']['first_name'], 'shipping.first_name must not be cleared by a billing-only update.' );
+		$this->assertSame( 'ShipCity', $res['shipping']['city'], 'shipping.city must not be cleared by a billing-only update.' );
+	}
+
+	/**
+	 * Updating shipping fields only must leave billing intact.
+	 */
+	public function test_update_customer_shipping_only_leaves_billing_intact(): void {
+		WcCustomerStubStore::seed(
+			7051,
+			array(
+				'email'    => 'iso2@example.com',
+				'billing'  => array(
+					'first_name' => 'KeepBilling',
+					'last_name'  => '',
+					'company'    => '',
+					'address_1'  => '10 Bill Ave',
+					'address_2'  => '',
+					'city'       => 'BillCity',
+					'state'      => '',
+					'postcode'   => '',
+					'country'    => '',
+					'email'      => 'iso2@example.com',
+					'phone'      => '+1-555-0300',
+				),
+				'shipping' => array(
+					'first_name' => 'OldShip',
+					'last_name'  => '',
+					'company'    => '',
+					'address_1'  => '',
+					'address_2'  => '',
+					'city'       => 'OldShipCity',
+					'state'      => '',
+					'postcode'   => '',
+					'country'    => '',
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-customer' )->execute(
+			array(
+				'customer_id' => 7051,
+				'shipping'    => array( 'city' => 'NewShipCity' ),
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'NewShipCity', $res['shipping']['city'], 'shipping.city must be updated.' );
+		// Billing fields must survive untouched.
+		$this->assertSame( 'KeepBilling', $res['billing']['first_name'], 'billing.first_name must not be cleared by a shipping-only update.' );
+		$this->assertSame( 'BillCity', $res['billing']['city'], 'billing.city must not be cleared by a shipping-only update.' );
+	}
 }
