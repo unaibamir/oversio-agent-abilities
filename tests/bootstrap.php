@@ -32,4 +32,5 @@ require_once __DIR__ . '/stubs/WcCustomerStubStore.php';
 require_once __DIR__ . '/stubs/WcCouponStubStore.php';
 require_once __DIR__ . '/stubs/WcShippingStubStore.php';
 require_once __DIR__ . '/stubs/WcTaxStubStore.php';
+require_once __DIR__ . '/stubs/WcGatewayStubStore.php';
 require_once __DIR__ . '/stubs/IntegrationStubs.php';

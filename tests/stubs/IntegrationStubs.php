@@ -1134,6 +1134,7 @@ PHP;
 		WcCouponStubStore::reset();
 		WcShippingStubStore::reset();
 		WcTaxStubStore::reset();
+		WcGatewayStubStore::reset();
 	}
 
 	/**
@@ -1224,6 +1225,115 @@ class WC_Tax {
 			return new \WP_Error( 'wc_tax', 'Tax class not found.' );
 		}
 		return false;
+	}
+}
+PHP;
+	}
+
+	/**
+	 * Register the WC_Payment_Gateway and WC_Payment_Gateways stub classes (eval-backed).
+	 *
+	 * @return void
+	 */
+	protected function stub_wc_gateways(): void {
+		if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
+			// phpcs:ignore Squiz.PHP.Eval.Discouraged -- a class stub for tests; never shipped.
+			eval( $this->aafm_wc_payment_gateway_class_source() );
+		}
+		if ( ! class_exists( 'WC_Payment_Gateways' ) ) {
+			// phpcs:ignore Squiz.PHP.Eval.Discouraged -- a class stub for tests; never shipped.
+			eval( $this->aafm_wc_payment_gateways_class_source() );
+		}
+	}
+
+	/**
+	 * Seed default gateway fixtures into WcGatewayStubStore.
+	 *
+	 * @return void
+	 */
+	protected function seed_wc_gateways(): void {
+		\AAFM\Tests\WcGatewayStubStore::seed();
+	}
+
+	/**
+	 * The source of the stub WC_Payment_Gateway class.
+	 *
+	 * @return string
+	 */
+	private function aafm_wc_payment_gateway_class_source(): string {
+		return <<<'PHP'
+class WC_Payment_Gateway {
+	/** @var string */
+	public $id = '';
+	/** @var string */
+	public $title = '';
+	/** @var string */
+	public $description = '';
+	/** @var string */
+	public $enabled = 'yes';
+	/** @var int */
+	public $order = 0;
+	/** @var array<string,mixed> */
+	public $settings = array();
+
+	/**
+	 * @param array<string,mixed> $data Initial gateway data.
+	 */
+	public function __construct( array $data = array() ) {
+		foreach ( $data as $key => $value ) {
+			$this->$key = $value;
+		}
+	}
+
+	/**
+	 * @param string $key
+	 * @param mixed  $value
+	 * @return bool
+	 */
+	public function update_option( $key, $value ) {
+		return \AAFM\Tests\WcGatewayStubStore::update_option( $this->id, (string) $key, $value );
+	}
+
+	/** @return bool */
+	public function save() {
+		return \AAFM\Tests\WcGatewayStubStore::save_gateway(
+			$this->id,
+			array(
+				'id'          => $this->id,
+				'title'       => $this->title,
+				'description' => $this->description,
+				'enabled'     => $this->enabled,
+				'order'       => $this->order,
+				'settings'    => $this->settings,
+			)
+		);
+	}
+}
+PHP;
+	}
+
+	/**
+	 * The source of the stub WC_Payment_Gateways class.
+	 *
+	 * @return string
+	 */
+	private function aafm_wc_payment_gateways_class_source(): string {
+		return <<<'PHP'
+class WC_Payment_Gateways {
+	/** @return static */
+	public static function instance() {
+		return new static();
+	}
+
+	/** @return array<string,\WC_Payment_Gateway> */
+	public function payment_gateways() {
+		$out = array();
+		foreach ( \AAFM\Tests\WcGatewayStubStore::all() as $id => $data ) {
+			$gw              = new \WC_Payment_Gateway( $data );
+			$gw->settings    = $data['settings'] ?? array();
+			$out[ (string) $id ] = $gw;
+		}
+		return $out;
 	}
 }
 PHP;

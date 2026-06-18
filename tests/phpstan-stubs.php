@@ -864,4 +864,46 @@ if ( ! class_exists( 'WC_Tax' ) ) {
 		public static function delete_tax_class_by( string $field, string $value ): bool|\WP_Error { return false; }
 	}
 }
+if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
+	/**
+	 * PHPStan stub for WC_Payment_Gateway (W4-WC7). Never loaded in production; test-only.
+	 */
+	class WC_Payment_Gateway {
+		/** @var string */
+		public $id = '';
+		/** @var string */
+		public $title = '';
+		/** @var string */
+		public $description = '';
+		/** @var string */
+		public $enabled = 'yes';
+		/** @var int */
+		public $order = 0;
+		/** @var array<string,mixed> */
+		public $settings = array();
+		/**
+		 * @param array<string,mixed> $data
+		 */
+		public function __construct( array $data = array() ) {}
+		/**
+		 * @param string $key
+		 * @param mixed  $value
+		 * @return bool
+		 */
+		public function update_option( $key, $value ) { return false; }
+		/** @return bool */
+		public function save() { return false; }
+	}
+}
+if ( ! class_exists( 'WC_Payment_Gateways' ) ) {
+	/**
+	 * PHPStan stub for WC_Payment_Gateways (W4-WC7). Never loaded in production; test-only.
+	 */
+	class WC_Payment_Gateways {
+		/** @return static */
+		public static function instance() { return new static(); }
+		/** @return array<string,\WC_Payment_Gateway> */
+		public function payment_gateways() { return array(); }
+	}
+}
 // phpcs:enable

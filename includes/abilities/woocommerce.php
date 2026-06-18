@@ -530,6 +530,80 @@ function aafm_register_woocommerce_definitions( array $registry ): array {
 		'args_builder' => 'aafm_args_wc_delete_tax_class',
 	);
 
+	// Reports, counts, and payment gateways (sub-slice W4-WC7).
+	$registry['aafm/wc-get-sales-report']       = array(
+		'label'        => __( 'Get WooCommerce sales report', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Returns a sales summary for a date range: total sales, order count, net sales, and average order value. Defaults to the current calendar month. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_get_sales_report',
+	);
+	$registry['aafm/wc-get-top-sellers-report'] = array(
+		'label'        => __( 'Get WooCommerce top sellers report', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Returns the best-selling products for a period (week, month, or year) ordered by quantity sold. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_get_top_sellers_report',
+	);
+	$registry['aafm/wc-count-orders']           = array(
+		'label'        => __( 'Count WooCommerce orders', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Returns order counts broken down by WooCommerce status (pending, processing, on-hold, completed, cancelled, refunded, failed) plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_count_orders',
+	);
+	$registry['aafm/wc-count-products']         = array(
+		'label'        => __( 'Count WooCommerce products', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Returns product counts broken down by post status (publish, draft, private, pending, trash) plus a total of active (non-trash) products. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_count_products',
+	);
+	$registry['aafm/wc-count-customers']        = array(
+		'label'        => __( 'Count WooCommerce customers', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Returns the count of registered users on the site. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_count_customers',
+	);
+	$registry['aafm/wc-list-payment-gateways']  = array(
+		'label'        => __( 'List WooCommerce payment gateways', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Lists all registered WooCommerce payment gateways with their id, title, and enabled state. Secret or credential settings are never returned. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_list_payment_gateways',
+	);
+	$registry['aafm/wc-get-payment-gateway']    = array(
+		'label'        => __( 'Get WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Reads one WooCommerce payment gateway by id, including its title, description, enabled state, order, and non-secret settings. Credential and key fields are always redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_get_payment_gateway',
+	);
+	$registry['aafm/wc-count-coupons']          = array(
+		'label'        => __( 'Count WooCommerce coupons', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Returns coupon counts broken down by post status (publish, draft, private, pending, trash) plus a total of active coupons. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'reads',
+		'risk'         => 'read',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_count_coupons',
+	);
+	$registry['aafm/wc-update-payment-gateway'] = array(
+		'label'        => __( 'Update WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
+		'description'  => __( 'Updates a WooCommerce payment gateway by id, changing only the fields you send: enabled state, title, description, or display order. Returns the updated gateway shape with secrets redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'group'        => 'writes',
+		'risk'         => 'write',
+		'subject'      => 'woocommerce',
+		'args_builder' => 'aafm_args_wc_update_payment_gateway',
+	);
+
 	return $registry;
 }
 
@@ -6773,4 +6847,758 @@ function aafm_exec_wc_delete_tax_class( array $input ): array|\WP_Error {
 	}
 
 	return array( 'deleted' => true );
+}
+
+// =============================================================================
+// WC7 helpers — redaction + gateway shape
+// =============================================================================
+
+/**
+ * Redact secret/key/token/password fields from a gateway's settings array.
+ *
+ * Any setting key whose name contains key, secret, token, password, api, or private
+ * is stripped before the array is returned to the caller.
+ *
+ * @param array<string,mixed> $settings Raw gateway settings array.
+ * @return array<string,mixed>
+ */
+function aafm_wc_redact_gateway_settings( array $settings ): array {
+	$redacted       = array();
+	$secret_pattern = '/(?:key|secret|token|password|api|private)/i';
+	foreach ( $settings as $key => $value ) {
+		if ( preg_match( $secret_pattern, (string) $key ) ) {
+			continue;
+		}
+		$redacted[ $key ] = $value;
+	}
+	return $redacted;
+}
+
+/**
+ * Build the safe output shape for a payment gateway.
+ *
+ * Returns id, title, description, enabled (bool), order, and redacted settings.
+ * Credential fields are stripped by aafm_wc_redact_gateway_settings().
+ *
+ * @param \WC_Payment_Gateway $gateway Payment gateway object.
+ * @return array<string,mixed>
+ */
+function aafm_wc_gateway_shape( \WC_Payment_Gateway $gateway ): array {
+	return array(
+		'id'          => $gateway->id,
+		'title'       => $gateway->title,
+		'description' => $gateway->description,
+		'enabled'     => 'yes' === $gateway->enabled,
+		'order'       => (int) $gateway->order,
+		'settings'    => aafm_wc_redact_gateway_settings( $gateway->settings ),
+	);
+}
+
+// =============================================================================
+// wc-get-sales-report
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-get-sales-report.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_get_sales_report(): array {
+	return array(
+		'label'               => __( 'Get WooCommerce sales report', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Returns a sales summary for a date range: total sales, order count, net sales, and average order value. Defaults to the current calendar month. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => array(
+				'start_date' => array(
+					'type'        => 'string',
+					'description' => 'Start date in Y-m-d format. Defaults to the first day of the current month.',
+				),
+				'end_date'   => array(
+					'type'        => 'string',
+					'description' => 'End date in Y-m-d format. Defaults to today.',
+				),
+			),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'total_sales'   => array( 'type' => 'string' ),
+				'order_count'   => array( 'type' => 'integer' ),
+				'net_sales'     => array( 'type' => 'string' ),
+				'average_sales' => array( 'type' => 'string' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_get_sales_report',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-get-sales-report.
+ *
+ * Queries shop_order posts with completed/processing statuses in the given date window and
+ * sums the _order_total post-meta value. Uses $wpdb->prepare() with positional placeholders
+ * to stay PHPCS-clean.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_get_sales_report( array $input ): array|\WP_Error {
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	global $wpdb;
+	$start = sanitize_text_field( (string) ( $input['start_date'] ?? gmdate( 'Y-m-01' ) ) );
+	$end   = sanitize_text_field( (string) ( $input['end_date'] ?? gmdate( 'Y-m-d' ) ) );
+
+	$statuses     = array( 'wc-completed', 'wc-processing' );
+	$placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
+
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+	$row = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT SUM( pm.meta_value + 0 ) AS total_sales, COUNT( DISTINCT p.ID ) AS order_count
+			 FROM {$wpdb->posts} p
+			 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			 WHERE p.post_type = 'shop_order'
+			   AND p.post_status IN ( {$placeholders} )
+			   AND pm.meta_key = '_order_total'
+			   AND p.post_date >= %s
+			   AND p.post_date <= %s",
+			array_merge( $statuses, array( $start . ' 00:00:00', $end . ' 23:59:59' ) )
+		),
+		ARRAY_A
+	);
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+	$total_sales = round( (float) ( $row['total_sales'] ?? 0 ), 2 );
+	$order_count = (int) ( $row['order_count'] ?? 0 );
+	$avg         = $order_count > 0 ? round( $total_sales / $order_count, 2 ) : 0.0;
+
+	return array(
+		'total_sales'   => number_format( $total_sales, 2, '.', '' ),
+		'order_count'   => $order_count,
+		'net_sales'     => number_format( $total_sales, 2, '.', '' ),
+		'average_sales' => number_format( $avg, 2, '.', '' ),
+	);
+}
+
+// =============================================================================
+// wc-get-top-sellers-report
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-get-top-sellers-report.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_get_top_sellers_report(): array {
+	return array(
+		'label'               => __( 'Get WooCommerce top sellers report', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Returns the best-selling products for a period (week, month, or year) ordered by quantity sold. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => array(
+				'period' => array(
+					'type'    => 'string',
+					'enum'    => array( 'week', 'month', 'year' ),
+					'default' => 'month',
+				),
+				'limit'  => array(
+					'type'    => 'integer',
+					'minimum' => 1,
+					'maximum' => 100,
+					'default' => 10,
+				),
+			),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'items' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'product_id' => array( 'type' => 'integer' ),
+							'name'       => array( 'type' => 'string' ),
+							'quantity'   => array( 'type' => 'integer' ),
+						),
+					),
+				),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_get_top_sellers_report',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-get-top-sellers-report.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_get_top_sellers_report( array $input ): array|\WP_Error {
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	global $wpdb;
+	$period = sanitize_text_field( (string) ( $input['period'] ?? 'month' ) );
+	$limit  = max( 1, min( 100, (int) ( $input['limit'] ?? 10 ) ) );
+
+	$start = match ( $period ) {
+		'week'  => gmdate( 'Y-m-d', strtotime( '-1 week' ) ),
+		'year'  => gmdate( 'Y-01-01' ),
+		default => gmdate( 'Y-m-01' ),
+	};
+
+	$statuses     = array( 'wc-completed', 'wc-processing' );
+	$placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
+
+	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+	$rows = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT pm.meta_value AS product_id, COUNT(*) AS qty_sold
+			 FROM {$wpdb->posts} p
+			 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			 WHERE p.post_type = 'shop_order'
+			   AND p.post_status IN ( {$placeholders} )
+			   AND pm.meta_key = '_product_id'
+			   AND p.post_date >= %s
+			 GROUP BY pm.meta_value
+			 ORDER BY qty_sold DESC
+			 LIMIT %d",
+			array_merge( $statuses, array( $start . ' 00:00:00', $limit ) )
+		),
+		ARRAY_A
+	);
+	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+	if ( ! is_array( $rows ) ) {
+		$rows = array();
+	}
+
+	$items = array();
+	foreach ( $rows as $row ) {
+		$product_id = (int) $row['product_id'];
+		$post       = get_post( $product_id );
+		$items[]    = array(
+			'product_id' => $product_id,
+			'name'       => $post instanceof \WP_Post ? $post->post_title : '',
+			'quantity'   => (int) $row['qty_sold'],
+		);
+	}
+
+	return array( 'items' => $items );
+}
+
+// =============================================================================
+// wc-count-orders
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-count-orders.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_count_orders(): array {
+	return array(
+		'label'               => __( 'Count WooCommerce orders', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Returns order counts broken down by WooCommerce status (pending, processing, on-hold, completed, cancelled, refunded, failed) plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => array(),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'pending'    => array( 'type' => 'integer' ),
+				'processing' => array( 'type' => 'integer' ),
+				'on_hold'    => array( 'type' => 'integer' ),
+				'completed'  => array( 'type' => 'integer' ),
+				'cancelled'  => array( 'type' => 'integer' ),
+				'refunded'   => array( 'type' => 'integer' ),
+				'failed'     => array( 'type' => 'integer' ),
+				'total'      => array( 'type' => 'integer' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_count_orders',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-count-orders.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_count_orders( array $input ): array|\WP_Error { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- no input params used; signature required by abilities API.
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	$counts     = wp_count_posts( 'shop_order' );
+	$pending    = (int) ( $counts->{'wc-pending'} ?? 0 );
+	$processing = (int) ( $counts->{'wc-processing'} ?? 0 );
+	$on_hold    = (int) ( $counts->{'wc-on-hold'} ?? 0 );
+	$completed  = (int) ( $counts->{'wc-completed'} ?? 0 );
+	$cancelled  = (int) ( $counts->{'wc-cancelled'} ?? 0 );
+	$refunded   = (int) ( $counts->{'wc-refunded'} ?? 0 );
+	$failed     = (int) ( $counts->{'wc-failed'} ?? 0 );
+	return array(
+		'pending'    => $pending,
+		'processing' => $processing,
+		'on_hold'    => $on_hold,
+		'completed'  => $completed,
+		'cancelled'  => $cancelled,
+		'refunded'   => $refunded,
+		'failed'     => $failed,
+		'total'      => $pending + $processing + $on_hold + $completed + $cancelled + $refunded + $failed,
+	);
+}
+
+// =============================================================================
+// wc-count-products
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-count-products.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_count_products(): array {
+	return array(
+		'label'               => __( 'Count WooCommerce products', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Returns product counts broken down by post status (publish, draft, private, pending, trash) plus a total of active (non-trash) products. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => array(),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'publish' => array( 'type' => 'integer' ),
+				'draft'   => array( 'type' => 'integer' ),
+				'private' => array( 'type' => 'integer' ),
+				'pending' => array( 'type' => 'integer' ),
+				'trash'   => array( 'type' => 'integer' ),
+				'total'   => array( 'type' => 'integer' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_count_products',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-count-products.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_count_products( array $input ): array|\WP_Error { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- no input params used; signature required by abilities API.
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	$counts  = wp_count_posts( 'product' );
+	$publish = (int) ( $counts->publish ?? 0 );
+	$draft   = (int) ( $counts->draft ?? 0 );
+	$private = (int) ( $counts->private ?? 0 );
+	$pending = (int) ( $counts->pending ?? 0 );
+	$trash   = (int) ( $counts->trash ?? 0 );
+	return array(
+		'publish' => $publish,
+		'draft'   => $draft,
+		'private' => $private,
+		'pending' => $pending,
+		'trash'   => $trash,
+		'total'   => $publish + $draft + $private + $pending,
+	);
+}
+
+// =============================================================================
+// wc-count-customers
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-count-customers.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_count_customers(): array {
+	return array(
+		'label'               => __( 'Count WooCommerce customers', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Returns the count of registered users on the site. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => array(),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'registered' => array( 'type' => 'integer' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_count_customers',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-count-customers.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_count_customers( array $input ): array|\WP_Error { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- no input params used; signature required by abilities API.
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	$counts = count_users();
+	return array(
+		'registered' => (int) ( $counts['total_users'] ?? 0 ),
+	);
+}
+
+// =============================================================================
+// wc-list-payment-gateways
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-list-payment-gateways.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_list_payment_gateways(): array {
+	return array(
+		'label'               => __( 'List WooCommerce payment gateways', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Lists all registered WooCommerce payment gateways with their id, title, and enabled state. Secret or credential settings are never returned. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => array(),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'gateways' => array(
+					'type'  => 'array',
+					'items' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'id'      => array( 'type' => 'string' ),
+							'title'   => array( 'type' => 'string' ),
+							'enabled' => array( 'type' => 'boolean' ),
+						),
+					),
+				),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_list_payment_gateways',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-list-payment-gateways.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_list_payment_gateways( array $input ): array|\WP_Error { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- no input params used; signature required by abilities API.
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	if ( ! class_exists( 'WC_Payment_Gateways' ) ) {
+		return aafm_generic_error();
+	}
+	$gateways = \WC_Payment_Gateways::instance()->payment_gateways();
+	$items    = array();
+	foreach ( $gateways as $gateway ) {
+		$items[] = array(
+			'id'      => $gateway->id,
+			'title'   => $gateway->title,
+			'enabled' => 'yes' === $gateway->enabled,
+		);
+	}
+	return array( 'gateways' => $items );
+}
+
+// =============================================================================
+// wc-get-payment-gateway
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-get-payment-gateway.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_get_payment_gateway(): array {
+	return array(
+		'label'               => __( 'Get WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Reads one WooCommerce payment gateway by id, including its title, description, enabled state, order, and non-secret settings. Credential and key fields are always redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => array( 'gateway_id' ),
+			'properties'           => array(
+				'gateway_id' => array( 'type' => 'string' ),
+			),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'id'          => array( 'type' => 'string' ),
+				'title'       => array( 'type' => 'string' ),
+				'description' => array( 'type' => 'string' ),
+				'enabled'     => array( 'type' => 'boolean' ),
+				'order'       => array( 'type' => 'integer' ),
+				'settings'    => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_get_payment_gateway',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-get-payment-gateway.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_get_payment_gateway( array $input ): array|\WP_Error {
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	if ( ! class_exists( 'WC_Payment_Gateways' ) ) {
+		return aafm_generic_error();
+	}
+	$gateway_id = sanitize_text_field( (string) ( $input['gateway_id'] ?? '' ) );
+	$gateways   = \WC_Payment_Gateways::instance()->payment_gateways();
+	if ( ! isset( $gateways[ $gateway_id ] ) ) {
+		return new \WP_Error( 'aafm_not_found', __( 'Payment gateway not found.', 'agent-abilities-for-mcp' ) );
+	}
+	return aafm_wc_gateway_shape( $gateways[ $gateway_id ] );
+}
+
+// =============================================================================
+// wc-count-coupons
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-count-coupons.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_count_coupons(): array {
+	return array(
+		'label'               => __( 'Count WooCommerce coupons', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Returns coupon counts broken down by post status (publish, draft, private, pending, trash) plus a total of active coupons. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-reads',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'properties'           => array(),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'publish' => array( 'type' => 'integer' ),
+				'draft'   => array( 'type' => 'integer' ),
+				'private' => array( 'type' => 'integer' ),
+				'pending' => array( 'type' => 'integer' ),
+				'trash'   => array( 'type' => 'integer' ),
+				'total'   => array( 'type' => 'integer' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_count_coupons',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => true,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-count-coupons.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_count_coupons( array $input ): array|\WP_Error { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- no input params used; signature required by abilities API.
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	$counts  = wp_count_posts( 'shop_coupon' );
+	$publish = (int) ( $counts->publish ?? 0 );
+	$draft   = (int) ( $counts->draft ?? 0 );
+	$private = (int) ( $counts->private ?? 0 );
+	$pending = (int) ( $counts->pending ?? 0 );
+	$trash   = (int) ( $counts->trash ?? 0 );
+	return array(
+		'publish' => $publish,
+		'draft'   => $draft,
+		'private' => $private,
+		'pending' => $pending,
+		'trash'   => $trash,
+		'total'   => $publish + $draft + $private + $pending,
+	);
+}
+
+// =============================================================================
+// wc-update-payment-gateway
+// =============================================================================
+
+/**
+ * Args builder for aafm/wc-update-payment-gateway.
+ *
+ * @return array<string,mixed>
+ */
+function aafm_args_wc_update_payment_gateway(): array {
+	return array(
+		'label'               => __( 'Update WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Updates a WooCommerce payment gateway by id, changing only the fields you send: enabled state, title, description, or display order. Returns the updated gateway shape with secrets redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'category'            => 'aafm-writes',
+		'input_schema'        => array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => array( 'gateway_id' ),
+			'properties'           => array(
+				'gateway_id'  => array( 'type' => 'string' ),
+				'enabled'     => array( 'type' => 'boolean' ),
+				'title'       => array( 'type' => 'string' ),
+				'description' => array( 'type' => 'string' ),
+				'order'       => array(
+					'type'    => 'integer',
+					'minimum' => 0,
+				),
+			),
+		),
+		'output_schema'       => array(
+			'type'       => 'object',
+			'properties' => array(
+				'id'          => array( 'type' => 'string' ),
+				'title'       => array( 'type' => 'string' ),
+				'description' => array( 'type' => 'string' ),
+				'enabled'     => array( 'type' => 'boolean' ),
+				'order'       => array( 'type' => 'integer' ),
+				'settings'    => array( 'type' => 'object' ),
+			),
+		),
+		'execute_callback'    => 'aafm_exec_wc_update_payment_gateway',
+		'permission_callback' => 'aafm_wc_perm',
+		'meta'                => array(
+			'annotations' => array(
+				'readonly'    => false,
+				'destructive' => false,
+			),
+		),
+	);
+}
+
+/**
+ * Execute aafm/wc-update-payment-gateway.
+ *
+ * Updates only the fields provided: enabled, title, description, order. Audits deny when
+ * the gateway id is unknown, success on a clean save. Secrets are redacted from the returned shape.
+ *
+ * @param array<string,mixed> $input Validated input.
+ * @return array<string,mixed>|\WP_Error
+ */
+function aafm_exec_wc_update_payment_gateway( array $input ): array|\WP_Error {
+	if ( ! aafm_integration_active( 'woocommerce' ) ) {
+		return aafm_generic_error();
+	}
+	if ( ! class_exists( 'WC_Payment_Gateways' ) ) {
+		return aafm_generic_error();
+	}
+	$gateway_id = sanitize_text_field( (string) ( $input['gateway_id'] ?? '' ) );
+	$gateways   = \WC_Payment_Gateways::instance()->payment_gateways();
+	if ( ! isset( $gateways[ $gateway_id ] ) ) {
+			return new \WP_Error( 'aafm_not_found', __( 'Payment gateway not found.', 'agent-abilities-for-mcp' ) );
+	}
+	$gateway = $gateways[ $gateway_id ];
+	if ( isset( $input['enabled'] ) ) {
+		$enabled_val      = $input['enabled'] ? 'yes' : 'no';
+		$gateway->enabled = $enabled_val;
+		$gateway->update_option( 'enabled', $enabled_val );
+	}
+	if ( isset( $input['title'] ) ) {
+		$title_val      = sanitize_text_field( (string) $input['title'] );
+		$gateway->title = $title_val;
+		$gateway->update_option( 'title', $title_val );
+	}
+	if ( isset( $input['description'] ) ) {
+		$desc_val             = sanitize_textarea_field( (string) $input['description'] );
+		$gateway->description = $desc_val;
+		$gateway->update_option( 'description', $desc_val );
+	}
+	if ( isset( $input['order'] ) ) {
+		$gateway->order = (int) $input['order'];
+	}
+	$saved = $gateway->save();
+	if ( false === $saved ) {
+		return aafm_generic_error();
+	}
+	return aafm_wc_gateway_shape( $gateway );
 }
