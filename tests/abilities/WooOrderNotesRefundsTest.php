@@ -220,6 +220,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-list-order-notes
 	// -------------------------------------------------------------------------
 
+	/**
+	 * The list returns lean note rows with the expected fields for an order.
+	 */
 	public function test_list_order_notes_returns_lean_rows(): void {
 		$this->register_group_b();
 		$this->acting_as( 'administrator' );
@@ -229,18 +232,18 @@ final class WooOrderNotesRefundsTest extends TestCase {
 			5001,
 			array(
 				array(
-					'id'              => 1,
-					'note'            => 'Payment received.',
-					'added_by_user'   => false,
-					'date_created'    => '2024-06-01T10:01:00',
-					'customer_note'   => false,
+					'id'            => 1,
+					'note'          => 'Payment received.',
+					'added_by_user' => false,
+					'date_created'  => '2024-06-01T10:01:00',
+					'customer_note' => false,
 				),
 				array(
-					'id'              => 2,
-					'note'            => 'Shipped via FedEx.',
-					'added_by_user'   => true,
-					'date_created'    => '2024-06-02T09:00:00',
-					'customer_note'   => true,
+					'id'            => 2,
+					'note'          => 'Shipped via FedEx.',
+					'added_by_user' => true,
+					'date_created'  => '2024-06-02T09:00:00',
+					'customer_note' => true,
 				),
 			)
 		);
@@ -312,6 +315,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-get-order-note
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Fetching a note by id returns the correct note with all expected fields.
+	 */
 	public function test_get_order_note_returns_single_note(): void {
 		$this->register_group_b();
 		$this->acting_as( 'administrator' );
@@ -401,6 +407,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-create-order-note
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Creating a note persists it and returns an id plus the expected response shape.
+	 */
 	public function test_create_order_note_persists_and_returns_shape(): void {
 		$this->register_group_b();
 		$this->acting_as( 'administrator' );
@@ -502,7 +511,7 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		WcOrderStubStore::seed_notes( 5001, array() );
 
 		WcOrderStubStore::$add_note_should_fail = true;
-		$res = wp_get_ability( 'aafm/wc-create-order-note' )->execute(
+		$res                                    = wp_get_ability( 'aafm/wc-create-order-note' )->execute(
 			array(
 				'order_id' => 5001,
 				'note'     => 'This note should fail to add.',
@@ -517,6 +526,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-delete-order-note
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Deleting a note removes it from the store and returns {id, deleted:true}.
+	 */
 	public function test_delete_order_note_removes_the_note(): void {
 		$this->register_group_b();
 		$this->acting_as( 'administrator' );
@@ -688,6 +700,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-list-order-refunds
 	// -------------------------------------------------------------------------
 
+	/**
+	 * The list returns lean refund rows with the expected fields for an order.
+	 */
 	public function test_list_order_refunds_returns_lean_rows(): void {
 		$this->register_group_c();
 		$this->acting_as( 'administrator' );
@@ -770,6 +785,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-get-order-refund
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Fetching a refund by id returns the correct refund with amount, reason, and date.
+	 */
 	public function test_get_order_refund_returns_single_refund(): void {
 		$this->register_group_c();
 		$this->acting_as( 'administrator' );
@@ -827,6 +845,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-create-order-refund
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Creating a refund persists it and returns an id plus the expected response shape.
+	 */
 	public function test_create_order_refund_persists_and_returns_shape(): void {
 		$this->register_group_c();
 		$this->acting_as( 'administrator' );
@@ -977,6 +998,9 @@ final class WooOrderNotesRefundsTest extends TestCase {
 	// aafm/wc-delete-order-refund
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Deleting a refund removes it from the store and returns {id, deleted:true}.
+	 */
 	public function test_delete_order_refund_removes_the_refund(): void {
 		$this->register_group_c();
 		$this->acting_as( 'administrator' );
