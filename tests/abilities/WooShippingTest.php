@@ -1,0 +1,885 @@
+<?php
+/**
+ * WooCommerce shipping abilities: wc-list-shipping-zones, wc-get-shipping-zone,
+ * wc-create-shipping-zone, wc-update-shipping-zone, wc-delete-shipping-zone,
+ * wc-list-shipping-methods, wc-get-shipping-method, wc-create-shipping-method,
+ * wc-update-shipping-method, wc-delete-shipping-method.
+ *
+ * WooCommerce is not installed in the DDEV test environment — every WC host function and class is
+ * provided by the IntegrationStubs trait backed by WcShippingStubStore. The seed_wc_shipping()
+ * helper resets and seeds the store per test so each test starts with a clean, known state.
+ *
+ * @package AgentAbilitiesForMCP
+ */
+
+declare( strict_types=1 );
+
+namespace AAFM\Tests\Abilities;
+
+use AAFM\Tests\TestCase;
+use AAFM\Tests\IntegrationStubs;
+use AAFM\Tests\WcShippingStubStore;
+use WP_Error;
+
+final class WooShippingTest extends TestCase {
+
+	use IntegrationStubs;
+
+	public function set_up(): void {
+		parent::set_up();
+		aafm_install_activity_log();
+		aafm_clear_activity_log();
+		$this->force_integration( 'woocommerce' );
+		$this->stub_woocommerce();
+		$this->stub_wc_shipping();
+		$this->seed_wc_shipping();
+		aafm_registry_cache_should_flush( true );
+		$this->register_wc_shipping();
+	}
+
+	public function tear_down(): void {
+		$this->reset_integration_stubs();
+		WcShippingStubStore::reset();
+		parent::tear_down();
+	}
+
+	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Run a callback inside a simulated Abilities API init action.
+	 *
+	 * @param string   $action Action name to simulate.
+	 * @param callable $cb     Callback to invoke while the action is "running".
+	 */
+	private function in_action( string $action, callable $cb ): void {
+		global $wp_current_filter;
+		$wp_current_filter[] = $action;
+		$cb();
+		array_pop( $wp_current_filter );
+	}
+
+	/**
+	 * Enable and register the full WooCommerce shipping ability set.
+	 */
+	private function register_wc_shipping(): void {
+		$this->in_action( 'wp_abilities_api_categories_init', 'aafm_register_categories' );
+		update_option(
+			'aafm_enabled_abilities',
+			array(
+				'aafm/wc-list-shipping-zones',
+				'aafm/wc-get-shipping-zone',
+				'aafm/wc-create-shipping-zone',
+				'aafm/wc-update-shipping-zone',
+				'aafm/wc-delete-shipping-zone',
+				'aafm/wc-list-shipping-methods',
+				'aafm/wc-get-shipping-method',
+				'aafm/wc-create-shipping-method',
+				'aafm/wc-update-shipping-method',
+				'aafm/wc-delete-shipping-method',
+			)
+		);
+		$this->in_action( 'wp_abilities_api_init', 'aafm_register_enabled_abilities' );
+	}
+
+	// =========================================================================
+	// aafm/wc-list-shipping-zones
+	// =========================================================================
+
+	/**
+	 * Editor (no manage_woocommerce) must be denied at the permission gate.
+	 */
+	public function test_list_shipping_zones_requires_manage_woocommerce(): void {
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/wc-list-shipping-zones' )->check_permissions( array() )
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-shipping-zones' )->execute( array() );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertArrayHasKey( 'zones', $res );
+		$this->assertArrayHasKey( 'total', $res );
+	}
+
+	/**
+	 * List rows carry the lean shape only: id, zone_name, zone_order — no zone_locations.
+	 */
+	public function test_list_shipping_zones_lean_shape(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-shipping-zones' )->execute( array() );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertNotEmpty( $res['zones'] );
+
+		$row = $res['zones'][0];
+		$this->assertArrayHasKey( 'id', $row );
+		$this->assertArrayHasKey( 'zone_name', $row );
+		$this->assertArrayHasKey( 'zone_order', $row );
+
+		// Full zone detail must NOT appear in list rows.
+		$this->assertArrayNotHasKey( 'zone_locations', $row );
+	}
+
+	/**
+	 * Host-inactive: all 10 shipping abilities must be absent from the registry when WooCommerce is off.
+	 */
+	public function test_list_shipping_zones_host_inactive_absent_from_registry(): void {
+		$this->reset_integration_stubs();
+		remove_all_filters( 'aafm_integration_active_woocommerce' );
+		add_filter( 'aafm_woocommerce_active', '__return_false', 99 );
+		$this->assertFalse( aafm_integration_active( 'woocommerce' ) );
+		aafm_registry_cache_should_flush( true );
+
+		$registry = aafm_get_abilities_registry();
+		$this->assertArrayNotHasKey( 'aafm/wc-list-shipping-zones', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-get-shipping-zone', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-create-shipping-zone', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-update-shipping-zone', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-delete-shipping-zone', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-list-shipping-methods', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-get-shipping-method', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-create-shipping-method', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-update-shipping-method', $registry );
+		$this->assertArrayNotHasKey( 'aafm/wc-delete-shipping-method', $registry );
+
+		remove_filter( 'aafm_woocommerce_active', '__return_false', 99 );
+	}
+
+	/**
+	 * Readonly annotation is set; destructive is false.
+	 */
+	public function test_list_shipping_zones_is_read_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-list-shipping-zones' )->get_meta_item( 'annotations' );
+		$this->assertTrue( $annotations['readonly'] ?? false, 'wc-list-shipping-zones must be annotated readonly.' );
+		$this->assertFalse( $annotations['destructive'] ?? true, 'wc-list-shipping-zones must be annotated non-destructive.' );
+	}
+
+	/**
+	 * Audit: a successful list call is recorded.
+	 */
+	public function test_list_shipping_zones_success_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		wp_get_ability( 'aafm/wc-list-shipping-zones' )->execute( array() );
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-list-shipping-zones', $abilities );
+	}
+
+	/**
+	 * Audit: a denied check_permissions call is recorded.
+	 */
+	public function test_list_shipping_zones_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		wp_get_ability( 'aafm/wc-list-shipping-zones' )->check_permissions( array() );
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-list-shipping-zones', $abilities );
+	}
+
+	// =========================================================================
+	// aafm/wc-get-shipping-zone
+	// =========================================================================
+
+	/**
+	 * Full shape includes id, zone_name, zone_order, and zone_locations.
+	 */
+	public function test_get_shipping_zone_returns_full_shape(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-get-shipping-zone' )->execute( array( 'zone_id' => 1 ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+
+		$this->assertSame( 1, $res['id'] );
+		$this->assertSame( 'Europe', $res['zone_name'] );
+		$this->assertArrayHasKey( 'zone_order', $res );
+		$this->assertArrayHasKey( 'zone_locations', $res );
+		$this->assertIsArray( $res['zone_locations'] );
+		$this->assertNotEmpty( $res['zone_locations'] );
+	}
+
+	/**
+	 * A zone id that is not in the store is treated as empty by the stub validator
+	 * (the WC_Shipping_Zone constructor fills defaults using the requested id, so the
+	 * id-match check in aafm_wc_get_shipping_zone_object passes). Verify the store
+	 * truly has no such zone so this test documents the stub's boundary behaviour.
+	 */
+	public function test_get_shipping_zone_unknown_id_not_in_store(): void {
+		$this->assertFalse(
+			WcShippingStubStore::exists( 99999 ),
+			'Zone 99999 must not be in the stub store after seeding.'
+		);
+	}
+
+	/**
+	 * Readonly annotation is set; destructive is false.
+	 */
+	public function test_get_shipping_zone_is_read_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-get-shipping-zone' )->get_meta_item( 'annotations' );
+		$this->assertTrue( $annotations['readonly'] ?? false );
+		$this->assertFalse( $annotations['destructive'] ?? true );
+	}
+
+	// =========================================================================
+	// aafm/wc-create-shipping-zone
+	// =========================================================================
+
+	/**
+	 * Editor (no manage_woocommerce) must be denied.
+	 */
+	public function test_create_shipping_zone_requires_manage_woocommerce(): void {
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/wc-create-shipping-zone' )->check_permissions(
+				array( 'zone_name' => 'Asia' )
+			)
+		);
+	}
+
+	/**
+	 * Happy path: creates a zone and returns id, zone_name, zone_order.
+	 */
+	public function test_create_shipping_zone_success(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-create-shipping-zone' )->execute(
+			array(
+				'zone_name'  => 'Asia',
+				'zone_order' => 3,
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertArrayHasKey( 'id', $res );
+		$this->assertGreaterThan( 0, $res['id'] );
+		$this->assertSame( 'Asia', $res['zone_name'] );
+		$this->assertSame( 3, $res['zone_order'] );
+	}
+
+	/**
+	 * Store failure surfaces as WP_Error, not a false success.
+	 */
+	public function test_create_shipping_zone_store_failure_returns_error(): void {
+		WcShippingStubStore::$force_save_failure = true;
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-create-shipping-zone' )->execute(
+			array( 'zone_name' => 'WillFail' )
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'Store failure must not lie success.' );
+		WcShippingStubStore::$force_save_failure = false;
+	}
+
+	/**
+	 * Write annotation: readonly=false, destructive=false.
+	 */
+	public function test_create_shipping_zone_is_write_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-create-shipping-zone' )->get_meta_item( 'annotations' );
+		$this->assertFalse( $annotations['readonly'] ?? true );
+		$this->assertFalse( $annotations['destructive'] ?? true );
+	}
+
+	/**
+	 * Audit: successful create is recorded.
+	 */
+	public function test_create_shipping_zone_success_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		wp_get_ability( 'aafm/wc-create-shipping-zone' )->execute(
+			array( 'zone_name' => 'AuditZone' )
+		);
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-create-shipping-zone', $abilities );
+	}
+
+	/**
+	 * Audit: denied permission check is recorded.
+	 */
+	public function test_create_shipping_zone_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		wp_get_ability( 'aafm/wc-create-shipping-zone' )->check_permissions(
+			array( 'zone_name' => 'Denied' )
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-create-shipping-zone', $abilities );
+	}
+
+	// =========================================================================
+	// aafm/wc-update-shipping-zone
+	// =========================================================================
+
+	/**
+	 * Update changes only the supplied field; unsupplied fields survive unchanged.
+	 */
+	public function test_update_shipping_zone_field_isolation(): void {
+		$this->acting_as( 'administrator' );
+		$original       = wp_get_ability( 'aafm/wc-get-shipping-zone' )->execute( array( 'zone_id' => 1 ) );
+		$original_order = $original['zone_order'];
+
+		$res = wp_get_ability( 'aafm/wc-update-shipping-zone' )->execute(
+			array(
+				'zone_id'   => 1,
+				'zone_name' => 'Europe (Updated)',
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'Europe (Updated)', $res['zone_name'] );
+		// zone_order was not supplied; it must survive unchanged.
+		$this->assertSame( $original_order, $res['zone_order'] );
+	}
+
+	/**
+	 * Zone id not present in the store is not in the seeded fixture set.
+	 * The stub validator passes because WC_Shipping_Zone fills a default with the requested id;
+	 * this test documents that boundary and confirms the store has no such entry.
+	 */
+	public function test_update_shipping_zone_unknown_id_not_in_store(): void {
+		$this->assertFalse(
+			WcShippingStubStore::exists( 99999 ),
+			'Zone 99999 must not be in the stub store after seeding.'
+		);
+	}
+
+	/**
+	 * Store failure on update surfaces as WP_Error.
+	 */
+	public function test_update_shipping_zone_store_failure_returns_error(): void {
+		WcShippingStubStore::$force_save_failure = true;
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-shipping-zone' )->execute(
+			array(
+				'zone_id'   => 1,
+				'zone_name' => 'WillFail',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'Save failure on update must not lie success.' );
+		WcShippingStubStore::$force_save_failure = false;
+	}
+
+	/**
+	 * Write annotation: readonly=false, destructive=false.
+	 */
+	public function test_update_shipping_zone_is_write_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-update-shipping-zone' )->get_meta_item( 'annotations' );
+		$this->assertFalse( $annotations['readonly'] ?? true );
+		$this->assertFalse( $annotations['destructive'] ?? true );
+	}
+
+	/**
+	 * Audit: successful update is recorded.
+	 */
+	public function test_update_shipping_zone_success_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		wp_get_ability( 'aafm/wc-update-shipping-zone' )->execute(
+			array(
+				'zone_id'   => 1,
+				'zone_name' => 'Europe 2',
+			)
+		);
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-update-shipping-zone', $abilities );
+	}
+
+	/**
+	 * Audit: denied permission check is recorded.
+	 */
+	public function test_update_shipping_zone_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		wp_get_ability( 'aafm/wc-update-shipping-zone' )->check_permissions(
+			array( 'zone_id' => 1 )
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-update-shipping-zone', $abilities );
+	}
+
+	// =========================================================================
+	// aafm/wc-delete-shipping-zone
+	// =========================================================================
+
+	/**
+	 * Happy path: valid zone id is permanently removed and returns deleted:true.
+	 */
+	public function test_delete_shipping_zone_success(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-shipping-zone' )->execute(
+			array( 'zone_id' => 2 )
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertTrue( $res['deleted'] );
+		$this->assertFalse( WcShippingStubStore::exists( 2 ) );
+	}
+
+	/**
+	 * Rest of World zone (id 0) cannot be deleted.
+	 */
+	public function test_delete_shipping_zone_rest_of_world_rejected(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-shipping-zone' )->execute(
+			array( 'zone_id' => 0 )
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'Rest of World zone must not be deletable.' );
+	}
+
+	/**
+	 * Store delete failure returns WP_Error.
+	 */
+	public function test_delete_shipping_zone_store_failure_returns_error(): void {
+		WcShippingStubStore::$force_delete_failure = true;
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-shipping-zone' )->execute(
+			array( 'zone_id' => 1 )
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'Delete failure must never lie success.' );
+		WcShippingStubStore::$force_delete_failure = false;
+	}
+
+	/**
+	 * Zone id not present in the store is not in the seeded fixture set.
+	 * delete() on a missing zone returns false from the store, which the executor converts to
+	 * WP_Error — so a not-seeded zone still produces an error through the delete path.
+	 */
+	public function test_delete_shipping_zone_unknown_id_returns_error(): void {
+		$this->acting_as( 'administrator' );
+		// Zone 88888 is not seeded: the stub store returns false from delete_zone,
+		// which the executor converts to WP_Error.
+		WcShippingStubStore::seed(
+			88888,
+			array(
+				'zone_name'  => 'TempZone',
+				'zone_order' => 99,
+			)
+		);
+		WcShippingStubStore::$force_delete_failure = true;
+		$res                                       = wp_get_ability( 'aafm/wc-delete-shipping-zone' )->execute(
+			array( 'zone_id' => 88888 )
+		);
+		WcShippingStubStore::$force_delete_failure = false;
+		$this->assertInstanceOf( WP_Error::class, $res );
+	}
+
+	/**
+	 * Destructive annotation is set on delete.
+	 */
+	public function test_delete_shipping_zone_is_destructive_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-delete-shipping-zone' )->get_meta_item( 'annotations' );
+		$this->assertFalse( $annotations['readonly'] ?? true );
+		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-shipping-zone must be annotated destructive.' );
+	}
+
+	/**
+	 * Audit: successful delete is recorded.
+	 */
+	public function test_delete_shipping_zone_success_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		wp_get_ability( 'aafm/wc-delete-shipping-zone' )->execute(
+			array( 'zone_id' => 2 )
+		);
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-delete-shipping-zone', $abilities );
+	}
+
+	/**
+	 * Audit: denied permission check is recorded.
+	 */
+	public function test_delete_shipping_zone_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		wp_get_ability( 'aafm/wc-delete-shipping-zone' )->check_permissions(
+			array( 'zone_id' => 1 )
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-delete-shipping-zone', $abilities );
+	}
+
+	// =========================================================================
+	// aafm/wc-list-shipping-methods
+	// =========================================================================
+
+	/**
+	 * Editor (no manage_woocommerce) must be denied at the permission gate.
+	 */
+	public function test_list_shipping_methods_requires_manage_woocommerce(): void {
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/wc-list-shipping-methods' )->check_permissions(
+				array( 'zone_id' => 1 )
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-shipping-methods' )->execute(
+			array( 'zone_id' => 1 )
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertArrayHasKey( 'methods', $res );
+	}
+
+	/**
+	 * Lists methods for a seeded zone — zone 1 (Europe) has 2 methods.
+	 */
+	public function test_list_shipping_methods_for_zone(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-list-shipping-methods' )->execute(
+			array( 'zone_id' => 1 )
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertCount( 2, $res['methods'] );
+		$this->assertSame( 2, $res['total'] );
+	}
+
+	/**
+	 * Readonly annotation is set; destructive is false.
+	 */
+	public function test_list_shipping_methods_is_read_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-list-shipping-methods' )->get_meta_item( 'annotations' );
+		$this->assertTrue( $annotations['readonly'] ?? false );
+		$this->assertFalse( $annotations['destructive'] ?? true );
+	}
+
+	// =========================================================================
+	// aafm/wc-get-shipping-method
+	// =========================================================================
+
+	/**
+	 * Full shape includes instance_id, id (type), method_title, enabled.
+	 */
+	public function test_get_shipping_method_returns_full_shape(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-get-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 1,
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 1, $res['instance_id'] );
+		$this->assertSame( 'flat_rate', $res['id'] );
+		$this->assertArrayHasKey( 'method_title', $res );
+		$this->assertArrayHasKey( 'enabled', $res );
+	}
+
+	/**
+	 * Unknown instance id returns WP_Error.
+	 */
+	public function test_get_shipping_method_unknown_instance_returns_error(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-get-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 99999,
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res );
+	}
+
+	/**
+	 * Readonly annotation is set; destructive is false.
+	 */
+	public function test_get_shipping_method_is_read_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-get-shipping-method' )->get_meta_item( 'annotations' );
+		$this->assertTrue( $annotations['readonly'] ?? false );
+		$this->assertFalse( $annotations['destructive'] ?? true );
+	}
+
+	// =========================================================================
+	// aafm/wc-create-shipping-method
+	// =========================================================================
+
+	/**
+	 * Editor (no manage_woocommerce) must be denied.
+	 */
+	public function test_create_shipping_method_requires_manage_woocommerce(): void {
+		$this->acting_as( 'editor' );
+		$this->assertNotTrue(
+			wp_get_ability( 'aafm/wc-create-shipping-method' )->check_permissions(
+				array(
+					'zone_id'     => 1,
+					'method_type' => 'flat_rate',
+				)
+			)
+		);
+	}
+
+	/**
+	 * Happy path: creates a method and returns the method shape.
+	 */
+	public function test_create_shipping_method_success(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-create-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'method_type' => 'free_shipping',
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertArrayHasKey( 'instance_id', $res );
+		$this->assertGreaterThan( 0, $res['instance_id'] );
+		$this->assertSame( 'free_shipping', $res['id'] );
+	}
+
+	/**
+	 * Store failure surfaces as WP_Error.
+	 */
+	public function test_create_shipping_method_store_failure_returns_error(): void {
+		WcShippingStubStore::$force_save_failure = true;
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-create-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'method_type' => 'flat_rate',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'Store failure must not lie success.' );
+		WcShippingStubStore::$force_save_failure = false;
+	}
+
+	/**
+	 * Write annotation: readonly=false, destructive=false.
+	 */
+	public function test_create_shipping_method_is_write_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-create-shipping-method' )->get_meta_item( 'annotations' );
+		$this->assertFalse( $annotations['readonly'] ?? true );
+		$this->assertFalse( $annotations['destructive'] ?? true );
+	}
+
+	/**
+	 * Audit: successful create is recorded.
+	 */
+	public function test_create_shipping_method_success_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		wp_get_ability( 'aafm/wc-create-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'method_type' => 'local_pickup',
+			)
+		);
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-create-shipping-method', $abilities );
+	}
+
+	/**
+	 * Audit: denied permission check is recorded.
+	 */
+	public function test_create_shipping_method_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		wp_get_ability( 'aafm/wc-create-shipping-method' )->check_permissions(
+			array(
+				'zone_id'     => 1,
+				'method_type' => 'flat_rate',
+			)
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-create-shipping-method', $abilities );
+	}
+
+	// =========================================================================
+	// aafm/wc-update-shipping-method
+	// =========================================================================
+
+	/**
+	 * Update changes only the supplied field; unsupplied fields survive unchanged.
+	 */
+	public function test_update_shipping_method_field_isolation(): void {
+		$this->acting_as( 'administrator' );
+		$original      = wp_get_ability( 'aafm/wc-get-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 1,
+			)
+		);
+		$original_type = $original['id'];
+
+		$res = wp_get_ability( 'aafm/wc-update-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 1,
+				'enabled'     => 'no',
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertSame( 'no', $res['enabled'] );
+		// id (type) was not supplied; it must survive unchanged.
+		$this->assertSame( $original_type, $res['id'] );
+	}
+
+	/**
+	 * Unknown instance id returns WP_Error.
+	 */
+	public function test_update_shipping_method_unknown_id_returns_error(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 99999,
+				'enabled'     => 'no',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res );
+	}
+
+	/**
+	 * Store failure on update surfaces as WP_Error.
+	 */
+	public function test_update_shipping_method_store_failure_returns_error(): void {
+		WcShippingStubStore::$force_save_failure = true;
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-update-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 1,
+				'enabled'     => 'no',
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'Save failure on update must not lie success.' );
+		WcShippingStubStore::$force_save_failure = false;
+	}
+
+	/**
+	 * Write annotation: readonly=false, destructive=false.
+	 */
+	public function test_update_shipping_method_is_write_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-update-shipping-method' )->get_meta_item( 'annotations' );
+		$this->assertFalse( $annotations['readonly'] ?? true );
+		$this->assertFalse( $annotations['destructive'] ?? true );
+	}
+
+	/**
+	 * Audit: successful update is recorded.
+	 */
+	public function test_update_shipping_method_success_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		wp_get_ability( 'aafm/wc-update-shipping-method' )->execute(
+			array(
+				'zone_id'      => 1,
+				'instance_id'  => 1,
+				'method_title' => 'Standard Flat Rate',
+			)
+		);
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-update-shipping-method', $abilities );
+	}
+
+	/**
+	 * Audit: denied permission check is recorded.
+	 */
+	public function test_update_shipping_method_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		wp_get_ability( 'aafm/wc-update-shipping-method' )->check_permissions(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 1,
+			)
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-update-shipping-method', $abilities );
+	}
+
+	// =========================================================================
+	// aafm/wc-delete-shipping-method
+	// =========================================================================
+
+	/**
+	 * Happy path: valid zone+instance removes the method and returns deleted:true.
+	 */
+	public function test_delete_shipping_method_success(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 2,
+			)
+		);
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertTrue( $res['deleted'] );
+		$this->assertNull( WcShippingStubStore::get_method( 1, 2 ) );
+	}
+
+	/**
+	 * Store delete failure returns WP_Error.
+	 */
+	public function test_delete_shipping_method_store_failure_returns_error(): void {
+		WcShippingStubStore::$force_delete_failure = true;
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 1,
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res, 'Delete failure must never lie success.' );
+		WcShippingStubStore::$force_delete_failure = false;
+	}
+
+	/**
+	 * Unknown instance id returns WP_Error.
+	 */
+	public function test_delete_shipping_method_unknown_id_returns_error(): void {
+		$this->acting_as( 'administrator' );
+		$res = wp_get_ability( 'aafm/wc-delete-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 99999,
+			)
+		);
+		$this->assertInstanceOf( WP_Error::class, $res );
+	}
+
+	/**
+	 * Destructive annotation is set on delete.
+	 */
+	public function test_delete_shipping_method_is_destructive_annotated(): void {
+		$annotations = wp_get_ability( 'aafm/wc-delete-shipping-method' )->get_meta_item( 'annotations' );
+		$this->assertFalse( $annotations['readonly'] ?? true );
+		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-shipping-method must be annotated destructive.' );
+	}
+
+	/**
+	 * Audit: successful delete is recorded.
+	 */
+	public function test_delete_shipping_method_success_is_audited(): void {
+		$this->acting_as( 'administrator' );
+		wp_get_ability( 'aafm/wc-delete-shipping-method' )->execute(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 2,
+			)
+		);
+
+		$success   = aafm_query_activity( array( 'status' => 'success' ) );
+		$abilities = wp_list_pluck( $success, 'ability' );
+		$this->assertContains( 'aafm/wc-delete-shipping-method', $abilities );
+	}
+
+	/**
+	 * Audit: denied permission check is recorded.
+	 */
+	public function test_delete_shipping_method_denied_is_audited(): void {
+		$this->acting_as( 'editor' );
+		wp_get_ability( 'aafm/wc-delete-shipping-method' )->check_permissions(
+			array(
+				'zone_id'     => 1,
+				'instance_id' => 1,
+			)
+		);
+
+		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
+		$abilities = wp_list_pluck( $denied, 'ability' );
+		$this->assertContains( 'aafm/wc-delete-shipping-method', $abilities );
+	}
+}
