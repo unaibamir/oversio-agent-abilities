@@ -77,9 +77,10 @@ final class AbilitiesSaveTest extends TestCase {
 		$this->assertNotFalse( $form_pos, 'The abilities form should render.' );
 		$this->assertLessThan( $form_pos, $stat_pos, 'The stats box must come before the form.' );
 
-		// Both the total and enabled counts appear in .aafm-stat blocks.
+		// Both the total and enabled counts appear in .aafm-stat blocks. Total reads the single
+		// source of truth (core + every integration manifest total), shared with the Dashboard.
 		$this->assertStringContainsString( 'aafm-stat', $html );
-		$this->assertStringContainsString( (string) aafm_total_ability_count(), $html );
+		$this->assertStringContainsString( (string) aafm_available_ability_count(), $html );
 		$this->assertStringContainsString( (string) aafm_enabled_ability_count(), $html );
 		$this->assertStringContainsString( 'Total abilities', $html );
 		$this->assertStringContainsString( 'Enabled', $html );

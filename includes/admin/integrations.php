@@ -161,6 +161,24 @@ function aafm_render_integrations_tab(): void {
 
 		if ( 'active' === $status ) {
 			aafm_render_integration_abilities( $slug, $rows, $enabled, $disclosures );
+		} else {
+			// Inactive host: there are no live abilities to toggle, so show the manifest count
+			// ("0 / N · X read, Y write") so the operator sees what activating the plugin unlocks.
+			$counts = aafm_integration_manifest()[ $slug ] ?? null;
+			if ( null !== $counts ) {
+				printf(
+					'<p class="aafm-integration-count">%s</p>',
+					esc_html(
+						sprintf(
+							/* translators: 1: total abilities, 2: read count, 3: write count. */
+							__( '0 / %1$d · %2$d read, %3$d write', 'agent-abilities-for-mcp' ),
+							(int) $counts['total'],
+							(int) $counts['read'],
+							(int) $counts['write']
+						)
+					)
+				);
+			}
 		}
 
 		echo '</section>';

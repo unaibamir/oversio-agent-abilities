@@ -505,9 +505,10 @@ function aafm_render_abilities_tab(): void {
 	}
 
 	// Stats box — sits between the page nav and the sub-tabs, reusing the dashboard .aafm-stat
-	// markup. Total counts the whole catalog; Enabled counts what the operator has turned on,
-	// labelled "of N" so the two never read as disagreeing numbers.
-	$ability_total   = aafm_total_ability_count();
+	// markup. Total reads the single source of truth (core + every integration manifest total),
+	// the same function the Dashboard uses, so the two tabs can never disagree. Enabled counts
+	// what the operator has turned on, labelled "of N".
+	$ability_total   = aafm_available_ability_count();
 	$ability_enabled = aafm_enabled_ability_count();
 	echo '<div class="aafm-stat-grid aafm-abilities-stats">';
 	echo '<div class="aafm-stat aafm-stat-abilities">';

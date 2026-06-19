@@ -50,6 +50,26 @@ final class IntegrationsTabTest extends TestCase {
 		$this->assertStringNotContainsString( 'dashicons', $html );
 	}
 
+	public function test_inactive_card_shows_the_manifest_count(): void {
+		$this->acting_as( 'administrator' );
+		add_filter( 'aafm_integration_active_seo', '__return_false', 99 );
+		add_filter( 'aafm_woocommerce_active', '__return_false', 99 );
+		ob_start();
+		aafm_render_integrations_tab();
+		$html = (string) ob_get_clean();
+		remove_filter( 'aafm_woocommerce_active', '__return_false', 99 );
+		remove_filter( 'aafm_integration_active_seo', '__return_false', 99 );
+
+		// The inactive WooCommerce card shows its manifest count so the operator sees what
+		// activating the plugin would unlock (32 read + 23 write of 67).
+		$wc = aafm_integration_manifest()['woocommerce'];
+		$this->assertStringContainsString( 'aafm-integration-count', $html );
+		$this->assertStringContainsString(
+			sprintf( '0 / %1$d · %2$d read, %3$d write', $wc['total'], $wc['read'], $wc['write'] ),
+			$html
+		);
+	}
+
 	public function test_status_helper_reports_not_installed_when_host_files_absent(): void {
 		// None of the SEO plugins nor WooCommerce ship their host file in this WP install,
 		// and neither is active, so each reports not_installed. The SEO slice's stubs define the

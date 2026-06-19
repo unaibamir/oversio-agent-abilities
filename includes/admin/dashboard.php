@@ -178,9 +178,12 @@ function aafm_setup_steps(): array {
  * @return void
  */
 function aafm_render_dashboard_tab(): void {
-	$endpoint      = aafm_endpoint_url();
-	$enabled       = aafm_enabled_ability_count();
-	$total         = aafm_total_ability_count();
+	$endpoint = aafm_endpoint_url();
+	$enabled  = aafm_enabled_ability_count();
+	// Single source of truth for "available / total" — counts the full catalog (core + every
+	// integration's manifest total) so an inactive integration still contributes its count and
+	// the Dashboard never disagrees with the Abilities tab.
+	$total         = aafm_available_ability_count();
 	$adapter       = aafm_loaded_adapter_version();
 	$candidates    = aafm_agent_user_candidates();
 	$recent        = aafm_recent_agent_count();
