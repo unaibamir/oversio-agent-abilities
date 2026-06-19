@@ -6118,8 +6118,7 @@ function aafm_wc_get_tax_rate_by_id( int $rate_id ): ?array {
 		tax_rate_compound AS compound, tax_rate_shipping AS shipping,
 		tax_rate_order AS `order`, tax_rate_class AS class
 		FROM `{$table}` WHERE tax_rate_id = %d"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is an internal constant; all values are bound.
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
-	$row = $wpdb->get_row( $wpdb->prepare( $sql, $rate_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$row   = $wpdb->get_row( $wpdb->prepare( $sql, $rate_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared -- direct read of WC's own woocommerce_tax_rates table; no caching layer for admin-driven reads.
 	if ( ! is_array( $row ) ) {
 		return null;
 	}
@@ -6473,8 +6472,7 @@ function aafm_exec_wc_update_tax_rate( array $input ): array|\WP_Error {
 	}
 
 	if ( ! empty( $fields ) ) {
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$ok = $wpdb->update( $table, $fields, array( 'tax_rate_id' => $rate_id ), $format, array( '%d' ) );
+		$ok = $wpdb->update( $table, $fields, array( 'tax_rate_id' => $rate_id ), $format, array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- direct write to WC's own woocommerce_tax_rates table; no caching layer for admin-driven reads.
 		if ( false === $ok ) {
 			return aafm_generic_error();
 		}
@@ -6548,8 +6546,7 @@ function aafm_exec_wc_delete_tax_rate( array $input ): array|\WP_Error {
 
 	global $wpdb;
 	$table = $wpdb->prefix . 'woocommerce_tax_rates';
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-	$ok = $wpdb->delete( $table, array( 'tax_rate_id' => $rate_id ), array( '%d' ) );
+	$ok    = $wpdb->delete( $table, array( 'tax_rate_id' => $rate_id ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- direct write to WC's own woocommerce_tax_rates table; no caching layer for admin-driven reads.
 	if ( false === $ok ) {
 		return aafm_generic_error();
 	}

@@ -216,8 +216,8 @@ final class WooTaxTest extends TestCase {
 	public function test_update_tax_rate_changes_fields(): void {
 		$this->acting_as( 'administrator' );
 
-		$list    = wp_get_ability( 'aafm/wc-list-tax-rates' )->execute( array() );
-		$rate_id = (int) $list['rates'][0]['id'];
+		$list             = wp_get_ability( 'aafm/wc-list-tax-rates' )->execute( array() );
+		$rate_id          = (int) $list['rates'][0]['id'];
 		$original_country = $list['rates'][0]['country'];
 
 		$res = wp_get_ability( 'aafm/wc-update-tax-rate' )->execute(
@@ -371,7 +371,7 @@ final class WooTaxTest extends TestCase {
 	public function test_create_tax_class_failure_returns_wp_error(): void {
 		$this->acting_as( 'administrator' );
 		WcTaxStubStore::$force_save_failure = true;
-		$res = wp_get_ability( 'aafm/wc-create-tax-class' )->execute(
+		$res                                = wp_get_ability( 'aafm/wc-create-tax-class' )->execute(
 			array( 'name' => 'Failing Class' )
 		);
 		$this->assertInstanceOf( WP_Error::class, $res );
@@ -409,7 +409,7 @@ final class WooTaxTest extends TestCase {
 	public function test_delete_tax_class_failure_returns_wp_error(): void {
 		$this->acting_as( 'administrator' );
 		WcTaxStubStore::$force_delete_failure = true;
-		$res = wp_get_ability( 'aafm/wc-delete-tax-class' )->execute( array( 'slug' => 'reduced-rate' ) );
+		$res                                  = wp_get_ability( 'aafm/wc-delete-tax-class' )->execute( array( 'slug' => 'reduced-rate' ) );
 		$this->assertInstanceOf( WP_Error::class, $res );
 	}
 

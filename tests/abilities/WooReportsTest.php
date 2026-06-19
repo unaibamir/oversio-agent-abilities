@@ -612,7 +612,7 @@ final class WooReportsTest extends TestCase {
 	public function test_update_payment_gateway_save_failure(): void {
 		$this->acting_as( 'administrator' );
 		WcGatewayStubStore::$force_save_failure = true;
-		$res = aafm_exec_wc_update_payment_gateway(
+		$res                                    = aafm_exec_wc_update_payment_gateway(
 			array(
 				'gateway_id' => 'paypal',
 				'title'      => 'Should Fail',

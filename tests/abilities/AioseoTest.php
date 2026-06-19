@@ -119,7 +119,7 @@ final class AioseoTest extends TestCase {
 	public function test_aioseo_source_uses_no_raw_sql(): void {
 		// AIOSEO custom-table writes must go through the model ->save(), never raw $wpdb. A source
 		// grep of the ability file must be clean of $wpdb.
-		$source = (string) file_get_contents( AAFM_PLUGIN_DIR . 'includes/abilities/aioseo.php' );
+		$source = (string) file_get_contents( AAFM_PLUGIN_DIR . 'includes/abilities/aioseo.php' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- reading a local test fixture, not a remote URL.
 		$this->assertStringNotContainsString( '$wpdb', $source, 'aioseo.php must never use raw $wpdb.' );
 	}
 
