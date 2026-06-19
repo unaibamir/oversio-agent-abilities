@@ -395,10 +395,15 @@ function aafm_acf_write_fields( array $fields, $selector ) {
 			update_field( (string) $field_key, $clean, $selector );
 
 			// Verify the write persisted. A failed update_field() stores nothing, so the read-back
-			// will not equal the value we intended. Compare normalized JSON so scalars and
-			// structured arrays both compare cleanly, and a same-value no-op still matches.
+			// will not equal the value we intended. Read the RAW (unformatted) value — get_field()'s
+			// third arg false — because the formatted read diverges from the stored value for whole
+			// field families (image/file return an array or URL while storing an attachment ID, date
+			// pickers reformat, relationship/post-object return objects); comparing the formatted
+			// shape would flag those successful writes as failures. Compare normalized JSON so
+			// scalars and structured arrays both compare cleanly, and a same-value no-op still
+			// matches.
 			if ( function_exists( 'get_field' ) ) {
-				$stored = get_field( (string) $field_key, $selector );
+				$stored = get_field( (string) $field_key, $selector, false );
 				if ( wp_json_encode( $stored ) !== wp_json_encode( $clean ) ) {
 					return aafm_generic_error();
 				}

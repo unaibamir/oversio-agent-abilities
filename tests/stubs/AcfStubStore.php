@@ -167,6 +167,43 @@ class AcfStubStore {
 	}
 
 	/**
+	 * Read one field value FORMATTED, the way real ACF returns it when get_field()'s $format arg
+	 * is true. For several field types ACF stores one shape and returns another: image/file fields
+	 * store an attachment ID but return an array (or URL); date fields store Ymd but return a
+	 * display-formatted string. Modelling that divergence here is what lets a test prove the
+	 * write-verify must compare the RAW value, not this formatted one.
+	 *
+	 * @param mixed $field_key Field key.
+	 * @param mixed $selector  Object selector.
+	 * @return mixed
+	 */
+	public static function value_formatted( $field_key, $selector ) {
+		$raw  = self::value( $field_key, $selector );
+		$type = (string) ( self::$field_defs[ (string) $field_key ]['type'] ?? '' );
+
+		switch ( $type ) {
+			case 'image':
+			case 'file':
+				// Stored as an attachment ID; ACF returns the attachment as an array by default.
+				if ( is_int( $raw ) || ( is_string( $raw ) && ctype_digit( $raw ) ) ) {
+					return array(
+						'ID'  => (int) $raw,
+						'url' => 'https://example.test/wp-content/uploads/' . (int) $raw . '.png',
+					);
+				}
+				return $raw;
+			case 'date_picker':
+				// Stored as Ymd; ACF returns a display-formatted string (d/m/Y by default).
+				if ( is_string( $raw ) && 1 === preg_match( '/^\d{8}$/', $raw ) ) {
+					return substr( $raw, 6, 2 ) . '/' . substr( $raw, 4, 2 ) . '/' . substr( $raw, 0, 4 );
+				}
+				return $raw;
+			default:
+				return $raw;
+		}
+	}
+
+	/**
 	 * All hydrated values for an object, keyed by field key (the get_fields() shape): the seed
 	 * merged with any recorded writes for that object.
 	 *

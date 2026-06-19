@@ -214,7 +214,7 @@ PHP;
 		}
 		if ( ! function_exists( 'get_field' ) ) {
 			// phpcs:ignore Squiz.PHP.Eval.Discouraged -- function-only marker stub for tests; never shipped.
-			eval( 'function get_field( $selector, $post_id = false, $format = true ) { return \AAFM\Tests\AcfStubStore::value( $selector, $post_id ); }' );
+			eval( 'function get_field( $selector, $post_id = false, $format = true ) { return $format ? \AAFM\Tests\AcfStubStore::value_formatted( $selector, $post_id ) : \AAFM\Tests\AcfStubStore::value( $selector, $post_id ); }' );
 		}
 		if ( ! function_exists( 'update_field' ) ) {
 			// phpcs:ignore Squiz.PHP.Eval.Discouraged -- function-only marker stub for tests; never shipped.
