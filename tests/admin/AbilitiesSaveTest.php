@@ -268,29 +268,16 @@ final class AbilitiesSaveTest extends TestCase {
 	}
 
 	public function test_site_subgroups_map_covers_every_site_ability(): void {
-		// The presentation map plus the Other fallback together must account for every
-		// site-subject ability so nothing can be silently lost when the registry grows.
-		$registry = aafm_get_abilities_registry();
-		$mapped   = array();
+		// aafm_site_subgroups() does NOT have to list every site ability: anything it omits
+		// falls into the rendered "Other" group, and test_site_panel_splits_into_named_subgroups
+		// already proves no site ability vanishes from the panel. So the real contract here is
+		// narrower — the known structure abilities each have an explicit home in the map.
+		$mapped = array();
 		foreach ( aafm_site_subgroups() as $group ) {
 			foreach ( $group['abilities'] as $ability_name ) {
 				$mapped[ $ability_name ] = true;
 			}
 		}
-		foreach ( $registry as $name => $meta ) {
-			if ( 'site' === (string) ( $meta['subject'] ?? '' ) ) {
-				// Either explicitly mapped, or it will fall into the rendered "Other" group —
-				// both are acceptable, but assert the map is not missing a real, listed ability
-				// that should have a home. Here we only require it not vanish: the render test
-				// above proves presence; this asserts the map itself stays a superset-friendly
-				// contract by flagging unmapped site abilities for review.
-				$this->assertTrue(
-					isset( $mapped[ $name ] ) || true,
-					"site ability {$name} is unmapped (will land in Other)."
-				);
-			}
-		}
-		// Concretely, the known structure abilities ARE mapped.
 		$this->assertArrayHasKey( 'aafm/get-site-settings', $mapped );
 		$this->assertArrayHasKey( 'aafm/list-plugins', $mapped );
 		$this->assertArrayHasKey( 'aafm/get-active-theme', $mapped );
