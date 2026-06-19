@@ -687,6 +687,71 @@ final class AcfTest extends TestCase {
 	}
 
 	/**
+	 * T1-6: a repeater whose sub_fields include a URL subfield must run that nested leaf through
+	 * esc_url_raw, not the plain-text sanitizer — otherwise a javascript: scheme stored in a
+	 * repeater row survives to be rendered by a theme. The plain-text sub_field round-trips
+	 * intact, and the structured shape is preserved.
+	 */
+	public function test_update_post_fields_repeater_url_subfield_strips_javascript(): void {
+		$this->reset_integration_stubs();
+		$this->force_integration( 'acf' );
+		$this->stub_acf(
+			array(
+				'groups' => array(
+					array(
+						'key'    => 'group_rep',
+						'title'  => 'Repeater group',
+						'fields' => array(
+							array(
+								'key'        => 'field_rep',
+								'name'       => 'rep',
+								'label'      => 'Rows',
+								'type'       => 'repeater',
+								'sub_fields' => array(
+									array(
+										'key'  => 'field_rep_link',
+										'name' => 'link',
+										'type' => 'url',
+									),
+									array(
+										'key'  => 'field_rep_caption',
+										'name' => 'caption',
+										'type' => 'text',
+									),
+								),
+							),
+						),
+					),
+				),
+			)
+		);
+		aafm_registry_cache_should_flush( true );
+		$this->register_acf();
+
+		$admin_id = $this->acting_as( 'administrator' );
+		$post_id  = (int) self::factory()->post->create( array( 'post_author' => $admin_id ) );
+
+		wp_get_ability( 'aafm/acf-update-post-fields' )->execute(
+			array(
+				'post_id' => $post_id,
+				'fields'  => array(
+					'field_rep' => array(
+						array(
+							'link'    => 'javascript:alert(1)',
+							'caption' => 'Plain caption',
+						),
+					),
+				),
+			)
+		);
+
+		$stored = \AAFM\Tests\AcfStubStore::value( 'field_rep', $post_id );
+		$this->assertIsArray( $stored );
+		$this->assertStringNotContainsString( 'javascript:', (string) $stored[0]['link'], 'A url subfield in a repeater must have its javascript: scheme stripped at depth.' );
+		$this->assertSame( 'Plain caption', $stored[0]['caption'], 'A plain-text subfield must round-trip intact.' );
+	}
+
+	/**
 	 * SecOps Low: a wysiwyg field is sanitized with wp_kses_post — a <script> is dropped while a
 	 * benign <strong> is kept (the policy stated in the build log).
 	 */
