@@ -53,6 +53,8 @@
 			this.#bindSaveIntegrations();
 			this.#bindSavePostTypes();
 			this.#bindSaveMetaKeys();
+			this.#bindSaveDeniedMetaKeys();
+			this.#bindSaveUserMetaKeys();
 			this.#bindSaveSettings();
 			this.#bindMetaChips();
 			this.#bindCreateUser();
@@ -452,6 +454,75 @@
 				body.append( 'action', 'aafm_save_meta_keys' );
 				body.append( 'nonce', this.#nonce );
 				body.append( 'aafm_meta_keys', textarea?.value ?? '' );
+				if ( status ) {
+					status.textContent = this.#t( 'saving', 'Saving…' );
+				}
+				let json;
+				try {
+					const res = await fetch( this.#ajaxUrl, {
+						method: 'POST',
+						body,
+						credentials: 'same-origin',
+					} );
+					json = await res.json();
+				} catch {
+					json = { success: false };
+				}
+				if ( status ) {
+					status.textContent = json?.success
+						? this.#t( 'saved', 'Saved' )
+						: this.#t( 'errorSaving', 'Error saving' );
+				}
+			} );
+		}
+
+		#bindSaveDeniedMetaKeys() {
+			const btn = document.querySelector( '#aafm-meta-keys-save' );
+			const root = document.querySelector( '#aafm-meta-keys-form' );
+			if ( ! btn || ! root ) {
+				return;
+			}
+			// Exposed and Deny share one Save button. #bindSaveMetaKeys sends the Exposed list
+			// and owns the status text; this sends the Deny list (by its own name) on the same
+			// click. The chip helper writes only into the Exposed textarea, so its name selector
+			// stays Exposed-scoped.
+			btn.addEventListener( 'click', async () => {
+				const deny = root.querySelector( 'textarea[name="aafm_deny_meta_keys"]' );
+				const body = new URLSearchParams();
+				body.append( 'action', 'aafm_save_denied_meta_keys' );
+				body.append( 'nonce', this.#nonce );
+				body.append( 'aafm_deny_meta_keys', deny?.value ?? '' );
+				try {
+					await fetch( this.#ajaxUrl, {
+						method: 'POST',
+						body,
+						credentials: 'same-origin',
+					} );
+				} catch {
+					// The shared status text is owned by #bindSaveMetaKeys.
+				}
+			} );
+		}
+
+		#bindSaveUserMetaKeys() {
+			const btn = document.querySelector( '#aafm-user-meta-keys-save' );
+			const root = document.querySelector( '#aafm-user-meta-keys-form' );
+			if ( ! btn || ! root ) {
+				return;
+			}
+			btn.addEventListener( 'click', async () => {
+				const status = root.querySelector( '.aafm-user-meta-keys-status' );
+				const exposed = root.querySelector(
+					'textarea[name="aafm_exposed_user_meta_keys"]'
+				);
+				const deny = root.querySelector(
+					'textarea[name="aafm_denied_user_meta_keys"]'
+				);
+				const body = new URLSearchParams();
+				body.append( 'action', 'aafm_save_user_meta_keys' );
+				body.append( 'nonce', this.#nonce );
+				body.append( 'aafm_exposed_user_meta_keys', exposed?.value ?? '' );
+				body.append( 'aafm_denied_user_meta_keys', deny?.value ?? '' );
 				if ( status ) {
 					status.textContent = this.#t( 'saving', 'Saving…' );
 				}

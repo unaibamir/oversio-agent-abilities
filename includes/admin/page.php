@@ -787,6 +787,10 @@ function aafm_render_abilities_tab(): void {
 			aafm_render_meta_keys_selector();
 		}
 
+		if ( 'users' === $slug ) {
+			aafm_render_user_meta_keys_selector();
+		}
+
 		echo '</div>';
 	}
 
@@ -994,6 +998,7 @@ function aafm_render_post_types_selector(): void {
  */
 function aafm_render_meta_keys_selector(): void {
 	$allowed  = aafm_allowed_meta_keys();
+	$denied   = aafm_denied_meta_keys();
 	$detected = aafm_detected_meta_keys();
 
 	// Mirrors the post-types selector: a plain <div> (never a nested <form>) with a
@@ -1007,6 +1012,7 @@ function aafm_render_meta_keys_selector(): void {
 		'<textarea name="aafm_meta_keys" rows="6" class="large-text code">%s</textarea>',
 		esc_textarea( implode( "\n", $allowed ) )
 	);
+	echo '<p class="description">' . esc_html__( 'One key per line. * matches any key.', 'agent-abilities-for-mcp' ) . '</p>';
 
 	echo '<p class="description">' . esc_html__( 'Detected on your exposed types', 'agent-abilities-for-mcp' ) . '</p>';
 	if ( empty( $detected ) ) {
@@ -1023,7 +1029,52 @@ function aafm_render_meta_keys_selector(): void {
 		echo '</div>';
 	}
 
+	// Deny list, below the exposed list. Denied keys always win over the exposed list, even
+	// when it uses *. The chip source above writes only into the Exposed textarea.
+	echo '<h3>' . esc_html__( 'Denied meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
+	printf(
+		'<textarea name="aafm_deny_meta_keys" rows="4" class="large-text code">%s</textarea>',
+		esc_textarea( implode( "\n", $denied ) )
+	);
+	echo '<p class="description">' . esc_html__( 'Denied keys win over exposed, even with *. One per line.', 'agent-abilities-for-mcp' ) . '</p>';
+
 	echo '<p><button type="button" id="aafm-meta-keys-save" class="aafm-btn aafm-btn-primary">' . esc_html__( 'Save meta keys', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-meta-keys-status" aria-live="polite"></span></p>';
+	echo '</div>';
+}
+
+/**
+ * Render the exposed/denied user-meta selector for the Users sub-tab.
+ *
+ * Mirrors aafm_render_meta_keys_selector() but for user meta: a plain <div> (never a nested
+ * <form>) with two textareas (exposed above denied) and a type="button" save, so the one outer
+ * abilities <form> is never closed early. The deny list always wins over the exposed list,
+ * even when the exposed list uses *.
+ *
+ * @return void
+ */
+function aafm_render_user_meta_keys_selector(): void {
+	$exposed = aafm_allowed_user_meta_keys();
+	$denied  = aafm_denied_user_meta_keys();
+
+	echo '<div id="aafm-user-meta-keys-form" class="aafm-card aafm-card-pad aafm-meta-keys">';
+	echo '<h3>' . esc_html__( 'Exposed user meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<p class="description">' . esc_html__( 'These are the only user meta keys an agent can read or write on a user it can already edit. Denied keys always win, even when the exposed list uses *.', 'agent-abilities-for-mcp' ) . '</p>';
+	aafm_render_notice( 'warning', __( 'User meta can hold private data. Only expose keys whose values are safe for an agent to read and write. Authentication keys, capabilities, and password keys are blocked for good and cannot be added.', 'agent-abilities-for-mcp' ) );
+
+	printf(
+		'<textarea name="aafm_exposed_user_meta_keys" rows="6" class="large-text code">%s</textarea>',
+		esc_textarea( implode( "\n", $exposed ) )
+	);
+	echo '<p class="description">' . esc_html__( 'One key per line. * matches any key.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	echo '<h3>' . esc_html__( 'Denied user meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
+	printf(
+		'<textarea name="aafm_denied_user_meta_keys" rows="4" class="large-text code">%s</textarea>',
+		esc_textarea( implode( "\n", $denied ) )
+	);
+	echo '<p class="description">' . esc_html__( 'Denied keys win over exposed, even with *. One per line.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	echo '<p><button type="button" id="aafm-user-meta-keys-save" class="aafm-btn aafm-btn-primary">' . esc_html__( 'Save user meta keys', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-user-meta-keys-status" aria-live="polite"></span></p>';
 	echo '</div>';
 }
 
