@@ -236,6 +236,63 @@ final class WooReportsTest extends TestCase {
 	}
 
 	/**
+	 * TF-3: the date window is pushed into the wc_get_orders() query, not applied after loading
+	 * every order. An order outside the window must not be aggregated, and the query that ran must
+	 * carry the date window rather than an unbounded limit => -1 full table scan.
+	 */
+	public function test_get_top_sellers_constrains_query_to_window(): void {
+		\AAFM\Tests\WcOrderStubStore::reset();
+		\AAFM\Tests\WcStubStore::seed( 303, array( 'name' => 'Stale Product' ) );
+
+		$in_window  = gmdate( 'Y-m-d\TH:i:s' );
+		$out_window = gmdate( 'Y-m-d\TH:i:s', strtotime( '-2 years' ) );
+
+		// In-window order: product 101, qty 4.
+		\AAFM\Tests\WcOrderStubStore::seed(
+			7001,
+			array(
+				'status'       => 'completed',
+				'date_created' => $in_window,
+				'items'        => array(
+					array(
+						'product_id' => 101,
+						'quantity'   => 4,
+					),
+				),
+			)
+		);
+		// Out-of-window order, two years ago: must never be aggregated.
+		\AAFM\Tests\WcOrderStubStore::seed(
+			7002,
+			array(
+				'status'       => 'completed',
+				'date_created' => $out_window,
+				'items'        => array(
+					array(
+						'product_id' => 303,
+						'quantity'   => 50,
+					),
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = aafm_exec_wc_get_top_sellers_report( array( 'period' => 'month' ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+
+		// Only the in-window product is aggregated; the two-year-old order is excluded.
+		$product_ids = array_column( $res['items'], 'product_id' );
+		$this->assertContains( 101, $product_ids, 'The in-window product must be aggregated.' );
+		$this->assertNotContains( 303, $product_ids, 'A product sold only outside the window must not be aggregated.' );
+
+		// The query itself was constrained to the window, not an unbounded full-table scan.
+		$args = \AAFM\Tests\WcOrderStubStore::$last_query_args;
+		$this->assertArrayHasKey( 'date_created', $args, 'The date window must be pushed into the wc_get_orders() query.' );
+		$this->assertStringStartsWith( '>=', (string) $args['date_created'], 'The window must constrain date_created as a lower bound.' );
+		$this->assertNotSame( -1, $args['limit'] ?? null, 'The query must not load every order with limit => -1.' );
+	}
+
+	/**
 	 * Top sellers accepts all valid period values.
 	 */
 	public function test_get_top_sellers_accepts_all_periods(): void {

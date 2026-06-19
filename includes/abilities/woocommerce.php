@@ -7138,44 +7138,59 @@ function aafm_exec_wc_get_top_sellers_report( array $input ): array|\WP_Error {
 	// join keyed on _product_id, which never exists on the order post, so it returned nothing.
 	$start_ts = (int) strtotime( $start . ' 00:00:00' );
 
-	$orders = wc_get_orders(
-		array(
-			'status' => array( 'completed', 'processing' ),
-			'limit'  => -1,
-		)
-	);
-	$orders = is_array( $orders ) ? $orders : array();
-
-	// Quantity sold, keyed by product id.
+	// Push the date window into the query (date_created lower bound) and page through results
+	// instead of pulling every order with limit => -1, which can time out or exhaust memory on a
+	// large order history. wc_get_orders() applies the window in storage (HPOS or legacy), so only
+	// in-window orders are loaded.
+	$page           = 1;
+	$per_page       = 200;
 	$qty_by_product = array();
-	foreach ( $orders as $order ) {
-		if ( ! $order instanceof \WC_Order ) {
-			continue;
-		}
 
-		// Window filter in PHP so the same code path works on HPOS and legacy storage.
-		$created = aafm_wc_date_string( $order->get_date_created() );
-		if ( null !== $created && (int) strtotime( $created ) < $start_ts ) {
-			continue;
-		}
+	do {
+		$result = wc_get_orders(
+			array(
+				'status'       => array( 'completed', 'processing' ),
+				'date_created' => '>=' . $start_ts,
+				'limit'        => $per_page,
+				'paged'        => $page,
+				'paginate'     => true,
+				'orderby'      => 'date',
+				'order'        => 'DESC',
+			)
+		);
 
-		foreach ( $order->get_items() as $item ) {
-			if ( is_array( $item ) ) {
-				$product_id = (int) ( $item['product_id'] ?? 0 );
-				$quantity   = (int) ( $item['quantity'] ?? 0 );
-			} elseif ( is_object( $item ) && method_exists( $item, 'get_product_id' ) ) {
-				$product_id = (int) $item->get_product_id();
-				$quantity   = method_exists( $item, 'get_quantity' ) ? (int) $item->get_quantity() : 0;
-			} else {
+		$orders = is_object( $result ) && isset( $result->orders ) && is_array( $result->orders )
+			? $result->orders
+			: ( is_array( $result ) ? $result : array() );
+
+		$page_count = count( $orders );
+
+		foreach ( $orders as $order ) {
+			if ( ! $order instanceof \WC_Order ) {
 				continue;
 			}
 
-			if ( $product_id < 1 ) {
-				continue;
+			foreach ( $order->get_items() as $item ) {
+				if ( is_array( $item ) ) {
+					$product_id = (int) ( $item['product_id'] ?? 0 );
+					$quantity   = (int) ( $item['quantity'] ?? 0 );
+				} elseif ( is_object( $item ) && method_exists( $item, 'get_product_id' ) ) {
+					$product_id = (int) $item->get_product_id();
+					$quantity   = method_exists( $item, 'get_quantity' ) ? (int) $item->get_quantity() : 0;
+				} else {
+					continue;
+				}
+
+				if ( $product_id < 1 ) {
+					continue;
+				}
+				$qty_by_product[ $product_id ] = ( $qty_by_product[ $product_id ] ?? 0 ) + max( 0, $quantity );
 			}
-			$qty_by_product[ $product_id ] = ( $qty_by_product[ $product_id ] ?? 0 ) + max( 0, $quantity );
 		}
-	}
+
+		++$page;
+		// Stop once a short (or empty) page is returned: that is the last page of the window.
+	} while ( $page_count === $per_page );
 
 	arsort( $qty_by_product );
 	$qty_by_product = array_slice( $qty_by_product, 0, $limit, true );
