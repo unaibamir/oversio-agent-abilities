@@ -5689,7 +5689,9 @@ function aafm_rich_wc_shipping_method( \WC_Shipping_Method $method ): array {
 		'id'           => (string) $method->id,
 		'method_title' => (string) $method->method_title,
 		'enabled'      => (string) $method->enabled,
-		'settings'     => (array) $method->settings,
+		// Shipping plugins store carrier API keys / account creds / license keys in settings.
+		// Run them through the recursive deny-by-default redactor before returning.
+		'settings'     => aafm_wc_redact_settings_deep( (array) $method->settings ),
 	);
 }
 
@@ -6883,24 +6885,39 @@ function aafm_exec_wc_delete_tax_class( array $input ): array|\WP_Error {
 // =============================================================================
 
 /**
- * Redact secret/key/token/password fields from a gateway's settings array.
+ * Recursively strip secret/credential fields from an arbitrary settings array.
  *
- * Any setting key whose name contains key, secret, token, password, api, or private
- * is stripped before the array is returned to the caller.
+ * Deny-by-default at every depth: any key whose name matches the secret pattern is dropped,
+ * and the walk recurses into nested arrays so a credential hidden under a benign parent key
+ * (or several levels down) can't slip through. The pattern covers the obvious credential
+ * tokens (key, secret, token, password/pwd, api, private, auth, credential, signature/sign,
+ * client_id) so a value stored under a slightly unconventional name is still caught.
  *
- * @param array<string,mixed> $settings Raw gateway settings array.
- * @return array<string,mixed>
+ * @param array<int|string,mixed> $settings Raw settings array (may be nested).
+ * @return array<int|string,mixed>
  */
-function aafm_wc_redact_gateway_settings( array $settings ): array {
+function aafm_wc_redact_settings_deep( array $settings ): array {
+	$secret_pattern = '/(?:key|secret|token|password|pwd|api|private|auth|credential|signature|sign|client[_-]?id)/i';
 	$redacted       = array();
-	$secret_pattern = '/(?:key|secret|token|password|api|private)/i';
 	foreach ( $settings as $key => $value ) {
 		if ( preg_match( $secret_pattern, (string) $key ) ) {
 			continue;
 		}
-		$redacted[ $key ] = $value;
+		$redacted[ $key ] = is_array( $value ) ? aafm_wc_redact_settings_deep( $value ) : $value;
 	}
 	return $redacted;
+}
+
+/**
+ * Redact secret/key/token/password fields from a gateway's settings array.
+ *
+ * Thin wrapper over the recursive deny-by-default redactor.
+ *
+ * @param array<string,mixed> $settings Raw gateway settings array.
+ * @return array<int|string,mixed>
+ */
+function aafm_wc_redact_gateway_settings( array $settings ): array {
+	return aafm_wc_redact_settings_deep( $settings );
 }
 
 /**

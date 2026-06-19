@@ -438,6 +438,58 @@ final class WooReportsTest extends TestCase {
 	}
 
 	/**
+	 * A secret nested under a benign parent key must be redacted at depth — shallow,
+	 * top-level-only redaction leaks credentials stored inside a sub-array.
+	 */
+	public function test_get_payment_gateway_redacts_nested_secret(): void {
+		\AAFM\Tests\WcGatewayStubStore::save_gateway(
+			'paypal',
+			array(
+				'settings' => array(
+					'title'    => 'PayPal',
+					'advanced' => array(
+						'mode'       => 'live',
+						'api_secret' => 'nested-secret-value',
+					),
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = aafm_exec_wc_get_payment_gateway( array( 'gateway_id' => 'paypal' ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+
+		$json = wp_json_encode( $res['settings'] );
+		$this->assertStringNotContainsString( 'nested-secret-value', (string) $json, 'A secret two levels deep must not leak.' );
+		// The benign sibling under the same parent must survive.
+		$this->assertSame( 'live', $res['settings']['advanced']['mode'] );
+	}
+
+	/**
+	 * A credential stored under an unconventional key name (one not in the original
+	 * key/secret/token/password/api/private list) must still be redacted.
+	 */
+	public function test_get_payment_gateway_redacts_unconventional_secret_key(): void {
+		\AAFM\Tests\WcGatewayStubStore::save_gateway(
+			'paypal',
+			array(
+				'settings' => array(
+					'title'      => 'PayPal',
+					'credential' => 'unconventional-credential-value',
+					'auth_pwd'   => 'unconventional-pwd-value',
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = aafm_exec_wc_get_payment_gateway( array( 'gateway_id' => 'paypal' ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+
+		$this->assertArrayNotHasKey( 'credential', $res['settings'], 'A "credential" key must be redacted.' );
+		$this->assertArrayNotHasKey( 'auth_pwd', $res['settings'], 'An "auth_pwd" key must be redacted.' );
+	}
+
+	/**
 	 * Get gateway returns WP_Error for an unknown id.
 	 */
 	public function test_get_payment_gateway_not_found(): void {
