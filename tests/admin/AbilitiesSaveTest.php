@@ -62,6 +62,58 @@ final class AbilitiesSaveTest extends TestCase {
 		$this->assertStringContainsString( 'aafm-switch', $html );
 	}
 
+	public function test_abilities_tab_renders_a_stats_box_before_the_form(): void {
+		$this->acting_as( 'administrator' );
+		update_option( 'aafm_enabled_abilities', array( 'aafm/get-posts' ) );
+
+		ob_start();
+		aafm_render_abilities_tab();
+		$html = (string) ob_get_clean();
+
+		// A stat grid renders before the abilities form, showing the total and enabled counts.
+		$stat_pos = strpos( $html, 'aafm-stat-grid' );
+		$form_pos = strpos( $html, 'id="aafm-abilities-form"' );
+		$this->assertNotFalse( $stat_pos, 'The stats box should render.' );
+		$this->assertNotFalse( $form_pos, 'The abilities form should render.' );
+		$this->assertLessThan( $form_pos, $stat_pos, 'The stats box must come before the form.' );
+
+		// Both the total and enabled counts appear in .aafm-stat blocks.
+		$this->assertStringContainsString( 'aafm-stat', $html );
+		$this->assertStringContainsString( (string) aafm_total_ability_count(), $html );
+		$this->assertStringContainsString( (string) aafm_enabled_ability_count(), $html );
+		$this->assertStringContainsString( 'Total abilities', $html );
+		$this->assertStringContainsString( 'Enabled', $html );
+	}
+
+	public function test_abilities_subject_tabs_carry_a_per_subject_count(): void {
+		$this->acting_as( 'administrator' );
+
+		ob_start();
+		aafm_render_abilities_tab();
+		$html = (string) ob_get_clean();
+
+		// Each subject sub-tab button carries a <span class="count"> with its total ability count.
+		$this->assertStringContainsString( '<span class="count">', $html );
+		// There is one count span per rendered subject tab button. Match the button class with the
+		// trailing quote/space so the .aafm-subject-tabs wrapper class is not double-counted.
+		$this->assertSame(
+			substr_count( $html, 'class="aafm-subject-tab"' ) + substr_count( $html, 'class="aafm-subject-tab is-active"' ),
+			substr_count( $html, '<span class="count">' )
+		);
+	}
+
+	public function test_meta_keys_save_uses_the_plugin_button_class(): void {
+		$this->acting_as( 'administrator' );
+
+		ob_start();
+		aafm_render_meta_keys_selector();
+		$html = (string) ob_get_clean();
+
+		// The meta-keys Save button uses the plugin button family, not the WP default.
+		$this->assertStringContainsString( 'class="aafm-btn aafm-btn-primary"', $html );
+		$this->assertStringNotContainsString( 'class="button button-primary"', $html );
+	}
+
 	public function test_every_registry_entry_declares_a_subject(): void {
 		$registry = aafm_get_abilities_registry();
 		$this->assertNotEmpty( $registry );

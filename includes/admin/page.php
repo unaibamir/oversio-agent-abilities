@@ -428,6 +428,42 @@ function aafm_render_abilities_tab(): void {
 		}
 	}
 
+	// Stats box — sits between the page nav and the sub-tabs, reusing the dashboard .aafm-stat
+	// markup. Total counts the whole catalog; Enabled counts what the operator has turned on,
+	// labelled "of N" so the two never read as disagreeing numbers.
+	$ability_total   = aafm_total_ability_count();
+	$ability_enabled = aafm_enabled_ability_count();
+	echo '<div class="aafm-stat-grid aafm-abilities-stats">';
+	echo '<div class="aafm-stat aafm-stat-abilities">';
+	echo '<div class="stat-top">';
+	echo '<span class="stat-label">' . esc_html__( 'Total abilities', 'agent-abilities-for-mcp' ) . '</span>';
+	echo '<span class="stat-ic">';
+	echo aafm_icon( 'abilities' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
+	echo '</span>';
+	echo '</div>';
+	printf( '<div class="stat-value">%s</div>', esc_html( number_format_i18n( $ability_total ) ) );
+	echo '</div>';
+	echo '<div class="aafm-stat aafm-stat-enabled">';
+	echo '<div class="stat-top">';
+	echo '<span class="stat-label">' . esc_html__( 'Enabled', 'agent-abilities-for-mcp' ) . '</span>';
+	echo '<span class="stat-ic">';
+	echo aafm_icon( 'bolt' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
+	echo '</span>';
+	echo '</div>';
+	printf(
+		'<div class="stat-value">%1$s <small>%2$s</small></div>',
+		esc_html( number_format_i18n( $ability_enabled ) ),
+		esc_html(
+			sprintf(
+				/* translators: %d: total number of abilities in the catalog. */
+				__( 'of %d', 'agent-abilities-for-mcp' ),
+				$ability_total
+			)
+		)
+	);
+	echo '</div>';
+	echo '</div>'; // .aafm-abilities-stats
+
 	echo '<form id="aafm-abilities-form" class="aafm-abilities">';
 	wp_nonce_field( 'aafm_admin', 'aafm_nonce' );
 
@@ -438,11 +474,12 @@ function aafm_render_abilities_tab(): void {
 	foreach ( $subjects as $slug => $label ) {
 		$is_active = ( $slug === $first );
 		printf(
-			'<button type="button" class="aafm-subject-tab%1$s" role="tab" aria-selected="%2$s" data-subject="%3$s">%4$s</button>',
+			'<button type="button" class="aafm-subject-tab%1$s" role="tab" aria-selected="%2$s" data-subject="%3$s">%4$s <span class="count">%5$s</span></button>',
 			$is_active ? ' is-active' : '',
 			$is_active ? 'true' : 'false',
 			esc_attr( $slug ),
-			esc_html( $label )
+			esc_html( $label ),
+			esc_html( (string) count( $by_subject[ $slug ] ) )
 		);
 	}
 	echo '</div>';
@@ -688,7 +725,7 @@ function aafm_render_meta_keys_selector(): void {
 		echo '</div>';
 	}
 
-	echo '<p><button type="button" id="aafm-meta-keys-save" class="button button-primary">' . esc_html__( 'Save meta keys', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-meta-keys-status" aria-live="polite"></span></p>';
+	echo '<p><button type="button" id="aafm-meta-keys-save" class="aafm-btn aafm-btn-primary">' . esc_html__( 'Save meta keys', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-meta-keys-status" aria-live="polite"></span></p>';
 	echo '</div>';
 }
 

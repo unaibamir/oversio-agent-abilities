@@ -303,6 +303,13 @@
 		margin-block-start: 20px;
 	}
 
+	/* The Abilities tab reuses the stat cards but only shows two (Total / Enabled),
+	   so it caps the grid at two columns rather than stretching two cards across four. */
+	.aafm-abilities-stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		margin-block-start: 0;
+	}
+
 	.aafm-stat {
 		background: var(--aafm-surface);
 		border: 1px solid var(--aafm-border);
