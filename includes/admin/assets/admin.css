@@ -1109,6 +1109,13 @@
 		> * { min-inline-size: 0; }
 	}
 
+	/* Shared alignment class on each of the three numbered steps. It pins one inline
+	   padding so the step heads and rails line up edge-to-edge top to bottom, regardless
+	   of which content (form, code block, diagnostics) a given step holds. */
+	.aafm-connection .aafm-conn-step {
+		padding-inline: 20px;
+	}
+
 	.aafm-connection .aafm-step-rail { min-inline-size: 0; }
 
 	/* WP-native action buttons in the connection steps carry long labels and
