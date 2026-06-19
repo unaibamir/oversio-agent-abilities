@@ -247,11 +247,6 @@
 		margin-bottom: 15px;
 	}
 
-	.aafm-integration-empty {
-		padding-block: 14px;
-		padding-inline: 20px;
-	}
-
 	.aafm-card-pad {
 		padding-block: 18px;
 		padding-inline: 20px;
@@ -805,7 +800,17 @@
 
 		.aafm-integration-card {
 			&.is-disabled {
-				.aafm-card-head { opacity: 0.7; }
+				/* Mute the status pill and the inert toggles, but keep every label, risk
+				   badge, and hint at full contrast so the section stays fully readable —
+				   the operator can see exactly what activating the plugin would unlock. */
+				.aafm-pill { opacity: 0.7; }
+
+				.aafm-ability-row[aria-disabled="true"] {
+					.aafm-switch {
+						opacity: 0.5;
+						cursor: not-allowed;
+					}
+				}
 			}
 		}
 

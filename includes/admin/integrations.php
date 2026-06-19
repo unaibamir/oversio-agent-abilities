@@ -146,10 +146,19 @@ function aafm_render_integrations_tab(): void {
 		);
 	}
 
+	$descriptor = aafm_integration_ability_manifest();
+
 	foreach ( aafm_integration_cards() as $slug => $card ) {
 		$status   = aafm_integration_status( $slug );
-		$rows     = $by_subject[ $slug ] ?? array();
 		$disabled = ( 'active' !== $status );
+
+		// Ability rows always come from the static descriptor, so an inactive host still shows the
+		// full list. When the host is active the live registry holds the same set, so prefer the
+		// live rows (they carry the real risk/group/description); otherwise fall back to the
+		// descriptor's static rows, which are rendered disabled below.
+		$rows = $disabled
+			? ( $descriptor[ $slug ] ?? array() )
+			: ( $by_subject[ $slug ] ?? ( $descriptor[ $slug ] ?? array() ) );
 
 		printf(
 			'<section class="aafm-card aafm-integration-card aafm-integration-%1$s%2$s">',
@@ -168,28 +177,28 @@ function aafm_render_integrations_tab(): void {
 		echo aafm_integration_status_pill( $status ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built and escaped in the helper.
 
 		echo '<span class="abilities-count">';
-			if ( null !== $counts ) {
-				printf(
-					'<p class="aafm-integration-count">%s</p>',
-					esc_html(
-						sprintf(
-							/* translators: 1: total abilities, 2: read count, 3: write count. */
-							__( '0 / %1$d · %2$d read, %3$d write', 'agent-abilities-for-mcp' ),
-							(int) $counts['total'],
-							(int) $counts['read'],
-							(int) $counts['write']
-						)
+		if ( null !== $counts ) {
+			printf(
+				'<p class="aafm-integration-count">%s</p>',
+				esc_html(
+					sprintf(
+						/* translators: 1: total abilities, 2: read count, 3: write count. */
+						__( '0 / %1$d · %2$d read, %3$d write', 'agent-abilities-for-mcp' ),
+						(int) $counts['total'],
+						(int) $counts['read'],
+						(int) $counts['write']
 					)
-				);
-			}
+				)
+			);
+		}
 		echo '</span>';
 
 		echo '</div>';
 
 		// Status note.
-		//echo '<p class="aafm-integration-note">' . esc_html( aafm_integration_status_note( $slug, $status ) ) . '</p>';
+		echo '<p class="aafm-integration-note">' . esc_html( aafm_integration_status_note( $slug, $status ) ) . '</p>';
 
-		aafm_render_integration_abilities( $slug, $rows, $enabled, $disclosures );
+		aafm_render_integration_abilities( $slug, $rows, $enabled, $disclosures, $disabled );
 
 		echo '</section>';
 	}
@@ -260,14 +269,11 @@ function aafm_integration_status_note( string $slug, string $status ): string {
  * @param array<int,array<string,mixed>> $rows        This integration's ability rows.
  * @param array<int,string>              $enabled     Enabled ability names.
  * @param array<string,string>           $disclosures Disclosure map.
+ * @param bool                           $disabled    True when the host is inactive — rows render
+ *                                                    read-only and never submit.
  * @return void
  */
-function aafm_render_integration_abilities( string $slug, array $rows, array $enabled, array $disclosures ): void {
-	if ( empty( $rows ) ) {
-		echo '<p class="aafm-integration-empty description">' . esc_html__( 'No abilities are available for this integration yet.', 'agent-abilities-for-mcp' ) . '</p>';
-		return;
-	}
-
+function aafm_render_integration_abilities( string $slug, array $rows, array $enabled, array $disclosures, bool $disabled = false ): void {
 	// Enabled-over-total count for the collapsible summary.
 	$group_enabled = 0;
 	$has_sensitive = false;
@@ -302,7 +308,7 @@ function aafm_render_integration_abilities( string $slug, array $rows, array $en
 	// Each per-plugin card renders a flat ability list.
 	echo '<div class="aafm-card aafm-ability-list">';
 	foreach ( $rows as $ability ) {
-		aafm_render_integration_ability_row( $ability, $enabled, $disclosures );
+		aafm_render_integration_ability_row( $ability, $enabled, $disclosures, $disabled );
 	}
 	echo '</div>';
 
@@ -314,21 +320,35 @@ function aafm_render_integration_abilities( string $slug, array $rows, array $en
  *
  * Extracted so both the flat list and the SEO sub-section loops share identical markup.
  *
+ * The disclosure hint is resolved the same way for active and inactive rows — prefer the
+ * aafm_ability_disclosures() line for this ability name, fall back to the row's own description —
+ * so the descriptor never carries its own copy of the disclosure text.
+ *
  * @param array<string,mixed>  $ability     Ability data row.
  * @param array<int,string>    $enabled     Enabled ability names.
  * @param array<string,string> $disclosures Disclosure map.
+ * @param bool                 $disabled    True when the host is inactive — the checkbox renders
+ *                                          disabled (so it never submits) and the row carries
+ *                                          aria-disabled, while staying fully readable.
  * @return void
  */
-function aafm_render_integration_ability_row( array $ability, array $enabled, array $disclosures ): void {
+function aafm_render_integration_ability_row( array $ability, array $enabled, array $disclosures, bool $disabled = false ): void {
 	$name = (string) $ability['name'];
 	$risk = (string) ( $ability['risk'] ?? 'read' );
 	$hint = (string) ( $disclosures[ $name ] ?? ( $ability['description'] ?? '' ) );
 
-	echo '<div class="aafm-ability-row">';
 	printf(
-		'<label class="aafm-switch"><input type="checkbox" name="aafm_abilities[]" value="%1$s" %2$s><span class="aafm-switch-track"></span></label>',
+		'<div class="aafm-ability-row" data-risk="%1$s"%2$s>',
+		esc_attr( $risk ),
+		$disabled ? ' aria-disabled="true"' : ''
+	);
+	// An inactive host has nothing enabled, so a disabled row never renders checked; it also
+	// carries the disabled attribute so it stays out of the submitted aafm_abilities[] list.
+	printf(
+		'<label class="aafm-switch"><input type="checkbox" name="aafm_abilities[]" value="%1$s" %2$s%3$s><span class="aafm-switch-track"></span></label>',
 		esc_attr( $name ),
-		checked( in_array( $name, $enabled, true ), true, false )
+		$disabled ? '' : checked( in_array( $name, $enabled, true ), true, false ),
+		$disabled ? ' disabled' : ''
 	);
 
 	echo '<div class="aafm-ability-main"><div class="aafm-ability-title">';

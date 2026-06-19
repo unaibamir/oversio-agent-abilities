@@ -78,6 +78,32 @@ final class IntegrationsTabTest extends TestCase {
 		);
 	}
 
+	public function test_inactive_card_still_renders_its_ability_rows_disabled(): void {
+		// The whole point of the descriptor: an inactive host shows every ability it WOULD expose,
+		// fully readable but disabled, so the operator can see what activating the plugin unlocks.
+		$this->acting_as( 'administrator' );
+		add_filter( 'aafm_yoast_active', '__return_false', 99 );
+		add_filter( 'aafm_rankmath_active', '__return_false', 99 );
+		add_filter( 'aafm_aioseo_active', '__return_false', 99 );
+		add_filter( 'aafm_woocommerce_active', '__return_false', 99 );
+		ob_start();
+		aafm_render_integrations_tab();
+		$html = (string) ob_get_clean();
+		remove_filter( 'aafm_woocommerce_active', '__return_false', 99 );
+		remove_filter( 'aafm_aioseo_active', '__return_false', 99 );
+		remove_filter( 'aafm_rankmath_active', '__return_false', 99 );
+		remove_filter( 'aafm_yoast_active', '__return_false', 99 );
+
+		// A known WooCommerce ability label and value render even though the host is inactive.
+		$this->assertStringContainsString( 'List WooCommerce products', $html );
+		$this->assertStringContainsString( 'value="aafm/wc-list-products"', $html );
+		// The inactive rows carry the disabled attribute (so they never submit) and aria-disabled.
+		$this->assertStringContainsString( 'disabled', $html );
+		$this->assertStringContainsString( 'aria-disabled="true"', $html );
+		// The old empty-state copy is gone for good — there is always a list now.
+		$this->assertStringNotContainsString( 'No abilities are available for this integration yet.', $html );
+	}
+
 	public function test_status_helper_reports_not_installed_when_host_files_absent(): void {
 		// Neither Yoast nor WooCommerce ships its host file in this WP install, and neither is
 		// active, so each reports not_installed. The SEO slices' stubs define the detection markers
