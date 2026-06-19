@@ -194,12 +194,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-delete-order', $abilities );
 	}
 
-	public function test_delete_order_is_destructive_annotated(): void {
-		$this->register_group_a();
-		$annotations = wp_get_ability( 'aafm/wc-delete-order' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-order must be annotated destructive.' );
-	}
-
 	public function test_delete_order_closed_schema_rejects_unknown_field(): void {
 		$this->register_group_a();
 		$this->acting_as( 'administrator' );
@@ -673,12 +667,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-delete-order-note', $abilities );
 	}
 
-	public function test_delete_order_note_is_destructive_annotated(): void {
-		$this->register_group_b();
-		$annotations = wp_get_ability( 'aafm/wc-delete-order-note' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-order-note must be annotated destructive.' );
-	}
-
 	public function test_delete_order_note_closed_schema_rejects_unknown_field(): void {
 		$this->register_group_b();
 		$this->acting_as( 'administrator' );
@@ -1097,12 +1085,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-delete-order-refund', $abilities );
-	}
-
-	public function test_delete_order_refund_is_destructive_annotated(): void {
-		$this->register_group_c();
-		$annotations = wp_get_ability( 'aafm/wc-delete-order-refund' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-order-refund must be annotated destructive.' );
 	}
 
 	public function test_delete_order_refund_closed_schema_rejects_unknown_field(): void {

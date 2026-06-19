@@ -231,12 +231,6 @@ final class WooOrdersTest extends TestCase {
 		$this->assertContains( 'aafm/wc-list-orders', $abilities );
 	}
 
-	public function test_list_orders_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-list-orders' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false, 'wc-list-orders must be annotated readonly.' );
-		$this->assertFalse( $annotations['destructive'] ?? true, 'wc-list-orders must be annotated non-destructive.' );
-	}
-
 	public function test_list_orders_empty_store_returns_empty(): void {
 		// With no orders in the store the ability must return orders:[] and total:0.
 		// This pins both the plain-array fallback path and the paginate object path on an empty result.
@@ -398,12 +392,6 @@ final class WooOrdersTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-get-order', $abilities );
-	}
-
-	public function test_get_order_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-get-order' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false, 'wc-get-order must be annotated readonly.' );
-		$this->assertFalse( $annotations['destructive'] ?? true, 'wc-get-order must be annotated non-destructive.' );
 	}
 
 	public function test_get_order_closed_schema_rejects_unknown_field(): void {

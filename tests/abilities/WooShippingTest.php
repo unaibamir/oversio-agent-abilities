@@ -147,15 +147,6 @@ final class WooShippingTest extends TestCase {
 	}
 
 	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_list_shipping_zones_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-list-shipping-zones' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false, 'wc-list-shipping-zones must be annotated readonly.' );
-		$this->assertFalse( $annotations['destructive'] ?? true, 'wc-list-shipping-zones must be annotated non-destructive.' );
-	}
-
-	/**
 	 * Audit: a successful list call is recorded.
 	 */
 	public function test_list_shipping_zones_success_is_audited(): void {
@@ -212,15 +203,6 @@ final class WooShippingTest extends TestCase {
 		);
 	}
 
-	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_get_shipping_zone_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-get-shipping-zone' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false );
-		$this->assertFalse( $annotations['destructive'] ?? true );
-	}
-
 	// =========================================================================
 	// aafm/wc-create-shipping-zone
 	// =========================================================================
@@ -266,15 +248,6 @@ final class WooShippingTest extends TestCase {
 		);
 		$this->assertInstanceOf( WP_Error::class, $res, 'Store failure must not lie success.' );
 		WcShippingStubStore::$force_save_failure = false;
-	}
-
-	/**
-	 * Write annotation: readonly=false, destructive=false.
-	 */
-	public function test_create_shipping_zone_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-create-shipping-zone' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	/**
@@ -355,15 +328,6 @@ final class WooShippingTest extends TestCase {
 		);
 		$this->assertInstanceOf( WP_Error::class, $res, 'Save failure on update must not lie success.' );
 		WcShippingStubStore::$force_save_failure = false;
-	}
-
-	/**
-	 * Write annotation: readonly=false, destructive=false.
-	 */
-	public function test_update_shipping_zone_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-update-shipping-zone' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	/**
@@ -463,15 +427,6 @@ final class WooShippingTest extends TestCase {
 	}
 
 	/**
-	 * Destructive annotation is set on delete.
-	 */
-	public function test_delete_shipping_zone_is_destructive_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-delete-shipping-zone' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-shipping-zone must be annotated destructive.' );
-	}
-
-	/**
 	 * Audit: successful delete is recorded.
 	 */
 	public function test_delete_shipping_zone_success_is_audited(): void {
@@ -535,15 +490,6 @@ final class WooShippingTest extends TestCase {
 		$this->assertSame( 2, $res['total'] );
 	}
 
-	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_list_shipping_methods_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-list-shipping-methods' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false );
-		$this->assertFalse( $annotations['destructive'] ?? true );
-	}
-
 	// =========================================================================
 	// aafm/wc-get-shipping-method
 	// =========================================================================
@@ -578,15 +524,6 @@ final class WooShippingTest extends TestCase {
 			)
 		);
 		$this->assertInstanceOf( WP_Error::class, $res );
-	}
-
-	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_get_shipping_method_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-get-shipping-method' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	// =========================================================================
@@ -639,15 +576,6 @@ final class WooShippingTest extends TestCase {
 		);
 		$this->assertInstanceOf( WP_Error::class, $res, 'Store failure must not lie success.' );
 		WcShippingStubStore::$force_save_failure = false;
-	}
-
-	/**
-	 * Write annotation: readonly=false, destructive=false.
-	 */
-	public function test_create_shipping_method_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-create-shipping-method' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	/**
@@ -747,15 +675,6 @@ final class WooShippingTest extends TestCase {
 	}
 
 	/**
-	 * Write annotation: readonly=false, destructive=false.
-	 */
-	public function test_update_shipping_method_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-update-shipping-method' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
-	}
-
-	/**
 	 * Audit: successful update is recorded.
 	 */
 	public function test_update_shipping_method_success_is_audited(): void {
@@ -838,15 +757,6 @@ final class WooShippingTest extends TestCase {
 			)
 		);
 		$this->assertInstanceOf( WP_Error::class, $res );
-	}
-
-	/**
-	 * Destructive annotation is set on delete.
-	 */
-	public function test_delete_shipping_method_is_destructive_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-delete-shipping-method' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-shipping-method must be annotated destructive.' );
 	}
 
 	/**

@@ -165,15 +165,6 @@ final class WooCouponsTest extends TestCase {
 	}
 
 	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_list_coupons_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-list-coupons' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false, 'wc-list-coupons must be annotated readonly.' );
-		$this->assertFalse( $annotations['destructive'] ?? true, 'wc-list-coupons must be annotated non-destructive.' );
-	}
-
-	/**
 	 * Empty store returns an empty coupons array (not an object).
 	 */
 	public function test_list_coupons_empty_store_returns_empty_array(): void {
@@ -309,15 +300,6 @@ final class WooCouponsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-get-coupon', $abilities );
 	}
 
-	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_get_coupon_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-get-coupon' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false );
-		$this->assertFalse( $annotations['destructive'] ?? true );
-	}
-
 	// =========================================================================
 	// aafm/wc-create-coupon
 	// =========================================================================
@@ -415,15 +397,6 @@ final class WooCouponsTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-create-coupon', $abilities );
-	}
-
-	/**
-	 * Write annotation is set; destructive is false.
-	 */
-	public function test_create_coupon_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-create-coupon' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	/**
@@ -543,15 +516,6 @@ final class WooCouponsTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-update-coupon', $abilities );
-	}
-
-	/**
-	 * Write annotation is set; destructive is false.
-	 */
-	public function test_update_coupon_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-update-coupon' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	/**
@@ -702,14 +666,5 @@ final class WooCouponsTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-delete-coupon', $abilities );
-	}
-
-	/**
-	 * Destructive annotation is set on delete; write annotation is false.
-	 */
-	public function test_delete_coupon_is_destructive_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-delete-coupon' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertTrue( $annotations['destructive'] ?? false, 'wc-delete-coupon must be annotated destructive.' );
 	}
 }

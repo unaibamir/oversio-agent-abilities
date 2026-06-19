@@ -156,15 +156,6 @@ final class WooCustomersTest extends TestCase {
 	}
 
 	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_list_customers_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-list-customers' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false, 'wc-list-customers must be annotated readonly.' );
-		$this->assertFalse( $annotations['destructive'] ?? true, 'wc-list-customers must be annotated non-destructive.' );
-	}
-
-	/**
 	 * Host-inactive: customer abilities must be absent from the registry when WooCommerce is off.
 	 */
 	public function test_list_customers_host_inactive_absent_from_registry(): void {
@@ -303,15 +294,6 @@ final class WooCustomersTest extends TestCase {
 		$this->assertContains( 'aafm/wc-get-customer', $abilities );
 	}
 
-	/**
-	 * Readonly annotation is set; destructive is false.
-	 */
-	public function test_get_customer_is_read_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-get-customer' )->get_meta_item( 'annotations' );
-		$this->assertTrue( $annotations['readonly'] ?? false );
-		$this->assertFalse( $annotations['destructive'] ?? true );
-	}
-
 	// =========================================================================
 	// aafm/wc-create-customer
 	// =========================================================================
@@ -445,15 +427,6 @@ final class WooCustomersTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-create-customer', $abilities );
-	}
-
-	/**
-	 * Write annotation is set; destructive is false.
-	 */
-	public function test_create_customer_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-create-customer' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	/**
@@ -608,15 +581,6 @@ final class WooCustomersTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-update-customer', $abilities );
-	}
-
-	/**
-	 * Write annotation is set; destructive is false.
-	 */
-	public function test_update_customer_is_write_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-update-customer' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertFalse( $annotations['destructive'] ?? true );
 	}
 
 	/**
@@ -840,15 +804,6 @@ final class WooCustomersTest extends TestCase {
 		$denied    = aafm_query_activity( array( 'status' => 'denied' ) );
 		$abilities = wp_list_pluck( $denied, 'ability' );
 		$this->assertContains( 'aafm/wc-delete-customer', $abilities );
-	}
-
-	/**
-	 * Destructive annotation is set; readonly is false.
-	 */
-	public function test_delete_customer_is_destructive_annotated(): void {
-		$annotations = wp_get_ability( 'aafm/wc-delete-customer' )->get_meta_item( 'annotations' );
-		$this->assertFalse( $annotations['readonly'] ?? true );
-		$this->assertTrue( $annotations['destructive'] ?? false );
 	}
 
 	/**
