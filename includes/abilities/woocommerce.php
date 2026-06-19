@@ -1109,7 +1109,7 @@ function aafm_args_wc_create_product(): array {
 
 	return array(
 		'label'               => __( 'Create WooCommerce product', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Creates a WooCommerce product (name required; type, status, description, prices, SKU, stock, categories, tags, images, attributes optional). Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+		'description'         => __( 'Creates a simple WooCommerce product (name required; status, description, prices, SKU, stock, categories, tags, images, attributes optional). Only the simple product type is supported here; a variable, grouped, or external type is rejected. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -1147,9 +1147,16 @@ function aafm_exec_wc_create_product( array $input ) {
 		return aafm_generic_error();
 	}
 
+	// This generic create only builds simple products. A variable/grouped/external product is a
+	// different construction (and, for variable, needs variations added afterward), so reject a
+	// non-simple request rather than silently downgrading it to a simple product and reporting
+	// success. The schema enumerates the other types, but they are not honored here.
+	$requested_type = isset( $input['type'] ) ? (string) $input['type'] : 'simple';
+	if ( 'simple' !== $requested_type ) {
+		return aafm_generic_error();
+	}
+
 	$product = new \WC_Product();
-	// The product type is fixed by the WC_Product subclass at construction in real WooCommerce, so the
-	// generic create here applies the remaining fields onto a simple product and ignores `type`.
 	unset( $input['type'] );
 	aafm_wc_apply_product_input( $product, $input );
 	$id = (int) $product->save();
