@@ -7120,7 +7120,6 @@ function aafm_exec_wc_get_top_sellers_report( array $input ): array|\WP_Error {
 	if ( ! aafm_integration_active( 'woocommerce' ) ) {
 		return aafm_generic_error();
 	}
-	global $wpdb;
 	$period = sanitize_text_field( (string) ( $input['period'] ?? 'month' ) );
 	$limit  = max( 1, min( 100, (int) ( $input['limit'] ?? 10 ) ) );
 
@@ -7130,40 +7129,64 @@ function aafm_exec_wc_get_top_sellers_report( array $input ): array|\WP_Error {
 		default => gmdate( 'Y-m-01' ),
 	};
 
-	$statuses     = array( 'wc-completed', 'wc-processing' );
-	$placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
-
-	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
-	$rows = $wpdb->get_results(
-		$wpdb->prepare(
-			"SELECT pm.meta_value AS product_id, COUNT(*) AS qty_sold
-			 FROM {$wpdb->posts} p
-			 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-			 WHERE p.post_type = 'shop_order'
-			   AND p.post_status IN ( {$placeholders} )
-			   AND pm.meta_key = '_product_id'
-			   AND p.post_date >= %s
-			 GROUP BY pm.meta_value
-			 ORDER BY qty_sold DESC
-			 LIMIT %d",
-			array_merge( $statuses, array( $start . ' 00:00:00', $limit ) )
-		),
-		ARRAY_A
-	);
-	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-	if ( ! is_array( $rows ) ) {
-		$rows = array();
+	if ( ! function_exists( 'wc_get_orders' ) ) {
+		return aafm_generic_error();
 	}
 
+	// Product ids live in ORDER ITEM meta, not shop_order post meta, so aggregate quantities
+	// from each order's line items via the WC CRUD layer (HPOS-aware). The previous postmeta
+	// join keyed on _product_id, which never exists on the order post, so it returned nothing.
+	$start_ts = (int) strtotime( $start . ' 00:00:00' );
+
+	$orders = wc_get_orders(
+		array(
+			'status' => array( 'completed', 'processing' ),
+			'limit'  => -1,
+		)
+	);
+	$orders = is_array( $orders ) ? $orders : array();
+
+	// Quantity sold, keyed by product id.
+	$qty_by_product = array();
+	foreach ( $orders as $order ) {
+		if ( ! $order instanceof \WC_Order ) {
+			continue;
+		}
+
+		// Window filter in PHP so the same code path works on HPOS and legacy storage.
+		$created = aafm_wc_date_string( $order->get_date_created() );
+		if ( null !== $created && (int) strtotime( $created ) < $start_ts ) {
+			continue;
+		}
+
+		foreach ( $order->get_items() as $item ) {
+			if ( is_array( $item ) ) {
+				$product_id = (int) ( $item['product_id'] ?? 0 );
+				$quantity   = (int) ( $item['quantity'] ?? 0 );
+			} elseif ( is_object( $item ) && method_exists( $item, 'get_product_id' ) ) {
+				$product_id = (int) $item->get_product_id();
+				$quantity   = method_exists( $item, 'get_quantity' ) ? (int) $item->get_quantity() : 0;
+			} else {
+				continue;
+			}
+
+			if ( $product_id < 1 ) {
+				continue;
+			}
+			$qty_by_product[ $product_id ] = ( $qty_by_product[ $product_id ] ?? 0 ) + max( 0, $quantity );
+		}
+	}
+
+	arsort( $qty_by_product );
+	$qty_by_product = array_slice( $qty_by_product, 0, $limit, true );
+
 	$items = array();
-	foreach ( $rows as $row ) {
-		$product_id = (int) $row['product_id'];
-		$post       = get_post( $product_id );
-		$items[]    = array(
-			'product_id' => $product_id,
-			'name'       => $post instanceof \WP_Post ? $post->post_title : '',
-			'quantity'   => (int) $row['qty_sold'],
+	foreach ( $qty_by_product as $product_id => $quantity ) {
+		$product = aafm_wc_get_product( (int) $product_id );
+		$items[] = array(
+			'product_id' => (int) $product_id,
+			'name'       => null !== $product ? (string) $product->get_name() : '',
+			'quantity'   => (int) $quantity,
 		);
 	}
 

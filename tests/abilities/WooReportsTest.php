@@ -182,6 +182,60 @@ final class WooReportsTest extends TestCase {
 	}
 
 	/**
+	 * T2-5: a seeded completed order with line items produces a non-empty, correct top-sellers
+	 * row — product ids come from order ITEM data, not shop_order post meta.
+	 */
+	public function test_get_top_sellers_aggregates_order_line_items(): void {
+		\AAFM\Tests\WcOrderStubStore::reset();
+		// Product 101 is seeded by stub_woocommerce(); add a second product to rank below it.
+		\AAFM\Tests\WcStubStore::seed( 202, array( 'name' => 'Runner Up' ) );
+
+		$today = gmdate( 'Y-m-d\TH:i:s' );
+		\AAFM\Tests\WcOrderStubStore::seed(
+			6001,
+			array(
+				'status'       => 'completed',
+				'date_created' => $today,
+				'items'        => array(
+					array(
+						'product_id' => 101,
+						'quantity'   => 5,
+					),
+					array(
+						'product_id' => 202,
+						'quantity'   => 2,
+					),
+				),
+			)
+		);
+		\AAFM\Tests\WcOrderStubStore::seed(
+			6002,
+			array(
+				'status'       => 'processing',
+				'date_created' => $today,
+				'items'        => array(
+					array(
+						'product_id' => 101,
+						'quantity'   => 3,
+					),
+				),
+			)
+		);
+
+		$this->acting_as( 'administrator' );
+		$res = aafm_exec_wc_get_top_sellers_report( array( 'period' => 'month' ) );
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$this->assertNotEmpty( $res['items'], 'A seeded order with line items must produce rows.' );
+
+		// Product 101 sold 8 (5 + 3) and ranks first; product 202 sold 2 and ranks second.
+		$this->assertSame( 101, $res['items'][0]['product_id'] );
+		$this->assertSame( 8, $res['items'][0]['quantity'] );
+		$this->assertSame( 'Test Widget', $res['items'][0]['name'] );
+		$this->assertSame( 202, $res['items'][1]['product_id'] );
+		$this->assertSame( 2, $res['items'][1]['quantity'] );
+	}
+
+	/**
 	 * Top sellers accepts all valid period values.
 	 */
 	public function test_get_top_sellers_accepts_all_periods(): void {
