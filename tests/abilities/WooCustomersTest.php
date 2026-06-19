@@ -122,14 +122,6 @@ final class WooCustomersTest extends TestCase {
 		$this->assertArrayNotHasKey( 'date_created', $row );
 	}
 
-	/**
-	 * Closed schema rejects an unknown field.
-	 */
-	public function test_list_customers_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-list-customers' )->execute( array( 'evil_field' => 'x' ) );
-		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject an unknown field.' );
-	}
 
 	/**
 	 * Host-inactive: customer abilities must be absent from the registry when WooCommerce is off.
@@ -232,19 +224,6 @@ final class WooCustomersTest extends TestCase {
 		$this->assertIsObject( $res['shipping'], 'Empty shipping must serialize as an object {}.' );
 	}
 
-	/**
-	 * Closed schema rejects an unknown field.
-	 */
-	public function test_get_customer_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-get-customer' )->execute(
-			array(
-				'customer_id' => 7001,
-				'evil_field'  => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	// =========================================================================
 	// aafm/wc-create-customer
@@ -339,19 +318,6 @@ final class WooCustomersTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $res, 'shipping.role smuggle must be rejected by the closed schema.' );
 	}
 
-	/**
-	 * Top-level unknown field is rejected by the closed root schema.
-	 */
-	public function test_create_customer_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-create-customer' )->execute(
-			array(
-				'email'      => 'x@example.com',
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 
 	/**
@@ -464,17 +430,36 @@ final class WooCustomersTest extends TestCase {
 	}
 
 	/**
-	 * Closed schema rejects an unknown top-level field.
+	 * Closed schema: an unknown field injected on top of valid args is rejected by execute().
+	 *
+	 * The delete-customer ability is checked separately because its args need user
+	 * fixtures created at runtime, which a static data provider cannot build.
+	 *
+	 * @dataProvider provide_closed_schema_cases
+	 *
+	 * @param string               $ability        Ability name.
+	 * @param array<string, mixed> $valid_min_args Minimal valid args for the ability.
 	 */
-	public function test_update_customer_closed_schema_rejects_unknown_field(): void {
+	public function test_closed_schema_rejects_unknown_field( string $ability, array $valid_min_args ): void {
 		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-update-customer' )->execute(
-			array(
-				'customer_id' => 7001,
-				'evil_field'  => 'x',
-			)
+		$res = wp_get_ability( $ability )->execute(
+			array_merge( $valid_min_args, array( 'evil_field' => 'x' ) )
 		);
-		$this->assertInstanceOf( WP_Error::class, $res );
+		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject an unknown field.' );
+	}
+
+	/**
+	 * Cases: each customer ability and the minimal valid args its original test used.
+	 *
+	 * @return array<string, array{0: string, 1: array<string, mixed>}>
+	 */
+	public function provide_closed_schema_cases(): array {
+		return array(
+			'list-customers'  => array( 'aafm/wc-list-customers', array() ),
+			'get-customer'    => array( 'aafm/wc-get-customer', array( 'customer_id' => 7001 ) ),
+			'create-customer' => array( 'aafm/wc-create-customer', array( 'email' => 'x@example.com' ) ),
+			'update-customer' => array( 'aafm/wc-update-customer', array( 'customer_id' => 7001 ) ),
+		);
 	}
 
 	/**

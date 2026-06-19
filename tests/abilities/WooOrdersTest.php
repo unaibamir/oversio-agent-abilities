@@ -225,12 +225,6 @@ final class WooOrdersTest extends TestCase {
 		$this->assertSame( 0, $res['total'], 'total must be 0 when the store is empty.' );
 	}
 
-	public function test_list_orders_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-list-orders' )->execute( array( 'evil_field' => 'x' ) );
-		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject an unknown field.' );
-	}
-
 	// =========================================================================
 	// aafm/wc-get-order
 	// =========================================================================
@@ -358,15 +352,32 @@ final class WooOrdersTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, $res );
 	}
 
-	public function test_get_order_closed_schema_rejects_unknown_field(): void {
+	/**
+	 * Closed schema: an unknown field injected on top of valid args is rejected by execute().
+	 *
+	 * @dataProvider provide_closed_schema_cases
+	 *
+	 * @param string               $ability        Ability name.
+	 * @param array<string, mixed> $valid_min_args Minimal valid args for the ability.
+	 */
+	public function test_closed_schema_rejects_unknown_field( string $ability, array $valid_min_args ): void {
 		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-get-order' )->execute(
-			array(
-				'order_id'   => 5001,
-				'evil_field' => 'injected',
-			)
+		$res = wp_get_ability( $ability )->execute(
+			array_merge( $valid_min_args, array( 'evil_field' => 'injected' ) )
 		);
 		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject an unknown top-level field.' );
+	}
+
+	/**
+	 * Cases: each order read and the minimal valid args its original test used.
+	 *
+	 * @return array<string, array{0: string, 1: array<string, mixed>}>
+	 */
+	public function provide_closed_schema_cases(): array {
+		return array(
+			'list-orders' => array( 'aafm/wc-list-orders', array() ),
+			'get-order'   => array( 'aafm/wc-get-order', array( 'order_id' => 5001 ) ),
+		);
 	}
 
 	public function test_get_order_line_items_shape(): void {

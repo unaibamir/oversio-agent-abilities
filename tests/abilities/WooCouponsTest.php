@@ -132,15 +132,6 @@ final class WooCouponsTest extends TestCase {
 	}
 
 	/**
-	 * Closed schema rejects an unknown field.
-	 */
-	public function test_list_coupons_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-list-coupons' )->execute( array( 'evil_field' => 'x' ) );
-		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject an unknown field.' );
-	}
-
-	/**
 	 * Empty store returns an empty coupons array (not an object).
 	 */
 	public function test_list_coupons_empty_store_returns_empty_array(): void {
@@ -238,20 +229,6 @@ final class WooCouponsTest extends TestCase {
 		$this->assertSame( 'aafm_error', $res->get_error_code() );
 	}
 
-	/**
-	 * Closed schema rejects an unknown field.
-	 */
-	public function test_get_coupon_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-get-coupon' )->execute(
-			array(
-				'coupon_id'  => 5001,
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
-
 	// =========================================================================
 	// aafm/wc-create-coupon
 	// =========================================================================
@@ -307,20 +284,6 @@ final class WooCouponsTest extends TestCase {
 		$this->assertSame( 50, $res['usage_limit'] );
 		$this->assertTrue( $res['individual_use'] );
 		$this->assertContains( 'vip@example.com', $res['email_restrictions'] );
-	}
-
-	/**
-	 * Closed schema rejects an unknown top-level field.
-	 */
-	public function test_create_coupon_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-create-coupon' )->execute(
-			array(
-				'code'       => 'EVIL',
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
 	}
 
 	/**
@@ -392,20 +355,6 @@ final class WooCouponsTest extends TestCase {
 			array(
 				'coupon_id' => 99999,
 				'amount'    => '5.00',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
-
-	/**
-	 * Closed schema rejects an unknown top-level field.
-	 */
-	public function test_update_coupon_closed_schema_rejects_unknown_field(): void {
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-update-coupon' )->execute(
-			array(
-				'coupon_id'  => 5001,
-				'evil_field' => 'x',
 			)
 		);
 		$this->assertInstanceOf( WP_Error::class, $res );
@@ -520,17 +469,34 @@ final class WooCouponsTest extends TestCase {
 	}
 
 	/**
-	 * Closed schema rejects an unknown field.
+	 * Closed schema: an unknown field injected on top of valid args is rejected by execute().
+	 *
+	 * @dataProvider provide_closed_schema_cases
+	 *
+	 * @param string               $ability        Ability name.
+	 * @param array<string, mixed> $valid_min_args Minimal valid args for the ability.
 	 */
-	public function test_delete_coupon_closed_schema_rejects_unknown_field(): void {
+	public function test_closed_schema_rejects_unknown_field( string $ability, array $valid_min_args ): void {
 		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-delete-coupon' )->execute(
-			array(
-				'coupon_id'  => 5001,
-				'evil_field' => 'x',
-			)
+		$res = wp_get_ability( $ability )->execute(
+			array_merge( $valid_min_args, array( 'evil_field' => 'x' ) )
 		);
-		$this->assertInstanceOf( WP_Error::class, $res );
+		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject an unknown field.' );
+	}
+
+	/**
+	 * Cases: each coupon ability and the minimal valid args its original test used.
+	 *
+	 * @return array<string, array{0: string, 1: array<string, mixed>}>
+	 */
+	public function provide_closed_schema_cases(): array {
+		return array(
+			'list-coupons'  => array( 'aafm/wc-list-coupons', array() ),
+			'get-coupon'    => array( 'aafm/wc-get-coupon', array( 'coupon_id' => 5001 ) ),
+			'create-coupon' => array( 'aafm/wc-create-coupon', array( 'code' => 'EVIL' ) ),
+			'update-coupon' => array( 'aafm/wc-update-coupon', array( 'coupon_id' => 5001 ) ),
+			'delete-coupon' => array( 'aafm/wc-delete-coupon', array( 'coupon_id' => 5001 ) ),
+		);
 	}
 
 	/**

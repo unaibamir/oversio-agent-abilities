@@ -194,17 +194,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-delete-order', $abilities );
 	}
 
-	public function test_delete_order_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_a();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-delete-order' )->execute(
-			array(
-				'order_id'   => 5001,
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject unknown field.' );
-	}
 
 	// =========================================================================
 	// GROUP B — order notes
@@ -293,17 +282,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-list-order-notes', $abilities );
 	}
 
-	public function test_list_order_notes_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_b();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-list-order-notes' )->execute(
-			array(
-				'order_id'   => 5001,
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	// -------------------------------------------------------------------------
 	// aafm/wc-get-order-note
@@ -384,18 +362,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		);
 	}
 
-	public function test_get_order_note_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_b();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-get-order-note' )->execute(
-			array(
-				'order_id'   => 5001,
-				'note_id'    => 1,
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	// -------------------------------------------------------------------------
 	// aafm/wc-create-order-note
@@ -483,18 +449,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-create-order-note', $abilities );
 	}
 
-	public function test_create_order_note_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_b();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-create-order-note' )->execute(
-			array(
-				'order_id'   => 5001,
-				'note'       => 'Test.',
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	/**
 	 * Surfaced add-failure: when add_order_note() returns 0, the executor must not report success.
@@ -667,18 +621,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-delete-order-note', $abilities );
 	}
 
-	public function test_delete_order_note_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_b();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-delete-order-note' )->execute(
-			array(
-				'order_id'   => 5001,
-				'note_id'    => 1,
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	// =========================================================================
 	// GROUP C — order refunds
@@ -757,17 +699,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-list-order-refunds', $abilities );
 	}
 
-	public function test_list_order_refunds_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_c();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-list-order-refunds' )->execute(
-			array(
-				'order_id'   => 5001,
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	// -------------------------------------------------------------------------
 	// aafm/wc-get-order-refund
@@ -817,17 +748,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		);
 	}
 
-	public function test_get_order_refund_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_c();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-get-order-refund' )->execute(
-			array(
-				'refund_id'  => 200,
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	// -------------------------------------------------------------------------
 	// aafm/wc-create-order-refund
@@ -938,18 +858,6 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-create-order-refund', $abilities );
 	}
 
-	public function test_create_order_refund_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_c();
-		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-create-order-refund' )->execute(
-			array(
-				'order_id'   => 5001,
-				'amount'     => '5.00',
-				'evil_field' => 'x',
-			)
-		);
-		$this->assertInstanceOf( WP_Error::class, $res );
-	}
 
 	/**
 	 * MED-4 nested-smuggle on line_items[]: a key inside a line_items item must be rejected.
@@ -1087,16 +995,83 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertContains( 'aafm/wc-delete-order-refund', $abilities );
 	}
 
-	public function test_delete_order_refund_closed_schema_rejects_unknown_field(): void {
-		$this->register_group_c();
+	/**
+	 * Closed schema: an unknown field injected on top of valid args is rejected by execute().
+	 *
+	 * Each case names the ability group it belongs to so the right abilities are
+	 * registered before the call, matching what the per-ability tests did.
+	 *
+	 * @dataProvider provide_closed_schema_cases
+	 *
+	 * @param string               $group          Registration group: 'a', 'b', or 'c'.
+	 * @param string               $ability        Ability name.
+	 * @param array<string, mixed> $valid_min_args Minimal valid args for the ability.
+	 */
+	public function test_closed_schema_rejects_unknown_field( string $group, string $ability, array $valid_min_args ): void {
+		switch ( $group ) {
+			case 'a':
+				$this->register_group_a();
+				break;
+			case 'b':
+				$this->register_group_b();
+				break;
+			case 'c':
+				$this->register_group_c();
+				break;
+		}
+
 		$this->acting_as( 'administrator' );
-		$res = wp_get_ability( 'aafm/wc-delete-order-refund' )->execute(
-			array(
-				'refund_id'  => 300,
-				'evil_field' => 'x',
-			)
+		$res = wp_get_ability( $ability )->execute(
+			array_merge( $valid_min_args, array( 'evil_field' => 'x' ) )
 		);
-		$this->assertInstanceOf( WP_Error::class, $res );
+		$this->assertInstanceOf( WP_Error::class, $res, 'Closed schema must reject an unknown field.' );
+	}
+
+	/**
+	 * Cases: each ability, its registration group, and the minimal valid args its original test used.
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: array<string, mixed>}>
+	 */
+	public function provide_closed_schema_cases(): array {
+		return array(
+			'delete-order'        => array( 'a', 'aafm/wc-delete-order', array( 'order_id' => 5001 ) ),
+			'list-order-notes'    => array( 'b', 'aafm/wc-list-order-notes', array( 'order_id' => 5001 ) ),
+			'get-order-note'      => array(
+				'b',
+				'aafm/wc-get-order-note',
+				array(
+					'order_id' => 5001,
+					'note_id'  => 1,
+				),
+			),
+			'create-order-note'   => array(
+				'b',
+				'aafm/wc-create-order-note',
+				array(
+					'order_id' => 5001,
+					'note'     => 'Test.',
+				),
+			),
+			'delete-order-note'   => array(
+				'b',
+				'aafm/wc-delete-order-note',
+				array(
+					'order_id' => 5001,
+					'note_id'  => 1,
+				),
+			),
+			'list-order-refunds'  => array( 'c', 'aafm/wc-list-order-refunds', array( 'order_id' => 5001 ) ),
+			'get-order-refund'    => array( 'c', 'aafm/wc-get-order-refund', array( 'refund_id' => 200 ) ),
+			'create-order-refund' => array(
+				'c',
+				'aafm/wc-create-order-refund',
+				array(
+					'order_id' => 5001,
+					'amount'   => '5.00',
+				),
+			),
+			'delete-order-refund' => array( 'c', 'aafm/wc-delete-order-refund', array( 'refund_id' => 300 ) ),
+		);
 	}
 
 	// =========================================================================
