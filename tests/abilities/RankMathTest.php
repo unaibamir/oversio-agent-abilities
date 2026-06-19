@@ -213,8 +213,11 @@ final class RankMathTest extends TestCase {
 				'type'    => 'Article',
 			)
 		);
-		$this->assertSame( 'Article', $read['schema']['@type'] );
-		$this->assertSame( 'Nested Thing', $read['schema']['about']['name'] );
+		// The top-level schema map is (object)-cast so an empty one encodes as {}; populated nested
+		// arrays stay arrays. Read the top level as an object property, the nested leaf as an array.
+		$schema = (array) $read['schema'];
+		$this->assertSame( 'Article', $schema['@type'] );
+		$this->assertSame( 'Nested Thing', $schema['about']['name'] );
 	}
 
 	public function test_rankmath_schema_strips_script_and_javascript_url_at_depth(): void {
@@ -246,8 +249,9 @@ final class RankMathTest extends TestCase {
 		);
 		$json = (string) wp_json_encode( $read['schema'] );
 		$this->assertStringNotContainsString( '<script>', $json, 'A <script> leaf must be stripped.' );
-		$this->assertSame( '', $read['schema']['author']['deep']['image'], 'A javascript: URL at depth must be stripped.' );
-		$this->assertSame( '', $read['schema']['author']['deep']['@id'], 'A javascript: @id at depth must be stripped.' );
+		$schema = (array) $read['schema'];
+		$this->assertSame( '', $schema['author']['deep']['image'], 'A javascript: URL at depth must be stripped.' );
+		$this->assertSame( '', $schema['author']['deep']['@id'], 'A javascript: @id at depth must be stripped.' );
 	}
 
 	public function test_rankmath_update_schema_refuses_a_non_array_payload(): void {

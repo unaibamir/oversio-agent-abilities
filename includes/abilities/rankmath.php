@@ -365,7 +365,9 @@ function aafm_exec_rankmath_get_schema( array $input ) {
 	return array(
 		'post_id' => $id,
 		'type'    => $type,
-		'schema'  => is_array( $stored ) ? $stored : array(),
+		// (object) so an empty/never-set schema JSON-encodes to "{}" per the output_schema's
+		// type:object, never "[]" (mirrors the acf.php / meta.php empty-map convention).
+		'schema'  => (object) ( is_array( $stored ) ? $stored : array() ),
 	);
 }
 
@@ -442,7 +444,9 @@ function aafm_exec_rankmath_update_schema( array $input ) {
 	return array(
 		'post_id' => $id,
 		'type'    => $type,
-		'schema'  => $clean,
+		// (object) so an empty sanitized schema JSON-encodes to "{}" per the output_schema's
+		// type:object, never "[]" (mirrors the get-schema reader above).
+		'schema'  => (object) $clean,
 	);
 }
 
