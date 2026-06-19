@@ -100,6 +100,17 @@ final class MetaPrecedenceTest extends TestCase {
 	}
 
 	/**
+	 * The bare `*` sentinel is never an addressable key — even when allow=['*']. Reject it
+	 * with the SAME generic error code so the validator never hands `'*'` to a meta op.
+	 */
+	public function test_wildcard_sentinel_is_not_an_addressable_key(): void {
+		$this->set_meta_options( array( '*' ), array() );
+		$result = aafm_validate_meta_key( '*' );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'aafm_meta_key_not_allowed', $result->get_error_code() );
+	}
+
+	/**
 	 * Oracle — rows 1, 3, 5, 6 all return the SAME error code, so deny / not-allowed /
 	 * hard-block / deny-all are indistinguishable to a caller.
 	 */

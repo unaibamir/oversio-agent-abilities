@@ -251,6 +251,7 @@ function aafm_meta_deny_has_star(): bool {
 function aafm_validate_meta_key( string $key ) {
 	$key     = trim( (string) $key );
 	$exposed = '' !== $key
+		&& '*' !== $key                                         // floor 1: the sentinel is never addressable.
 		&& ! aafm_hard_blocked_meta_key( $key )                 // floor 1 (absolute).
 		&& ! aafm_meta_deny_has_star()                          // floor 2: deny-all kill switch.
 		&& ! in_array( $key, aafm_denied_meta_keys(), true )    // floor 2: explicit deny.
@@ -534,6 +535,7 @@ function aafm_allowed_site_settings(): array {
 function aafm_validate_user_meta_key( string $key ) {
 	$key     = trim( (string) $key );
 	$exposed = '' !== $key
+		&& '*' !== $key                                              // floor 1: the sentinel is never addressable.
 		&& ! aafm_hard_blocked_user_meta_key( $key )                 // floor 1 (absolute).
 		&& ! aafm_user_meta_deny_has_star()                          // floor 2: deny-all kill switch.
 		&& ! in_array( $key, aafm_denied_user_meta_keys(), true )    // floor 2: explicit deny.
