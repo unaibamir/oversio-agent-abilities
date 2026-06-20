@@ -13,8 +13,9 @@
 /CLAUDE.md
 /CONTRIBUTING.md
 /.mcp.json
-/.DS_Store
+.DS_Store
 /.phpunit.cache
+/.playwright-cli
 /.distignore
 /.gitattributes
 /.gitignore
