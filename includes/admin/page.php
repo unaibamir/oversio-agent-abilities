@@ -48,6 +48,44 @@ function aafm_register_admin_menu(): void {
 }
 
 /**
+ * Add quick links to the plugin's row on the Plugins screen.
+ *
+ * Prepends Getting Started / Abilities / Integrations / Settings before WordPress's own
+ * row actions (Deactivate), so the most-used destinations are one click from the list.
+ *
+ * @param array<string,string> $actions The existing row action links, keyed by handle.
+ * @return array<string,string> The links with ours prepended.
+ */
+function aafm_plugin_action_links( array $actions ): array {
+	$base = 'admin.php?page=agent-abilities-for-mcp';
+
+	$links = array(
+		'aafm-getting-started' => sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( $base ) ),
+			esc_html__( 'Getting Started', 'agent-abilities-for-mcp' )
+		),
+		'aafm-abilities'       => sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( $base . '&tab=abilities' ) ),
+			esc_html__( 'Abilities', 'agent-abilities-for-mcp' )
+		),
+		'aafm-integrations'    => sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( $base . '&tab=integrations' ) ),
+			esc_html__( 'Integrations', 'agent-abilities-for-mcp' )
+		),
+		'aafm-settings'        => sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( $base . '&tab=settings' ) ),
+			esc_html__( 'Settings', 'agent-abilities-for-mcp' )
+		),
+	);
+
+	return array_merge( $links, $actions );
+}
+
+/**
  * Highlight the submenu item for the active tab.
  *
  * WordPress matches the current submenu only on the `page` query var, so every tab
