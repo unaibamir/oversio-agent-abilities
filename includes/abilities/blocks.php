@@ -111,8 +111,8 @@ function aafm_perm_block_delete_object( array $input ): bool {
  */
 function aafm_args_list_blocks(): array {
 	return array(
-		'label'               => __( 'List blocks', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Lists reusable blocks. No markup in the list. Requires edit-posts.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/list-blocks' ),
+		'description'         => aafm_ability_description( 'aafm/list-blocks' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -181,8 +181,8 @@ function aafm_exec_list_blocks( array $input ): array {
  */
 function aafm_args_get_block(): array {
 	return array(
-		'label'               => __( 'Get block', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Reads one reusable block by id, including its raw markup. Requires edit access to that block.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-block' ),
+		'description'         => aafm_ability_description( 'aafm/get-block' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -229,8 +229,8 @@ function aafm_exec_get_block( array $input ) {
  */
 function aafm_args_create_block(): array {
 	return array(
-		'label'               => __( 'Create block', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Creates a reusable block. Markup is sanitized; the author is always the agent. Requires edit-posts.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-block' ),
+		'description'         => aafm_ability_description( 'aafm/create-block' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -297,8 +297,8 @@ function aafm_exec_create_block( array $input ) {
  */
 function aafm_args_update_block(): array {
 	return array(
-		'label'               => __( 'Update block', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Updates a reusable block's title or markup by id. Markup is sanitized. Requires edit access to that block.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-block' ),
+		'description'         => aafm_ability_description( 'aafm/update-block' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -358,8 +358,8 @@ function aafm_exec_update_block( array $input ) {
  */
 function aafm_args_delete_block(): array {
 	return array(
-		'label'               => __( 'Delete block', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Moves a reusable block to the Trash (recoverable). Never a permanent delete. Requires delete access to that block.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-block' ),
+		'description'         => aafm_ability_description( 'aafm/delete-block' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

@@ -21,6 +21,7 @@ defined( 'ABSPATH' ) || exit;
 const AAFM_AIOSEO_MODEL = 'AIOSEO\\Plugin\\Common\\Models\\Post';
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_aioseo_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_aioseo_full_definitions' );
 
 /**
  * Contribute the AIOSEO definitions to the registry, but only when AIOSEO is active. Host inactive:
@@ -34,32 +35,57 @@ function aafm_register_aioseo_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	$registry['aafm/aioseo-get-post']    = array(
-		'label'        => __( 'Get post SEO (All in One SEO)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Reads a post's SEO fields (title, description, canonical, social, and robots) from All in One SEO's own data store, not post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'aioseo',
-		'args_builder' => 'aafm_args_aioseo_get_post',
-	);
-	$registry['aafm/aioseo-update-post'] = array(
-		'label'        => __( 'Update post SEO (All in One SEO)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Writes a post's SEO fields through All in One SEO's own data store (not post meta). URL fields are sanitized as URLs. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'aioseo',
-		'args_builder' => 'aafm_args_aioseo_update_post',
-	);
-	$registry['aafm/aioseo-get-head']    = array(
-		'label'        => __( 'Get post SEO head (All in One SEO)', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads the rendered SEO head markup for a post from All in One SEO, best-effort (empty when no head API is available). Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'aioseo',
-		'args_builder' => 'aafm_args_aioseo_get_head',
-	);
+	return array_merge( $registry, aafm_aioseo_registry_definitions() );
+}
 
-	return $registry;
+/**
+ * Contribute the All in One SEO definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view enumerates every AIOSEO ability even when the host is inactive,
+ * for the Integrations tab and the manifest. The live registration path never reads this filter, so
+ * an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_aioseo_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_aioseo_registry_definitions() );
+}
+
+/**
+ * The All in One SEO registry rows, keyed by ability name. The single source of truth for these
+ * abilities' label, description, group, risk, and args builder — consumed by both the host-guarded
+ * live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_aioseo_registry_definitions(): array {
+	return array(
+		'aafm/aioseo-get-post'    => array(
+			'label'        => __( 'Get post SEO (All in One SEO)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Reads a post's SEO fields (title, description, canonical, social, and robots) from All in One SEO's own data store, not post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'aioseo',
+			'args_builder' => 'aafm_args_aioseo_get_post',
+		),
+		'aafm/aioseo-update-post' => array(
+			'label'        => __( 'Update post SEO (All in One SEO)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Writes a post's SEO fields through All in One SEO's own data store (not post meta). URL fields are sanitized as URLs. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'aioseo',
+			'args_builder' => 'aafm_args_aioseo_update_post',
+		),
+		'aafm/aioseo-get-head'    => array(
+			'label'        => __( 'Get post SEO head (All in One SEO)', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads the rendered SEO head markup for a post from All in One SEO, best-effort (empty when no head API is available). Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'aioseo',
+			'args_builder' => 'aafm_args_aioseo_get_head',
+		),
+	);
 }
 
 /**
@@ -185,8 +211,8 @@ function aafm_aioseo_output_properties(): array {
  */
 function aafm_args_aioseo_get_post(): array {
 	return array(
-		'label'               => __( 'Get post SEO (All in One SEO)', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Reads a post's All in One SEO fields from the plugin's own data store. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/aioseo-get-post' ),
+		'description'         => aafm_ability_description( 'aafm/aioseo-get-post' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -248,8 +274,8 @@ function aafm_args_aioseo_update_post(): array {
 	}
 
 	return array(
-		'label'               => __( 'Update post SEO (All in One SEO)', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Writes a post's All in One SEO fields through the plugin's own data store. URL fields are sanitized as URLs. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/aioseo-update-post' ),
+		'description'         => aafm_ability_description( 'aafm/aioseo-update-post' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -329,8 +355,8 @@ function aafm_exec_aioseo_update_post( array $input ) {
  */
 function aafm_args_aioseo_get_head(): array {
 	return array(
-		'label'               => __( 'Get post SEO head (All in One SEO)', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Reads the rendered All in One SEO <head> markup for a post, best-effort. Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/aioseo-get-head' ),
+		'description'         => aafm_ability_description( 'aafm/aioseo-get-head' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',

@@ -76,8 +76,8 @@ function aafm_register_users_definitions( array $registry ): array {
  */
 function aafm_args_get_users(): array {
 	return array(
-		'label'               => __( 'Get users', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List users: id, display name, email, roles, and post count. Email is gated by the list-users capability. Never login or password.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-users' ),
+		'description'         => aafm_ability_description( 'aafm/get-users' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -127,8 +127,8 @@ function aafm_args_get_users(): array {
  */
 function aafm_args_get_user(): array {
 	return array(
-		'label'               => __( 'Get user', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read one user by id: id, display name, email, roles, post count, registration date, and bio. Never login or password.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-user' ),
+		'description'         => aafm_ability_description( 'aafm/get-user' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -249,8 +249,8 @@ function aafm_exec_get_users( array $input ): array {
  */
 function aafm_args_create_user(): array {
 	return array(
-		'label'               => __( 'Create user', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create a new user with the site default role only — never a caller-chosen role. A password is generated if none is given. Requires the create-users capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-user' ),
+		'description'         => aafm_ability_description( 'aafm/create-user' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -368,8 +368,8 @@ function aafm_exec_create_user( array $input ) {
  */
 function aafm_args_update_user(): array {
 	return array(
-		'label'               => __( 'Update user', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Edit a user by id: display name, name, or email. A role change needs the promote-users capability and never demotes the last administrator.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-user' ),
+		'description'         => aafm_ability_description( 'aafm/update-user' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -571,8 +571,8 @@ function aafm_exec_update_user( array $input ) {
  */
 function aafm_args_delete_user(): array {
 	return array(
-		'label'               => __( 'Delete user', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Permanently delete a user and reassign their content to another user (required). Never deletes you or the last administrator. Requires the delete-users capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-user' ),
+		'description'         => aafm_ability_description( 'aafm/delete-user' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

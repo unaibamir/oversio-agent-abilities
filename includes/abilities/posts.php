@@ -116,8 +116,8 @@ function aafm_register_posts_definitions( array $registry ): array {
  */
 function aafm_args_get_posts(): array {
 	return array(
-		'label'               => __( 'Get posts', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List posts filtered by type, status, and search term. Each item returns id, title, status, type, slug, link, author {id, display_name}, dates, excerpt, terms grouped by taxonomy, featured_image {id, url, alt} or null, and allowlisted meta. Set include_content=true to also return full content per item. Response includes total.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-posts' ),
+		'description'         => aafm_ability_description( 'aafm/get-posts' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -252,8 +252,8 @@ function aafm_exec_get_posts( array $input ) {
  */
 function aafm_args_count_posts(): array {
 	return array(
-		'label'               => __( 'Count posts', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Count posts of an allowlisted post type, total and by status.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/count-posts' ),
+		'description'         => aafm_ability_description( 'aafm/count-posts' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -318,8 +318,8 @@ function aafm_exec_count_posts( array $input ) {
  */
 function aafm_args_get_post(): array {
 	return array(
-		'label'               => __( 'Get post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Retrieve a single post by ID. Returns id, title, status, type, slug, link, author {id, display_name}, dates, full content (rendered HTML by default, or raw markup via content_format; omitted for password-protected posts), excerpt, terms grouped by taxonomy, featured_image {id, url, alt} or null, and meta (allowlisted scalar values only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-post' ),
+		'description'         => aafm_ability_description( 'aafm/get-post' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -479,8 +479,8 @@ function aafm_write_cpt_content_schema( bool $require_title ): array {
  */
 function aafm_args_create_draft(): array {
 	return array(
-		'label'               => __( 'Create draft', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create a new draft post. The agent drafts; a human publishes. Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-draft' ),
+		'description'         => aafm_ability_description( 'aafm/create-draft' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => aafm_write_content_schema( true ),
 		'output_schema'       => array(
@@ -596,8 +596,8 @@ function aafm_exec_create_draft( array $input ) {
  */
 function aafm_args_create_post(): array {
 	return array(
-		'label'               => __( 'Create post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create and publish a post (requires publish capability). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-post' ),
+		'description'         => aafm_ability_description( 'aafm/create-post' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => aafm_write_content_schema( true ),
 		'output_schema'       => array(
@@ -632,8 +632,8 @@ function aafm_exec_create_post( array $input ) {
  */
 function aafm_args_create_cpt_item(): array {
 	return array(
-		'label'               => __( 'Create content item', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create an item of an allowlisted custom content type (post_type). Publishing requires that type\'s publish capability; otherwise the item is created as a draft. Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-cpt-item' ),
+		'description'         => aafm_ability_description( 'aafm/create-cpt-item' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => aafm_write_cpt_content_schema( true ),
 		'output_schema'       => array(
@@ -731,8 +731,8 @@ function aafm_args_update_post(): array {
 	$schema['required']              = array( 'post_id' );
 
 	return array(
-		'label'               => __( 'Update post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Update an existing post by ID (publishing is a separate gate). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-post' ),
+		'description'         => aafm_ability_description( 'aafm/update-post' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => $schema,
 		'output_schema'       => array(
@@ -854,8 +854,8 @@ function aafm_exec_update_post( array $input ) {
  */
 function aafm_args_replace_in_post(): array {
 	return array(
-		'label'               => __( 'Replace in post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Literal find-and-replace inside a post\'s content (no regex). Result is sanitized; status is never changed.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/replace-in-post' ),
+		'description'         => aafm_ability_description( 'aafm/replace-in-post' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -980,8 +980,8 @@ function aafm_args_update_cpt_item(): array {
 	$schema['required']              = array( 'post_id' );
 
 	return array(
-		'label'               => __( 'Update content item', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Update an item of an allowlisted custom content type by ID (publishing requires that type\'s publish capability). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-cpt-item' ),
+		'description'         => aafm_ability_description( 'aafm/update-cpt-item' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => $schema,
 		'output_schema'       => array(
@@ -1051,8 +1051,8 @@ function aafm_exec_update_cpt_item( array $input ) {
  */
 function aafm_args_trash_post(): array {
 	return array(
-		'label'               => __( 'Trash post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Move a post to trash (recoverable, never permanently deleted).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/trash-post' ),
+		'description'         => aafm_ability_description( 'aafm/trash-post' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -1117,8 +1117,8 @@ function aafm_exec_trash_post( array $input ) {
  */
 function aafm_args_delete_post(): array {
 	return array(
-		'label'               => __( 'Delete post', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Permanently delete a post, bypassing the Trash. This cannot be undone — use trash-post to remove a post recoverably instead.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-post' ),
+		'description'         => aafm_ability_description( 'aafm/delete-post' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

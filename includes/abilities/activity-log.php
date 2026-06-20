@@ -43,8 +43,8 @@ function aafm_register_activity_log_definitions( array $registry ): array {
  */
 function aafm_args_get_activity_log(): array {
 	return array(
-		'label'               => __( 'Get activity log', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Reads this plugin's own audit log, most recent first. Requires manage-options. Never argument values or network addresses.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-activity-log' ),
+		'description'         => aafm_ability_description( 'aafm/get-activity-log' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',

@@ -19,6 +19,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_rankmath_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_rankmath_full_definitions' );
 
 /**
  * Contribute the Rank Math definitions to the registry, but only when Rank Math is active. Host
@@ -32,48 +33,73 @@ function aafm_register_rankmath_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	$registry['aafm/rankmath-get-post']      = array(
-		'label'        => __( 'Get post SEO (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Reads a post's Rank Math SEO fields (title, description, focus keyword, canonical, social, and robots) from its rank_math_* post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'rankmath',
-		'args_builder' => 'aafm_args_rankmath_get_post',
-	);
-	$registry['aafm/rankmath-update-post']   = array(
-		'label'        => __( 'Update post SEO (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Writes a post's Rank Math SEO fields to its rank_math_* post meta. URL fields are sanitized as URLs and robots is stored as Rank Math's serialized directive array. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'rankmath',
-		'args_builder' => 'aafm_args_rankmath_update_post',
-	);
-	$registry['aafm/rankmath-get-schema']    = array(
-		'label'        => __( 'Get post schema (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Reads a post's structured-data (JSON-LD) schema of a given type from Rank Math's rank_math_schema_{Type} post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'rankmath',
-		'args_builder' => 'aafm_args_rankmath_get_schema',
-	);
-	$registry['aafm/rankmath-update-schema'] = array(
-		'label'        => __( 'Update post schema (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Writes a post's structured-data (JSON-LD) schema of a given type to Rank Math's rank_math_schema_{Type} post meta, recursively sanitized. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'rankmath',
-		'args_builder' => 'aafm_args_rankmath_update_schema',
-	);
-	$registry['aafm/rankmath-get-head']      = array(
-		'label'        => __( 'Get post SEO head (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads the rendered SEO head markup for a post from Rank Math, best-effort (empty when no head API is available). Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'rankmath',
-		'args_builder' => 'aafm_args_rankmath_get_head',
-	);
+	return array_merge( $registry, aafm_rankmath_registry_definitions() );
+}
 
-	return $registry;
+/**
+ * Contribute the Rank Math definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view enumerates every Rank Math ability even when the host is
+ * inactive, for the Integrations tab and the manifest. The live registration path never reads this
+ * filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_rankmath_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_rankmath_registry_definitions() );
+}
+
+/**
+ * The Rank Math registry rows, keyed by ability name. The single source of truth for these
+ * abilities' label, description, group, risk, and args builder — consumed by both the host-guarded
+ * live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_rankmath_registry_definitions(): array {
+	return array(
+		'aafm/rankmath-get-post'      => array(
+			'label'        => __( 'Get post SEO (Rank Math)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Reads a post's Rank Math SEO fields (title, description, focus keyword, canonical, social, and robots) from its rank_math_* post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'rankmath',
+			'args_builder' => 'aafm_args_rankmath_get_post',
+		),
+		'aafm/rankmath-update-post'   => array(
+			'label'        => __( 'Update post SEO (Rank Math)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Writes a post's Rank Math SEO fields to its rank_math_* post meta. URL fields are sanitized as URLs and robots is stored as Rank Math's serialized directive array. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'rankmath',
+			'args_builder' => 'aafm_args_rankmath_update_post',
+		),
+		'aafm/rankmath-get-schema'    => array(
+			'label'        => __( 'Get post schema (Rank Math)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Reads a post's structured-data (JSON-LD) schema of a given type from Rank Math's rank_math_schema_{Type} post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'rankmath',
+			'args_builder' => 'aafm_args_rankmath_get_schema',
+		),
+		'aafm/rankmath-update-schema' => array(
+			'label'        => __( 'Update post schema (Rank Math)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Writes a post's structured-data (JSON-LD) schema of a given type to Rank Math's rank_math_schema_{Type} post meta, recursively sanitized. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'rankmath',
+			'args_builder' => 'aafm_args_rankmath_update_schema',
+		),
+		'aafm/rankmath-get-head'      => array(
+			'label'        => __( 'Get post SEO head (Rank Math)', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads the rendered SEO head markup for a post from Rank Math, best-effort (empty when no head API is available). Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'rankmath',
+			'args_builder' => 'aafm_args_rankmath_get_head',
+		),
+	);
 }
 
 /**
@@ -169,8 +195,8 @@ function aafm_rankmath_output_properties(): array {
  */
 function aafm_args_rankmath_get_post(): array {
 	return array(
-		'label'               => __( 'Get post SEO (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Reads a post's Rank Math SEO fields. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/rankmath-get-post' ),
+		'description'         => aafm_ability_description( 'aafm/rankmath-get-post' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -229,11 +255,11 @@ function aafm_args_rankmath_update_post(): array {
 	}
 	$properties['robots'] = array(
 		'type'        => 'string',
-		'description' => __( 'Robots directives as a comma-separated list, stored as Rank Math\'s directive array. Accepted tokens: index, noindex, nofollow, noarchive, noimageindex, nosnippet. Unknown tokens are dropped.', 'agent-abilities-for-mcp' ),
+		'description' => aafm_ability_description( 'aafm/rankmath-update-post' ),
 	);
 
 	return array(
-		'label'               => __( 'Update post SEO (Rank Math)', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/rankmath-update-post' ),
 		'description'         => __( "Writes a post's Rank Math SEO fields. URL fields are sanitized as URLs and robots is stored as the serialized directive array. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
@@ -317,8 +343,8 @@ function aafm_rankmath_validate_schema_type( string $type ): string {
  */
 function aafm_args_rankmath_get_schema(): array {
 	return array(
-		'label'               => __( 'Get post schema (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Reads a post's structured-data schema of a given type from Rank Math. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/rankmath-get-schema' ),
+		'description'         => aafm_ability_description( 'aafm/rankmath-get-schema' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -386,8 +412,8 @@ function aafm_exec_rankmath_get_schema( array $input ) {
  */
 function aafm_args_rankmath_update_schema(): array {
 	return array(
-		'label'               => __( 'Update post schema (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Writes a post's structured-data schema of a given type to Rank Math, recursively sanitized. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/rankmath-update-schema' ),
+		'description'         => aafm_ability_description( 'aafm/rankmath-update-schema' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -465,8 +491,8 @@ function aafm_exec_rankmath_update_schema( array $input ) {
  */
 function aafm_args_rankmath_get_head(): array {
 	return array(
-		'label'               => __( 'Get post SEO head (Rank Math)', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Reads the rendered Rank Math SEO <head> markup for a post, best-effort. Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/rankmath-get-head' ),
+		'description'         => aafm_ability_description( 'aafm/rankmath-get-head' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',

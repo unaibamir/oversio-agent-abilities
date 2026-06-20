@@ -165,7 +165,17 @@ function aafm_bootstrap() {
 	require_once AAFM_PLUGIN_DIR . 'includes/abilities/rankmath.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/abilities/aioseo.php';
 	require_once AAFM_PLUGIN_DIR . 'includes/abilities/acf.php';
-	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/_shared.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/products.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/variations.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/attributes.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/orders.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/customers.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/coupons.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/shipping.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/tax.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/reports.php';
+	require_once AAFM_PLUGIN_DIR . 'includes/abilities/woocommerce/gateways.php';
 
 	add_action( 'wp_abilities_api_categories_init', 'aafm_register_categories' );
 	add_action( 'wp_abilities_api_init', 'aafm_register_enabled_abilities' );

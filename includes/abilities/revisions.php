@@ -77,8 +77,8 @@ function aafm_revision_parent_editable( array $input ): bool {
  */
 function aafm_args_list_revisions(): array {
 	return array(
-		'label'               => __( 'List revisions', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List the revisions of a post the agent can edit (metadata only — no body content).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/list-revisions' ),
+		'description'         => aafm_ability_description( 'aafm/list-revisions' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -168,8 +168,8 @@ function aafm_exec_list_revisions( array $input ) {
  */
 function aafm_args_get_revision(): array {
 	return array(
-		'label'               => __( 'Get revision', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Get a single revision of a post the agent can edit. Returns the revision's id, parent post_id, author, dates, and title, plus its body content (rendered HTML by default, or raw markup via content_format), its excerpt, and an optional unified diff against the post's current content (request with with_diff). Requires edit access to the parent post.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-revision' ),
+		'description'         => aafm_ability_description( 'aafm/get-revision' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -253,8 +253,8 @@ function aafm_exec_get_revision( array $input ) {
  */
 function aafm_args_restore_revision(): array {
 	return array(
-		'label'               => __( 'Restore revision', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Restore a post to one of its revisions. The current state is first saved as a fresh revision, so the restore is reversible.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/restore-revision' ),
+		'description'         => aafm_ability_description( 'aafm/restore-revision' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -346,8 +346,8 @@ function aafm_exec_restore_revision( array $input ) {
  */
 function aafm_args_delete_revision(): array {
 	return array(
-		'label'               => __( 'Delete revision', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Permanently delete a single revision from a post's history. The live post is not changed, and the deleted revision cannot be recovered. Requires edit access to the parent post.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-revision' ),
+		'description'         => aafm_ability_description( 'aafm/delete-revision' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

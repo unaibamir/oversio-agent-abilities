@@ -79,8 +79,8 @@ function aafm_can_access_post_meta( array $input ): bool {
  */
 function aafm_args_get_post_meta(): array {
 	return array(
-		'label'               => __( 'Get post meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read a single allowlisted meta value from a post the agent can edit (scalar only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-post-meta' ),
+		'description'         => aafm_ability_description( 'aafm/get-post-meta' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -162,8 +162,8 @@ function aafm_exec_get_post_meta( array $input ) {
  */
 function aafm_args_get_all_post_meta(): array {
 	return array(
-		'label'               => __( 'Get all post meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read every allowlisted scalar meta value from a post the agent can edit (key/value map).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-all-post-meta' ),
+		'description'         => aafm_ability_description( 'aafm/get-all-post-meta' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -253,8 +253,8 @@ function aafm_exec_get_all_post_meta( array $input ) {
  */
 function aafm_args_update_post_meta(): array {
 	return array(
-		'label'               => __( 'Update post meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Write a single allowlisted scalar meta value to a post the agent can edit.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-post-meta' ),
+		'description'         => aafm_ability_description( 'aafm/update-post-meta' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -347,8 +347,8 @@ function aafm_exec_update_post_meta( array $input ) {
  */
 function aafm_args_delete_post_meta(): array {
 	return array(
-		'label'               => __( 'Delete post meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Delete an allowlisted meta key from a post the agent can edit. Removes all values of that key.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-post-meta' ),
+		'description'         => aafm_ability_description( 'aafm/delete-post-meta' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

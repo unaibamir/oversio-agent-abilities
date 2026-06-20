@@ -131,8 +131,8 @@ function aafm_perm_edit_theme_options(): bool {
  */
 function aafm_args_list_menus(): array {
 	return array(
-		'label'               => __( 'List menus', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Lists the navigation menus by id, name, slug, and item count. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/list-menus' ),
+		'description'         => aafm_ability_description( 'aafm/list-menus' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -184,8 +184,8 @@ function aafm_exec_list_menus(): array {
  */
 function aafm_args_get_menu(): array {
 	return array(
-		'label'               => __( 'Get menu', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Reads one navigation menu by id. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-menu' ),
+		'description'         => aafm_ability_description( 'aafm/get-menu' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -239,8 +239,8 @@ function aafm_exec_get_menu( array $input ) {
  */
 function aafm_args_list_menu_items(): array {
 	return array(
-		'label'               => __( 'List menu items', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Lists the items in a navigation menu by id. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/list-menu-items' ),
+		'description'         => aafm_ability_description( 'aafm/list-menu-items' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -305,8 +305,8 @@ function aafm_exec_list_menu_items( array $input ): array {
  */
 function aafm_args_create_menu(): array {
 	return array(
-		'label'               => __( 'Create menu', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Creates a navigation menu by name. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-menu' ),
+		'description'         => aafm_ability_description( 'aafm/create-menu' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -363,8 +363,8 @@ function aafm_exec_create_menu( array $input ) {
  */
 function aafm_args_update_menu(): array {
 	return array(
-		'label'               => __( 'Update menu', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Renames a navigation menu by id. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-menu' ),
+		'description'         => aafm_ability_description( 'aafm/update-menu' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -428,8 +428,8 @@ function aafm_exec_update_menu( array $input ) {
  */
 function aafm_args_delete_menu(): array {
 	return array(
-		'label'               => __( 'Delete menu', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Permanently deletes a navigation menu and all of its items. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-menu' ),
+		'description'         => aafm_ability_description( 'aafm/delete-menu' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -495,8 +495,8 @@ function aafm_exec_delete_menu( array $input ) {
  */
 function aafm_args_create_menu_item(): array {
 	return array(
-		'label'               => __( 'Create menu item', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Adds an item (link) to a navigation menu. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-menu-item' ),
+		'description'         => aafm_ability_description( 'aafm/create-menu-item' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -576,8 +576,8 @@ function aafm_exec_create_menu_item( array $input ) {
  */
 function aafm_args_update_menu_item(): array {
 	return array(
-		'label'               => __( 'Update menu item', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Updates a menu item's title or URL by id. Requires the edit-theme-options capability.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-menu-item' ),
+		'description'         => aafm_ability_description( 'aafm/update-menu-item' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -654,8 +654,8 @@ function aafm_exec_update_menu_item( array $input ) {
  */
 function aafm_args_delete_menu_item(): array {
 	return array(
-		'label'               => __( 'Delete menu item', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Permanently removes one item from a navigation menu. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-menu-item' ),
+		'description'         => aafm_ability_description( 'aafm/delete-menu-item' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

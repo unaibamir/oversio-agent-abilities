@@ -9,6 +9,13 @@
 /tests
 /bin
 /wp
+/public
+/CLAUDE.md
+/CONTRIBUTING.md
+/.mcp.json
+.DS_Store
+/.phpunit.cache
+/.playwright-cli
 /.distignore
 /.gitattributes
 /.gitignore

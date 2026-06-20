@@ -14,7 +14,7 @@ Give an AI agent scoped, audited access to your WordPress site over the Model Co
 
 Give an AI agent access to your WordPress site without handing it the keys. Agent Abilities for MCP connects agents over the Model Context Protocol as a WordPress user you choose — point it at a dedicated low-privilege account and it can only ever do what that account is allowed to do. Everything is off until you turn it on, and every action is logged. No admin-equivalent key, no custom transport, no custom OAuth — it is built on the WordPress Abilities API and the official MCP Adapter.
 
-Thirty-one core abilities cover reading and, when you allow it, writing posts, pages, terms, comments, media, post meta, and site structure, plus revision history and a search that spans every post type at once. You decide, per ability, what an agent can touch.
+Eighty-three core abilities cover reading and, when you allow it, writing posts, pages, terms, comments, media, post meta, and site structure, plus revision history and a search that spans every post type at once. You decide, per ability, what an agent can touch.
 
 Highlights:
 
@@ -87,4 +87,4 @@ Every ability call — started, succeeded, errored, or denied — with the actin
 == Changelog ==
 
 = 1.0.0 =
-* Initial release: 31 governed core abilities (reads and guarded writes across posts, pages, terms, comments, media, post meta, revisions, and search), least-privilege Application Password auth, per-connection tool filtering, two-layer capability gating, optional safety controls (rate limit, IP allowlist, force-draft, title-length cap), an audit log that records denials, and a guided connection wizard with diagnostics.
+* Initial release: 83 governed core abilities (reads and guarded writes across posts, pages, terms, comments, media, post meta, revisions, and search), least-privilege Application Password auth, per-connection tool filtering, two-layer capability gating, optional safety controls (rate limit, IP allowlist, force-draft, title-length cap), an audit log that records denials, and a guided connection wizard with diagnostics.
