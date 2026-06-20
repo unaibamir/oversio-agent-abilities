@@ -85,8 +85,8 @@ function aafm_register_comments_definitions( array $registry ): array {
  */
 function aafm_args_get_comments(): array {
 	return array(
-		'label'               => __( 'Get comments', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List approved comments for a post (email and IP are never returned).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-comments' ),
+		'description'         => aafm_ability_description( 'aafm/get-comments' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -259,8 +259,8 @@ function aafm_redact_comments( $comments ): array {
  */
 function aafm_args_get_comment(): array {
 	return array(
-		'label'               => __( 'Get comment', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read one comment by id (email and IP are never returned).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-comment' ),
+		'description'         => aafm_ability_description( 'aafm/get-comment' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -366,8 +366,8 @@ function aafm_exec_get_comment( array $input ) {
  */
 function aafm_args_create_comment(): array {
 	return array(
-		'label'               => __( 'Create comment', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Add a pending comment to a post as the agent user (requires moderate_comments).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-comment' ),
+		'description'         => aafm_ability_description( 'aafm/create-comment' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -511,8 +511,8 @@ function aafm_exec_create_comment( array $input ) {
  */
 function aafm_args_get_pending_comments(): array {
 	return array(
-		'label'               => __( 'Get pending comments', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List the moderation queue (requires moderate_comments).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-pending-comments' ),
+		'description'         => aafm_ability_description( 'aafm/get-pending-comments' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -593,8 +593,8 @@ function aafm_exec_get_pending_comments( array $input ): array {
  */
 function aafm_args_moderate_comment(): array {
 	return array(
-		'label'               => __( 'Moderate comment', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Approve, unapprove, spam, or trash a comment (requires moderate_comments).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/moderate-comment' ),
+		'description'         => aafm_ability_description( 'aafm/moderate-comment' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -710,8 +710,8 @@ function aafm_exec_moderate_comment( array $input ) {
  */
 function aafm_args_update_comment(): array {
 	return array(
-		'label'               => __( 'Update comment', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Edit a comment's content (requires edit access to that comment).", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-comment' ),
+		'description'         => aafm_ability_description( 'aafm/update-comment' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -818,8 +818,8 @@ function aafm_exec_update_comment( array $input ) {
  */
 function aafm_args_delete_comment(): array {
 	return array(
-		'label'               => __( 'Delete comment', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Permanently delete a comment (not recoverable; use moderate-comment to trash recoverably).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-comment' ),
+		'description'         => aafm_ability_description( 'aafm/delete-comment' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

@@ -76,8 +76,8 @@ function aafm_register_pages_definitions( array $registry ): array {
  */
 function aafm_args_get_pages(): array {
 	return array(
-		'label'               => __( 'Get pages', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List pages filtered by status and search term. Each item returns id, title, status, type, slug, link, author {id, display_name}, dates, excerpt, terms grouped by taxonomy, featured_image {id, url, alt} or null, and allowlisted meta. Set include_content=true to also return full content per item. Response includes total.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-pages' ),
+		'description'         => aafm_ability_description( 'aafm/get-pages' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -150,8 +150,8 @@ function aafm_exec_get_pages( array $input ) {
  */
 function aafm_args_get_page(): array {
 	return array(
-		'label'               => __( 'Get page', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Retrieve a single page by ID. Returns id, title, status, type, slug, link, author {id, display_name}, dates, full content (rendered HTML by default, or raw markup via content_format; omitted for password-protected pages), excerpt, terms grouped by taxonomy, featured_image {id, url, alt} or null, and meta (allowlisted scalar values only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-page' ),
+		'description'         => aafm_ability_description( 'aafm/get-page' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -236,8 +236,8 @@ function aafm_exec_get_page( array $input ) {
  */
 function aafm_args_create_page(): array {
 	return array(
-		'label'               => __( 'Create page', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create and publish a page (requires publish_pages). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-page' ),
+		'description'         => aafm_ability_description( 'aafm/create-page' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => aafm_write_content_schema( true ),
 		'output_schema'       => array(
@@ -291,8 +291,8 @@ function aafm_args_update_page(): array {
 	$schema['required']              = array( 'page_id' );
 
 	return array(
-		'label'               => __( 'Update page', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Update an existing page by ID (publishing is a separate gate). Optional: slug, featured_media (attachment id), terms ({taxonomy: [termId]}, replaces existing terms per taxonomy), and meta ({key: value}, allowlisted keys only).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-page' ),
+		'description'         => aafm_ability_description( 'aafm/update-page' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => $schema,
 		'output_schema'       => array(
@@ -358,8 +358,8 @@ function aafm_exec_update_page( array $input ) {
  */
 function aafm_args_trash_page(): array {
 	return array(
-		'label'               => __( 'Trash page', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Move a page to trash (recoverable, never permanently deleted).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/trash-page' ),
+		'description'         => aafm_ability_description( 'aafm/trash-page' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -434,8 +434,8 @@ function aafm_exec_trash_page( array $input ) {
  */
 function aafm_args_delete_page(): array {
 	return array(
-		'label'               => __( 'Delete page', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Permanently delete a page, bypassing the Trash. This cannot be undone — use trash-page to remove a page recoverably instead.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-page' ),
+		'description'         => aafm_ability_description( 'aafm/delete-page' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

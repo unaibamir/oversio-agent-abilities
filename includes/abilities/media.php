@@ -85,8 +85,8 @@ function aafm_register_media_definitions( array $registry ): array {
  */
 function aafm_args_get_media(): array {
 	return array(
-		'label'               => __( 'Get media', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List media library items (URL, alt, mime, dimensions).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-media' ),
+		'description'         => aafm_ability_description( 'aafm/get-media' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -177,8 +177,8 @@ function aafm_exec_get_media( array $input ): array {
  */
 function aafm_args_get_media_item(): array {
 	return array(
-		'label'               => __( 'Get media item', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read one media item by id: caption, description, date, filesize, parent, and all image sizes.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-media-item' ),
+		'description'         => aafm_ability_description( 'aafm/get-media-item' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -234,8 +234,8 @@ function aafm_exec_get_media_item( array $input ) {
  */
 function aafm_args_count_media(): array {
 	return array(
-		'label'               => __( 'Count media', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Count media library items, total and broken down by mime type.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/count-media' ),
+		'description'         => aafm_ability_description( 'aafm/count-media' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -303,8 +303,8 @@ function aafm_exec_count_media( array $input ): array {
  */
 function aafm_args_set_featured_image(): array {
 	return array(
-		'label'               => __( 'Set featured image', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Set a post's featured image to an existing image attachment ID.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/set-featured-image' ),
+		'description'         => aafm_ability_description( 'aafm/set-featured-image' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -400,8 +400,8 @@ function aafm_exec_set_featured_image( array $input ) {
  */
 function aafm_args_upload_media(): array {
 	return array(
-		'label'               => __( 'Upload media', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Upload an image from base64 data (jpg, png, gif, webp; SVG rejected).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/upload-media' ),
+		'description'         => aafm_ability_description( 'aafm/upload-media' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -577,8 +577,8 @@ function aafm_exec_upload_media( array $input ) {
  */
 function aafm_args_update_media(): array {
 	return array(
-		'label'               => __( 'Update media', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Update an attachment's title, alt text, caption, or description.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-media' ),
+		'description'         => aafm_ability_description( 'aafm/update-media' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -702,8 +702,8 @@ function aafm_exec_update_media( array $input ) {
  */
 function aafm_args_delete_media(): array {
 	return array(
-		'label'               => __( 'Delete media', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Permanently delete an attachment — the file and library entry are removed and cannot be recovered.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-media' ),
+		'description'         => aafm_ability_description( 'aafm/delete-media' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

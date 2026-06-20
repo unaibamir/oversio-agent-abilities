@@ -92,8 +92,8 @@ function aafm_register_terms_definitions( array $registry ): array {
  */
 function aafm_args_get_terms(): array {
 	return array(
-		'label'               => __( 'Get terms', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'List terms (with counts) for a public taxonomy.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-terms' ),
+		'description'         => aafm_ability_description( 'aafm/get-terms' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -180,8 +180,8 @@ function aafm_exec_get_terms( array $input ) {
  */
 function aafm_args_get_term(): array {
 	return array(
-		'label'               => __( 'Get term', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read a single term (by id) from a public taxonomy.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-term' ),
+		'description'         => aafm_ability_description( 'aafm/get-term' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -245,8 +245,8 @@ function aafm_exec_get_term( array $input ) {
  */
 function aafm_args_add_post_terms(): array {
 	return array(
-		'label'               => __( 'Add post terms', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Append terms to a post (does not replace existing terms). Requires edit access to the post and the taxonomy\'s assign_terms capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/add-post-terms' ),
+		'description'         => aafm_ability_description( 'aafm/add-post-terms' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -379,8 +379,8 @@ function aafm_perm_can_edit_term_meta( array $input ): bool {
  */
 function aafm_args_get_term_meta(): array {
 	return array(
-		'label'               => __( 'Get term meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read a single allowlisted scalar meta value from a term in a public taxonomy.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-term-meta' ),
+		'description'         => aafm_ability_description( 'aafm/get-term-meta' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -469,8 +469,8 @@ function aafm_exec_get_term_meta( array $input ) {
  */
 function aafm_args_update_term_meta(): array {
 	return array(
-		'label'               => __( 'Update term meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Write a single allowlisted scalar meta value to a term you can edit.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-term-meta' ),
+		'description'         => aafm_ability_description( 'aafm/update-term-meta' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -567,8 +567,8 @@ function aafm_exec_update_term_meta( array $input ) {
  */
 function aafm_args_delete_term_meta(): array {
 	return array(
-		'label'               => __( 'Delete term meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Delete an allowlisted meta key from a term you can edit. Removes all values of that key.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-term-meta' ),
+		'description'         => aafm_ability_description( 'aafm/delete-term-meta' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -686,8 +686,8 @@ function aafm_term_write_result( WP_Term $term ): array {
  */
 function aafm_args_create_term(): array {
 	return array(
-		'label'               => __( 'Create term', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Create a term in a public taxonomy (requires that taxonomy\'s manage_terms capability).', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/create-term' ),
+		'description'         => aafm_ability_description( 'aafm/create-term' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -768,8 +768,8 @@ function aafm_exec_create_term( array $input ) {
  */
 function aafm_args_update_term(): array {
 	return array(
-		'label'               => __( 'Update term', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Update a term in a public taxonomy, with a circular-hierarchy guard on reparenting.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-term' ),
+		'description'         => aafm_ability_description( 'aafm/update-term' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',

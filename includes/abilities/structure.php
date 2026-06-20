@@ -91,8 +91,8 @@ function aafm_args_structure_read( string $label, string $desc, string $execute,
  */
 function aafm_args_get_taxonomies(): array {
 	return aafm_args_structure_read(
-		__( 'Get taxonomies', 'agent-abilities-for-mcp' ),
-		__( 'List public taxonomies registered on the site.', 'agent-abilities-for-mcp' ),
+		aafm_ability_label( 'aafm/get-taxonomies' ),
+		aafm_ability_description( 'aafm/get-taxonomies' ),
 		'aafm_exec_get_taxonomies',
 		'taxonomies'
 	);
@@ -127,8 +127,8 @@ function aafm_exec_get_taxonomies(): array {
  */
 function aafm_args_get_post_types(): array {
 	$args = aafm_args_structure_read(
-		__( 'Get post types', 'agent-abilities-for-mcp' ),
-		__( 'List public post types registered on the site. Each type includes a writable flag indicating whether agents may create/update items of that type — only types the operator has exposed are writable, so use it to choose a valid post_type for the CPT write abilities.', 'agent-abilities-for-mcp' ),
+		aafm_ability_label( 'aafm/get-post-types' ),
+		aafm_ability_description( 'aafm/get-post-types' ),
 		'aafm_exec_get_post_types',
 		'post_types'
 	);
@@ -180,8 +180,8 @@ function aafm_exec_get_post_types(): array {
  */
 function aafm_args_get_site_info(): array {
 	return array(
-		'label'               => __( 'Get site info', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Retrieve the site name, tagline, URL, and language.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-site-info' ),
+		'description'         => aafm_ability_description( 'aafm/get-site-info' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',

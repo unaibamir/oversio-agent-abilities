@@ -91,8 +91,8 @@ function aafm_register_themes_definitions( array $registry ): array {
  */
 function aafm_args_get_active_theme(): array {
 	return array(
-		'label'               => __( 'Get active theme', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Reads the active theme: name, version, stylesheet, parent, and whether it is a block theme. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-active-theme' ),
+		'description'         => aafm_ability_description( 'aafm/get-active-theme' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -147,8 +147,8 @@ function aafm_exec_get_active_theme(): array {
  */
 function aafm_args_list_themes(): array {
 	return array(
-		'label'               => __( 'List themes', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Lists installed themes by name, version, stylesheet, and active state. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/list-themes' ),
+		'description'         => aafm_ability_description( 'aafm/list-themes' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -248,8 +248,8 @@ function aafm_redact_template( WP_Block_Template $template ): array {
  */
 function aafm_args_list_templates(): array {
 	return array(
-		'label'               => __( 'List templates', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Lists block templates (or template parts) by id, slug, title, type, and source. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/list-templates' ),
+		'description'         => aafm_ability_description( 'aafm/list-templates' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -311,8 +311,8 @@ function aafm_exec_list_templates( array $input ): array {
  */
 function aafm_args_get_template(): array {
 	return array(
-		'label'               => __( 'Get template', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Reads one block template by id, including its markup. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-template' ),
+		'description'         => aafm_ability_description( 'aafm/get-template' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -372,8 +372,8 @@ function aafm_exec_get_template( array $input ) {
  */
 function aafm_args_update_template(): array {
 	return array(
-		'label'               => __( 'Update template', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Updates a database block template by id. Its markup is sanitized, and theme-file templates cannot be edited. Requires the edit-theme-options capability.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-template' ),
+		'description'         => aafm_ability_description( 'aafm/update-template' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -465,8 +465,8 @@ function aafm_exec_update_template( array $input ) {
  */
 function aafm_args_get_global_styles(): array {
 	return array(
-		'label'               => __( 'Get global styles', 'agent-abilities-for-mcp' ),
-		'description'         => __( "Reads the active theme's resolved global styles and settings (theme.json). Requires the edit-theme-options capability.", 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-global-styles' ),
+		'description'         => aafm_ability_description( 'aafm/get-global-styles' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',

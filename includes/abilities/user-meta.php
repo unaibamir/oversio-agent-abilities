@@ -75,8 +75,8 @@ function aafm_can_access_user_meta( array $input ): bool {
  */
 function aafm_args_get_user_meta(): array {
 	return array(
-		'label'               => __( 'Get user meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Read a single allowlisted scalar meta value from a user the agent can edit.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/get-user-meta' ),
+		'description'         => aafm_ability_description( 'aafm/get-user-meta' ),
 		'category'            => 'aafm-reads',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -121,8 +121,8 @@ function aafm_args_get_user_meta(): array {
  */
 function aafm_args_update_user_meta(): array {
 	return array(
-		'label'               => __( 'Update user meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Write a single allowlisted scalar meta value to a user the agent can edit.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/update-user-meta' ),
+		'description'         => aafm_ability_description( 'aafm/update-user-meta' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
@@ -170,8 +170,8 @@ function aafm_args_update_user_meta(): array {
  */
 function aafm_args_delete_user_meta(): array {
 	return array(
-		'label'               => __( 'Delete user meta', 'agent-abilities-for-mcp' ),
-		'description'         => __( 'Delete an allowlisted meta key from a user the agent can edit. Removes all values of that key.', 'agent-abilities-for-mcp' ),
+		'label'               => aafm_ability_label( 'aafm/delete-user-meta' ),
+		'description'         => aafm_ability_description( 'aafm/delete-user-meta' ),
 		'category'            => 'aafm-writes',
 		'input_schema'        => array(
 			'type'                 => 'object',
