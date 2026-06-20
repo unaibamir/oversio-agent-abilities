@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_orders_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_orders_full_definitions' );
 
 /**
  * Contribute the WooCommerce orders definitions to the registry, but only when WooCommerce is
@@ -28,143 +29,168 @@ function aafm_register_wc_orders_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	// Orders (sub-slice W4-WC2) — list is lean (no PII), get returns full billing/shipping PII
-	// under the Integrations security disclaimer. Both gate on the flat, object-independent
-	// manage_woocommerce capability and fall through to that callback at discovery (no server.php
-	// case). PII exposure in wc-get-order is intentional: the revised WC PII stance in spec 48-
-	// mandates full billing/shipping on the single-order read, gated by manage_woocommerce and
-	// audited, not stripped.
-	$registry['aafm/wc-list-orders'] = array(
-		'label'        => __( 'List WooCommerce orders', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists WooCommerce orders with their id, number, status, total, currency, date, and customer id, plus a total count. List rows are lean — no billing or shipping details. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_orders',
-	);
+	return array_merge( $registry, aafm_wc_orders_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-order'] = array(
-		'label'        => __( 'Get WooCommerce order', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one WooCommerce order by id: line items, totals, status, dates, customer note, and the full customer billing address (including email and phone) and shipping address. Customer PII is returned in full under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_order',
-	);
+/**
+ * Contribute the WooCommerce order definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_orders_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_orders_registry_definitions() );
+}
 
-	// Order writes (sub-slice W4-WC2.2) — create, update, focused status-only update.
-	$registry['aafm/wc-create-order'] = array(
-		'label'        => __( 'Create WooCommerce order', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a WooCommerce order from optional status, customer id, billing, shipping, and line items. Returns the full order shape including PII under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_order',
-	);
+/**
+ * The WooCommerce order registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_orders_registry_definitions(): array {
+	return array(
+		// Orders (sub-slice W4-WC2) — list is lean (no PII), get returns full billing/shipping PII
+		// under the Integrations security disclaimer. Both gate on the flat, object-independent
+		// manage_woocommerce capability and fall through to that callback at discovery (no server.php
+		// case). PII exposure in wc-get-order is intentional: the revised WC PII stance in spec 48-
+		// mandates full billing/shipping on the single-order read, gated by manage_woocommerce and
+		// audited, not stripped.
+		'aafm/wc-list-orders'         => array(
+			'label'        => __( 'List WooCommerce orders', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists WooCommerce orders with their id, number, status, total, currency, date, and customer id, plus a total count. List rows are lean — no billing or shipping details. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_orders',
+		),
 
-	$registry['aafm/wc-update-order'] = array(
-		'label'        => __( 'Update WooCommerce order', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a WooCommerce order by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_order',
-	);
+		'aafm/wc-get-order'           => array(
+			'label'        => __( 'Get WooCommerce order', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one WooCommerce order by id: line items, totals, status, dates, customer note, and the full customer billing address (including email and phone) and shipping address. Customer PII is returned in full under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_order',
+		),
 
-	$registry['aafm/wc-update-order-status'] = array(
-		'label'        => __( 'Update WooCommerce order status', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Sets the status of a WooCommerce order by id. Accepts both the short form (e.g. "completed") and the wc-prefixed form (e.g. "wc-completed"). Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_order_status',
-	);
+		// Order writes (sub-slice W4-WC2.2) — create, update, focused status-only update.
+		'aafm/wc-create-order'        => array(
+			'label'        => __( 'Create WooCommerce order', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a WooCommerce order from optional status, customer id, billing, shipping, and line items. Returns the full order shape including PII under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_order',
+		),
 
-	// Order delete (sub-slice W4-WC2.3 Group A).
-	$registry['aafm/wc-delete-order'] = array(
-		'label'        => __( 'Delete WooCommerce order', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently deletes a WooCommerce order by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_order',
-	);
+		'aafm/wc-update-order'        => array(
+			'label'        => __( 'Update WooCommerce order', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a WooCommerce order by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_order',
+		),
 
-	// Order notes (sub-slice W4-WC2.3 Group B).
-	$registry['aafm/wc-list-order-notes'] = array(
-		'label'        => __( 'List WooCommerce order notes', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists all notes on a WooCommerce order by order id. Returns each note\'s id, text, date, and whether it is customer-facing. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_order_notes',
-	);
+		'aafm/wc-update-order-status' => array(
+			'label'        => __( 'Update WooCommerce order status', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Sets the status of a WooCommerce order by id. Accepts both the short form (e.g. "completed") and the wc-prefixed form (e.g. "wc-completed"). Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_order_status',
+		),
 
-	$registry['aafm/wc-get-order-note'] = array(
-		'label'        => __( 'Get WooCommerce order note', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads a single note on a WooCommerce order by order id and note id. Returns the note text, date, and whether it is customer-facing. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_order_note',
-	);
+		// Order delete (sub-slice W4-WC2.3 Group A).
+		'aafm/wc-delete-order'        => array(
+			'label'        => __( 'Delete WooCommerce order', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently deletes a WooCommerce order by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_order',
+		),
 
-	$registry['aafm/wc-create-order-note'] = array(
-		'label'        => __( 'Create WooCommerce order note', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Adds a note to a WooCommerce order by order id. Optionally marks the note as customer-facing so it appears in the customer\'s account. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_order_note',
-	);
+		// Order notes (sub-slice W4-WC2.3 Group B).
+		'aafm/wc-list-order-notes'    => array(
+			'label'        => __( 'List WooCommerce order notes', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists all notes on a WooCommerce order by order id. Returns each note\'s id, text, date, and whether it is customer-facing. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_order_notes',
+		),
 
-	$registry['aafm/wc-delete-order-note'] = array(
-		'label'        => __( 'Delete WooCommerce order note', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently deletes a WooCommerce order note by note id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_order_note',
-	);
+		'aafm/wc-get-order-note'      => array(
+			'label'        => __( 'Get WooCommerce order note', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads a single note on a WooCommerce order by order id and note id. Returns the note text, date, and whether it is customer-facing. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_order_note',
+		),
 
-	// Order refunds (sub-slice W4-WC2.3 Group C).
-	$registry['aafm/wc-list-order-refunds'] = array(
-		'label'        => __( 'List WooCommerce order refunds', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists all refunds on a WooCommerce order by order id. Returns each refund\'s id, amount, reason, and date. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_order_refunds',
-	);
+		'aafm/wc-create-order-note'   => array(
+			'label'        => __( 'Create WooCommerce order note', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Adds a note to a WooCommerce order by order id. Optionally marks the note as customer-facing so it appears in the customer\'s account. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_order_note',
+		),
 
-	$registry['aafm/wc-get-order-refund'] = array(
-		'label'        => __( 'Get WooCommerce order refund', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads a single refund by refund id. Returns the refund amount, reason, and date. Reason text is returned verbatim under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_order_refund',
-	);
+		'aafm/wc-delete-order-note'   => array(
+			'label'        => __( 'Delete WooCommerce order note', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently deletes a WooCommerce order note by note id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_order_note',
+		),
 
-	$registry['aafm/wc-create-order-refund'] = array(
-		'label'        => __( 'Create WooCommerce order refund', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a refund on a WooCommerce order by order id. Accepts an amount, optional reason, and optional line-item breakdown. Reason text is returned verbatim under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_order_refund',
-	);
+		// Order refunds (sub-slice W4-WC2.3 Group C).
+		'aafm/wc-list-order-refunds'  => array(
+			'label'        => __( 'List WooCommerce order refunds', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists all refunds on a WooCommerce order by order id. Returns each refund\'s id, amount, reason, and date. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_order_refunds',
+		),
 
-	$registry['aafm/wc-delete-order-refund'] = array(
-		'label'        => __( 'Delete WooCommerce order refund', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently deletes a WooCommerce order refund by refund id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_order_refund',
-	);
+		'aafm/wc-get-order-refund'    => array(
+			'label'        => __( 'Get WooCommerce order refund', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads a single refund by refund id. Returns the refund amount, reason, and date. Reason text is returned verbatim under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_order_refund',
+		),
 
-	return $registry;
+		'aafm/wc-create-order-refund' => array(
+			'label'        => __( 'Create WooCommerce order refund', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a refund on a WooCommerce order by order id. Accepts an amount, optional reason, and optional line-item breakdown. Reason text is returned verbatim under the Integrations security disclaimer. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_order_refund',
+		),
+
+		'aafm/wc-delete-order-refund' => array(
+			'label'        => __( 'Delete WooCommerce order refund', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently deletes a WooCommerce order refund by refund id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_order_refund',
+		),
+	);
 }
 
 /**

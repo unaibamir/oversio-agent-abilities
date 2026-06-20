@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_variations_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_variations_full_definitions' );
 
 /**
  * Contribute the WooCommerce variations definitions to the registry, but only when WooCommerce is
@@ -28,53 +29,78 @@ function aafm_register_wc_variations_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	// Variations (sub-slice W4-WC1b) — a variable product's child variations, parent_id-scoped.
-	$registry['aafm/wc-list-product-variations'] = array(
-		'label'        => __( 'List WooCommerce product variations', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists a variable product\'s variations by parent product id, each with its id, parent id, SKU, price, stock status, and status, plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_product_variations',
-	);
+	return array_merge( $registry, aafm_wc_variations_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-product-variation'] = array(
-		'label'        => __( 'Get WooCommerce product variation', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one product variation by id, including its parent id, prices, stock, description, image, and its chosen attribute values. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_product_variation',
-	);
+/**
+ * Contribute the WooCommerce product variation definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_variations_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_variations_registry_definitions() );
+}
 
-	$registry['aafm/wc-create-product-variation'] = array(
-		'label'        => __( 'Create WooCommerce product variation', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a variation under a variable product (parent product id required) from optional status, description, prices, SKU, stock, image, and attribute values. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_product_variation',
-	);
+/**
+ * The WooCommerce product variation registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_variations_registry_definitions(): array {
+	return array(
+		// Variations (sub-slice W4-WC1b) — a variable product's child variations, parent_id-scoped.
+		'aafm/wc-list-product-variations'  => array(
+			'label'        => __( 'List WooCommerce product variations', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists a variable product\'s variations by parent product id, each with its id, parent id, SKU, price, stock status, and status, plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_product_variations',
+		),
 
-	$registry['aafm/wc-update-product-variation'] = array(
-		'label'        => __( 'Update WooCommerce product variation', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a product variation by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_product_variation',
-	);
+		'aafm/wc-get-product-variation'    => array(
+			'label'        => __( 'Get WooCommerce product variation', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one product variation by id, including its parent id, prices, stock, description, image, and its chosen attribute values. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_product_variation',
+		),
 
-	$registry['aafm/wc-delete-product-variation'] = array(
-		'label'        => __( 'Delete WooCommerce product variation', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently deletes a product variation by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_product_variation',
-	);
+		'aafm/wc-create-product-variation' => array(
+			'label'        => __( 'Create WooCommerce product variation', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a variation under a variable product (parent product id required) from optional status, description, prices, SKU, stock, image, and attribute values. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_product_variation',
+		),
 
-	return $registry;
+		'aafm/wc-update-product-variation' => array(
+			'label'        => __( 'Update WooCommerce product variation', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a product variation by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_product_variation',
+		),
+
+		'aafm/wc-delete-product-variation' => array(
+			'label'        => __( 'Delete WooCommerce product variation', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently deletes a product variation by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_product_variation',
+		),
+	);
 }
 
 /*

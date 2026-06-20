@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_products_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_products_full_definitions' );
 
 /**
  * Contribute the WooCommerce products definitions to the registry, but only when WooCommerce is
@@ -28,52 +29,77 @@ function aafm_register_wc_products_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	$registry['aafm/wc-list-products'] = array(
-		'label'        => __( 'List WooCommerce products', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists WooCommerce products with their id, name, SKU, price, stock status, status, categories, and featured flag, plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_products',
-	);
+	return array_merge( $registry, aafm_wc_products_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-product'] = array(
-		'label'        => __( 'Get WooCommerce product', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one WooCommerce product by id, including its description, prices, stock, images, attributes, variation ids, and categories. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_product',
-	);
+/**
+ * Contribute the WooCommerce product definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_products_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_products_registry_definitions() );
+}
 
-	$registry['aafm/wc-create-product'] = array(
-		'label'        => __( 'Create WooCommerce product', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a WooCommerce product from a name (required) plus optional type, status, description, prices, SKU, stock, categories, tags, images, and attributes. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_product',
-	);
+/**
+ * The WooCommerce product registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_products_registry_definitions(): array {
+	return array(
+		'aafm/wc-list-products'  => array(
+			'label'        => __( 'List WooCommerce products', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists WooCommerce products with their id, name, SKU, price, stock status, status, categories, and featured flag, plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_products',
+		),
 
-	$registry['aafm/wc-update-product'] = array(
-		'label'        => __( 'Update WooCommerce product', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a WooCommerce product by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_product',
-	);
+		'aafm/wc-get-product'    => array(
+			'label'        => __( 'Get WooCommerce product', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one WooCommerce product by id, including its description, prices, stock, images, attributes, variation ids, and categories. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_product',
+		),
 
-	$registry['aafm/wc-delete-product'] = array(
-		'label'        => __( 'Delete WooCommerce product', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently deletes a WooCommerce product by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_product',
-	);
+		'aafm/wc-create-product' => array(
+			'label'        => __( 'Create WooCommerce product', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a WooCommerce product from a name (required) plus optional type, status, description, prices, SKU, stock, categories, tags, images, and attributes. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_product',
+		),
 
-	return $registry;
+		'aafm/wc-update-product' => array(
+			'label'        => __( 'Update WooCommerce product', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a WooCommerce product by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_product',
+		),
+
+		'aafm/wc-delete-product' => array(
+			'label'        => __( 'Delete WooCommerce product', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently deletes a WooCommerce product by id. This bypasses the Trash and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_product',
+		),
+	);
 }
 
 /**

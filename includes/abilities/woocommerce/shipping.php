@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_shipping_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_shipping_full_definitions' );
 
 /**
  * Contribute the WooCommerce shipping definitions to the registry, but only when WooCommerce is
@@ -28,99 +29,124 @@ function aafm_register_wc_shipping_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	// Shipping zones (sub-slice W4-WC5) — zone and method management gated on manage_woocommerce.
-	$registry['aafm/wc-list-shipping-zones'] = array(
-		'label'        => __( 'List WooCommerce shipping zones', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists WooCommerce shipping zones with their id, name, and order. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_shipping_zones',
-	);
+	return array_merge( $registry, aafm_wc_shipping_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-shipping-zone'] = array(
-		'label'        => __( 'Get WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one WooCommerce shipping zone by id, including its name, order, and zone locations. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_shipping_zone',
-	);
+/**
+ * Contribute the WooCommerce shipping definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_shipping_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_shipping_registry_definitions() );
+}
 
-	$registry['aafm/wc-create-shipping-zone'] = array(
-		'label'        => __( 'Create WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a WooCommerce shipping zone from a name and optional order. Returns the full zone shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_shipping_zone',
-	);
+/**
+ * The WooCommerce shipping registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_shipping_registry_definitions(): array {
+	return array(
+		// Shipping zones (sub-slice W4-WC5) — zone and method management gated on manage_woocommerce.
+		'aafm/wc-list-shipping-zones'    => array(
+			'label'        => __( 'List WooCommerce shipping zones', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists WooCommerce shipping zones with their id, name, and order. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_shipping_zones',
+		),
 
-	$registry['aafm/wc-update-shipping-zone'] = array(
-		'label'        => __( 'Update WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a WooCommerce shipping zone by id, changing only the fields you send. An empty request body is a no-op success. Returns the full zone shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_shipping_zone',
-	);
+		'aafm/wc-get-shipping-zone'      => array(
+			'label'        => __( 'Get WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one WooCommerce shipping zone by id, including its name, order, and zone locations. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_shipping_zone',
+		),
 
-	$registry['aafm/wc-delete-shipping-zone'] = array(
-		'label'        => __( 'Delete WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently deletes a WooCommerce shipping zone by id. The Rest of World zone (id 0) cannot be deleted. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_shipping_zone',
-	);
+		'aafm/wc-create-shipping-zone'   => array(
+			'label'        => __( 'Create WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a WooCommerce shipping zone from a name and optional order. Returns the full zone shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_shipping_zone',
+		),
 
-	// Shipping methods (sub-slice W4-WC5) — always scoped to a zone.
-	$registry['aafm/wc-list-shipping-methods'] = array(
-		'label'        => __( 'List WooCommerce shipping methods', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists the shipping methods configured in a WooCommerce shipping zone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_shipping_methods',
-	);
+		'aafm/wc-update-shipping-zone'   => array(
+			'label'        => __( 'Update WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a WooCommerce shipping zone by id, changing only the fields you send. An empty request body is a no-op success. Returns the full zone shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_shipping_zone',
+		),
 
-	$registry['aafm/wc-get-shipping-method'] = array(
-		'label'        => __( 'Get WooCommerce shipping method', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one shipping method from a WooCommerce shipping zone by zone id and instance id. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_shipping_method',
-	);
+		'aafm/wc-delete-shipping-zone'   => array(
+			'label'        => __( 'Delete WooCommerce shipping zone', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently deletes a WooCommerce shipping zone by id. The Rest of World zone (id 0) cannot be deleted. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_shipping_zone',
+		),
 
-	$registry['aafm/wc-create-shipping-method'] = array(
-		'label'        => __( 'Create WooCommerce shipping method', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Adds a shipping method to a WooCommerce shipping zone. Provide the zone id and method type (e.g. flat_rate, free_shipping, local_pickup). Returns the new method shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_shipping_method',
-	);
+		// Shipping methods (sub-slice W4-WC5) — always scoped to a zone.
+		'aafm/wc-list-shipping-methods'  => array(
+			'label'        => __( 'List WooCommerce shipping methods', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists the shipping methods configured in a WooCommerce shipping zone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_shipping_methods',
+		),
 
-	$registry['aafm/wc-update-shipping-method'] = array(
-		'label'        => __( 'Update WooCommerce shipping method', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a shipping method in a WooCommerce shipping zone by zone id and instance id, changing only the fields you send. Returns the updated method shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_shipping_method',
-	);
+		'aafm/wc-get-shipping-method'    => array(
+			'label'        => __( 'Get WooCommerce shipping method', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one shipping method from a WooCommerce shipping zone by zone id and instance id. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_shipping_method',
+		),
 
-	$registry['aafm/wc-delete-shipping-method'] = array(
-		'label'        => __( 'Delete WooCommerce shipping method', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently removes a shipping method from a WooCommerce shipping zone by zone id and instance id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_shipping_method',
-	);
+		'aafm/wc-create-shipping-method' => array(
+			'label'        => __( 'Create WooCommerce shipping method', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Adds a shipping method to a WooCommerce shipping zone. Provide the zone id and method type (e.g. flat_rate, free_shipping, local_pickup). Returns the new method shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_shipping_method',
+		),
 
-	return $registry;
+		'aafm/wc-update-shipping-method' => array(
+			'label'        => __( 'Update WooCommerce shipping method', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a shipping method in a WooCommerce shipping zone by zone id and instance id, changing only the fields you send. Returns the updated method shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_shipping_method',
+		),
+
+		'aafm/wc-delete-shipping-method' => array(
+			'label'        => __( 'Delete WooCommerce shipping method', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently removes a shipping method from a WooCommerce shipping zone by zone id and instance id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_shipping_method',
+		),
+	);
 }
 
 // =============================================================================

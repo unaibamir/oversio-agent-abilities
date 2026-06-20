@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_reports_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_reports_full_definitions' );
 
 /**
  * Contribute the WooCommerce reports definitions to the registry, but only when WooCommerce is
@@ -28,62 +29,87 @@ function aafm_register_wc_reports_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	// Reports, counts, and payment gateways (sub-slice W4-WC7).
-	$registry['aafm/wc-get-sales-report'] = array(
-		'label'        => __( 'Get WooCommerce sales report', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Returns a sales summary for a date range: total sales, order count, net sales, and average order value. Defaults to the current calendar month. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_sales_report',
-	);
+	return array_merge( $registry, aafm_wc_reports_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-top-sellers-report'] = array(
-		'label'        => __( 'Get WooCommerce top sellers report', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Returns the best-selling products for a period (week, month, or year) ordered by quantity sold. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_top_sellers_report',
-	);
+/**
+ * Contribute the WooCommerce reports definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_reports_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_reports_registry_definitions() );
+}
 
-	$registry['aafm/wc-count-orders'] = array(
-		'label'        => __( 'Count WooCommerce orders', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Returns order counts broken down by WooCommerce status (pending, processing, on-hold, completed, cancelled, refunded, failed) plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_count_orders',
-	);
+/**
+ * The WooCommerce reports registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_reports_registry_definitions(): array {
+	return array(
+		// Reports, counts, and payment gateways (sub-slice W4-WC7).
+		'aafm/wc-get-sales-report'       => array(
+			'label'        => __( 'Get WooCommerce sales report', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Returns a sales summary for a date range: total sales, order count, net sales, and average order value. Defaults to the current calendar month. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_sales_report',
+		),
 
-	$registry['aafm/wc-count-products'] = array(
-		'label'        => __( 'Count WooCommerce products', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Returns product counts broken down by post status (publish, draft, private, pending, trash) plus a total of active (non-trash) products. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_count_products',
-	);
+		'aafm/wc-get-top-sellers-report' => array(
+			'label'        => __( 'Get WooCommerce top sellers report', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Returns the best-selling products for a period (week, month, or year) ordered by quantity sold. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_top_sellers_report',
+		),
 
-	$registry['aafm/wc-count-customers'] = array(
-		'label'        => __( 'Count WooCommerce customers', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Returns the count of registered users on the site. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_count_customers',
-	);
+		'aafm/wc-count-orders'           => array(
+			'label'        => __( 'Count WooCommerce orders', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Returns order counts broken down by WooCommerce status (pending, processing, on-hold, completed, cancelled, refunded, failed) plus a total. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_count_orders',
+		),
 
-	$registry['aafm/wc-count-coupons'] = array(
-		'label'        => __( 'Count WooCommerce coupons', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Returns coupon counts broken down by post status (publish, draft, private, pending, trash) plus a total of active coupons. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_count_coupons',
-	);
+		'aafm/wc-count-products'         => array(
+			'label'        => __( 'Count WooCommerce products', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Returns product counts broken down by post status (publish, draft, private, pending, trash) plus a total of active (non-trash) products. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_count_products',
+		),
 
-	return $registry;
+		'aafm/wc-count-customers'        => array(
+			'label'        => __( 'Count WooCommerce customers', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Returns the count of registered users on the site. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_count_customers',
+		),
+
+		'aafm/wc-count-coupons'          => array(
+			'label'        => __( 'Count WooCommerce coupons', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Returns coupon counts broken down by post status (publish, draft, private, pending, trash) plus a total of active coupons. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_count_coupons',
+		),
+	);
 }
 
 // =============================================================================

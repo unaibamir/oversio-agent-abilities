@@ -20,6 +20,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_acf_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_acf_full_definitions' );
 
 /**
  * Contribute the ACF definitions to the registry, but only when the ACF host plugin is active.
@@ -33,64 +34,89 @@ function aafm_register_acf_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	$registry['aafm/acf-list-field-groups']  = array(
-		'label'        => __( 'List ACF field groups', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists the ACF field groups and the fields inside each (key, label, and type) for discovery. It returns structure only, never stored values. Requires the edit-posts capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'acf',
-		'args_builder' => 'aafm_args_acf_list_field_groups',
-	);
-	$registry['aafm/acf-get-post-fields']    = array(
-		'label'        => __( 'Get post ACF fields', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Reads all of a post's ACF field values, hydrated by field key. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'acf',
-		'args_builder' => 'aafm_args_acf_get_post_fields',
-	);
-	$registry['aafm/acf-update-post-fields'] = array(
-		'label'        => __( 'Update post ACF fields', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Writes ACF field values on a post by field key, each value sanitized for its field type. Requires edit access to that post.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'acf',
-		'args_builder' => 'aafm_args_acf_update_post_fields',
-	);
-	$registry['aafm/acf-get-term-fields']    = array(
-		'label'        => __( 'Get term ACF fields', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Reads all of a term's ACF field values, hydrated by field key. Requires edit access to that term.", 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'acf',
-		'args_builder' => 'aafm_args_acf_get_term_fields',
-	);
-	$registry['aafm/acf-update-term-fields'] = array(
-		'label'        => __( 'Update term ACF fields', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Writes ACF field values on a term by field key, each value sanitized for its field type. Requires edit access to that term.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'acf',
-		'args_builder' => 'aafm_args_acf_update_term_fields',
-	);
-	$registry['aafm/acf-get-user-fields']    = array(
-		'label'        => __( 'Get user ACF fields', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Reads all of a user's ACF field values, hydrated by field key. A field of the user_email type returns the real email address under the integration disclaimer. Requires edit access to that user.", 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'acf',
-		'args_builder' => 'aafm_args_acf_get_user_fields',
-	);
-	$registry['aafm/acf-update-user-fields'] = array(
-		'label'        => __( 'Update user ACF fields', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Writes ACF field values on a user by field key, each value sanitized for its field type. Requires edit access to that user.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'acf',
-		'args_builder' => 'aafm_args_acf_update_user_fields',
-	);
+	return array_merge( $registry, aafm_acf_registry_definitions() );
+}
 
-	return $registry;
+/**
+ * Contribute the ACF definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view enumerates every ACF ability even when the host is inactive,
+ * for the Integrations tab and the manifest. The live registration path never reads this filter, so
+ * an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_acf_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_acf_registry_definitions() );
+}
+
+/**
+ * The ACF registry rows, keyed by ability name. The single source of truth for these abilities'
+ * label, description, group, risk, and args builder — consumed by both the host-guarded live
+ * registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_acf_registry_definitions(): array {
+	return array(
+		'aafm/acf-list-field-groups'  => array(
+			'label'        => __( 'List ACF field groups', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists the ACF field groups and the fields inside each (key, label, and type) for discovery. It returns structure only, never stored values. Requires the edit-posts capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'acf',
+			'args_builder' => 'aafm_args_acf_list_field_groups',
+		),
+		'aafm/acf-get-post-fields'    => array(
+			'label'        => __( 'Get post ACF fields', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Reads all of a post's ACF field values, hydrated by field key. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'acf',
+			'args_builder' => 'aafm_args_acf_get_post_fields',
+		),
+		'aafm/acf-update-post-fields' => array(
+			'label'        => __( 'Update post ACF fields', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Writes ACF field values on a post by field key, each value sanitized for its field type. Requires edit access to that post.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'acf',
+			'args_builder' => 'aafm_args_acf_update_post_fields',
+		),
+		'aafm/acf-get-term-fields'    => array(
+			'label'        => __( 'Get term ACF fields', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Reads all of a term's ACF field values, hydrated by field key. Requires edit access to that term.", 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'acf',
+			'args_builder' => 'aafm_args_acf_get_term_fields',
+		),
+		'aafm/acf-update-term-fields' => array(
+			'label'        => __( 'Update term ACF fields', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Writes ACF field values on a term by field key, each value sanitized for its field type. Requires edit access to that term.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'acf',
+			'args_builder' => 'aafm_args_acf_update_term_fields',
+		),
+		'aafm/acf-get-user-fields'    => array(
+			'label'        => __( 'Get user ACF fields', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Reads all of a user's ACF field values, hydrated by field key. A field of the user_email type returns the real email address under the integration disclaimer. Requires edit access to that user.", 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'acf',
+			'args_builder' => 'aafm_args_acf_get_user_fields',
+		),
+		'aafm/acf-update-user-fields' => array(
+			'label'        => __( 'Update user ACF fields', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Writes ACF field values on a user by field key, each value sanitized for its field type. Requires edit access to that user.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'acf',
+			'args_builder' => 'aafm_args_acf_update_user_fields',
+		),
+	);
 }
 
 /**

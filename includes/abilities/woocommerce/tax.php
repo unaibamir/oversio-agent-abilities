@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_tax_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_tax_full_definitions' );
 
 /**
  * Contribute the WooCommerce tax definitions to the registry, but only when WooCommerce is
@@ -28,90 +29,115 @@ function aafm_register_wc_tax_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	// Tax rates (W4-WC6).
-	$registry['aafm/wc-list-tax-rates'] = array(
-		'label'        => __( 'List WooCommerce tax rates', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists all WooCommerce tax rates across every tax class, returning id, country, state, rate, name, priority, compound flag, shipping flag, order, and class slug for each. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_tax_rates',
-	);
+	return array_merge( $registry, aafm_wc_tax_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-tax-rate'] = array(
-		'label'        => __( 'Get WooCommerce tax rate', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one WooCommerce tax rate by id, returning id, country, state, rate, name, priority, compound flag, shipping flag, order, and class slug. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_tax_rate',
-	);
+/**
+ * Contribute the WooCommerce tax definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_tax_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_tax_registry_definitions() );
+}
 
-	$registry['aafm/wc-create-tax-rate'] = array(
-		'label'        => __( 'Create WooCommerce tax rate', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a WooCommerce tax rate. Required fields: rate (decimal string). Optional: country, state, name, priority, compound, shipping, order, class slug. Returns the full rate shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_tax_rate',
-	);
+/**
+ * The WooCommerce tax registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_tax_registry_definitions(): array {
+	return array(
+		// Tax rates (W4-WC6).
+		'aafm/wc-list-tax-rates'   => array(
+			'label'        => __( 'List WooCommerce tax rates', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists all WooCommerce tax rates across every tax class, returning id, country, state, rate, name, priority, compound flag, shipping flag, order, and class slug for each. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_tax_rates',
+		),
 
-	$registry['aafm/wc-update-tax-rate'] = array(
-		'label'        => __( 'Update WooCommerce tax rate', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a WooCommerce tax rate by id, changing only the fields you send. An empty body (only id) is a no-op success. Returns the updated rate shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_tax_rate',
-	);
+		'aafm/wc-get-tax-rate'     => array(
+			'label'        => __( 'Get WooCommerce tax rate', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one WooCommerce tax rate by id, returning id, country, state, rate, name, priority, compound flag, shipping flag, order, and class slug. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_tax_rate',
+		),
 
-	$registry['aafm/wc-delete-tax-rate'] = array(
-		'label'        => __( 'Delete WooCommerce tax rate', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently removes a WooCommerce tax rate by id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_tax_rate',
-	);
+		'aafm/wc-create-tax-rate'  => array(
+			'label'        => __( 'Create WooCommerce tax rate', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a WooCommerce tax rate. Required fields: rate (decimal string). Optional: country, state, name, priority, compound, shipping, order, class slug. Returns the full rate shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_tax_rate',
+		),
 
-	// Tax classes (W4-WC6).
-	$registry['aafm/wc-list-tax-classes'] = array(
-		'label'        => __( 'List WooCommerce tax classes', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists all WooCommerce tax classes including the Standard class, returning name and slug for each. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_tax_classes',
-	);
+		'aafm/wc-update-tax-rate'  => array(
+			'label'        => __( 'Update WooCommerce tax rate', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a WooCommerce tax rate by id, changing only the fields you send. An empty body (only id) is a no-op success. Returns the updated rate shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_tax_rate',
+		),
 
-	$registry['aafm/wc-get-tax-class'] = array(
-		'label'        => __( 'Get WooCommerce tax class', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one WooCommerce tax class by slug, returning name and slug. Use slug "standard" for the built-in Standard class. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_tax_class',
-	);
+		'aafm/wc-delete-tax-rate'  => array(
+			'label'        => __( 'Delete WooCommerce tax rate', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently removes a WooCommerce tax rate by id. This cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_tax_rate',
+		),
 
-	$registry['aafm/wc-create-tax-class'] = array(
-		'label'        => __( 'Create WooCommerce tax class', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a WooCommerce tax class from a name, with an optional slug. Returns the new class shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_tax_class',
-	);
+		// Tax classes (W4-WC6).
+		'aafm/wc-list-tax-classes' => array(
+			'label'        => __( 'List WooCommerce tax classes', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists all WooCommerce tax classes including the Standard class, returning name and slug for each. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_tax_classes',
+		),
 
-	$registry['aafm/wc-delete-tax-class'] = array(
-		'label'        => __( 'Delete WooCommerce tax class', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently removes a WooCommerce tax class by slug. This cannot be undone. The Standard class cannot be deleted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_tax_class',
-	);
+		'aafm/wc-get-tax-class'    => array(
+			'label'        => __( 'Get WooCommerce tax class', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one WooCommerce tax class by slug, returning name and slug. Use slug "standard" for the built-in Standard class. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_tax_class',
+		),
 
-	return $registry;
+		'aafm/wc-create-tax-class' => array(
+			'label'        => __( 'Create WooCommerce tax class', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a WooCommerce tax class from a name, with an optional slug. Returns the new class shape. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_tax_class',
+		),
+
+		'aafm/wc-delete-tax-class' => array(
+			'label'        => __( 'Delete WooCommerce tax class', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently removes a WooCommerce tax class by slug. This cannot be undone. The Standard class cannot be deleted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_tax_class',
+		),
+	);
 }
 
 // =============================================================================

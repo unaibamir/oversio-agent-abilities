@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_attributes_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_attributes_full_definitions' );
 
 /**
  * Contribute the WooCommerce attributes definitions to the registry, but only when WooCommerce is
@@ -28,56 +29,81 @@ function aafm_register_wc_attributes_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	// Global product attributes (sub-slice W4-WC1c) — the attribute taxonomy surface reached through
-	// wc_get_attribute_taxonomies() / wc_create_attribute() / wc_update_attribute() / wc_delete_attribute().
-	// Every ability gates on the flat, object-independent manage_woocommerce capability and falls through
-	// to its real permission_callback at discovery, so none needs a server.php case.
-	$registry['aafm/wc-list-product-attributes'] = array(
-		'label'        => __( 'List WooCommerce product attributes', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists all global WooCommerce product attribute taxonomies with their id, name (label), slug, type, sort order, and archive flag. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_product_attributes',
-	);
+	return array_merge( $registry, aafm_wc_attributes_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-product-attribute'] = array(
-		'label'        => __( 'Get WooCommerce product attribute', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one global WooCommerce product attribute taxonomy by id, including its name, slug, type, sort order, and archive flag. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_product_attribute',
-	);
+/**
+ * Contribute the WooCommerce product attribute definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_attributes_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_attributes_registry_definitions() );
+}
 
-	$registry['aafm/wc-create-product-attribute'] = array(
-		'label'        => __( 'Create WooCommerce product attribute', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Creates a new global WooCommerce product attribute taxonomy from a name (required) plus optional slug, type, sort order, and archive flag. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_create_product_attribute',
-	);
+/**
+ * The WooCommerce product attribute registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_attributes_registry_definitions(): array {
+	return array(
+		// Global product attributes (sub-slice W4-WC1c) — the attribute taxonomy surface reached through
+		// wc_get_attribute_taxonomies() / wc_create_attribute() / wc_update_attribute() / wc_delete_attribute().
+		// Every ability gates on the flat, object-independent manage_woocommerce capability and falls through
+		// to its real permission_callback at discovery, so none needs a server.php case.
+		'aafm/wc-list-product-attributes'  => array(
+			'label'        => __( 'List WooCommerce product attributes', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists all global WooCommerce product attribute taxonomies with their id, name (label), slug, type, sort order, and archive flag. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_product_attributes',
+		),
 
-	$registry['aafm/wc-update-product-attribute'] = array(
-		'label'        => __( 'Update WooCommerce product attribute', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a global WooCommerce product attribute taxonomy by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_product_attribute',
-	);
+		'aafm/wc-get-product-attribute'    => array(
+			'label'        => __( 'Get WooCommerce product attribute', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one global WooCommerce product attribute taxonomy by id, including its name, slug, type, sort order, and archive flag. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_product_attribute',
+		),
 
-	$registry['aafm/wc-delete-product-attribute'] = array(
-		'label'        => __( 'Delete WooCommerce product attribute', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Permanently removes a global WooCommerce product attribute taxonomy by id. This deletes the taxonomy and all terms within it and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'destructive',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_delete_product_attribute',
-	);
+		'aafm/wc-create-product-attribute' => array(
+			'label'        => __( 'Create WooCommerce product attribute', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Creates a new global WooCommerce product attribute taxonomy from a name (required) plus optional slug, type, sort order, and archive flag. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_create_product_attribute',
+		),
 
-	return $registry;
+		'aafm/wc-update-product-attribute' => array(
+			'label'        => __( 'Update WooCommerce product attribute', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a global WooCommerce product attribute taxonomy by id, changing only the fields you send. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_product_attribute',
+		),
+
+		'aafm/wc-delete-product-attribute' => array(
+			'label'        => __( 'Delete WooCommerce product attribute', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Permanently removes a global WooCommerce product attribute taxonomy by id. This deletes the taxonomy and all terms within it and cannot be undone. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'destructive',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_delete_product_attribute',
+		),
+	);
 }
 
 // =============================================================================

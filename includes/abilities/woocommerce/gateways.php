@@ -15,6 +15,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_wc_gateways_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_wc_gateways_full_definitions' );
 
 /**
  * Contribute the WooCommerce gateways definitions to the registry, but only when WooCommerce is
@@ -28,34 +29,59 @@ function aafm_register_wc_gateways_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	$registry['aafm/wc-list-payment-gateways'] = array(
-		'label'        => __( 'List WooCommerce payment gateways', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Lists all registered WooCommerce payment gateways with their id, title, and enabled state. Secret or credential settings are never returned. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_list_payment_gateways',
-	);
+	return array_merge( $registry, aafm_wc_gateways_registry_definitions() );
+}
 
-	$registry['aafm/wc-get-payment-gateway'] = array(
-		'label'        => __( 'Get WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads one WooCommerce payment gateway by id, including its title, description, enabled state, order, and non-secret settings. Credential and key fields are always redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_get_payment_gateway',
-	);
+/**
+ * Contribute the WooCommerce payment gateway definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every
+ * WooCommerce ability even when WooCommerce is inactive, for the Integrations tab and the manifest.
+ * The live registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_wc_gateways_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_wc_gateways_registry_definitions() );
+}
 
-	$registry['aafm/wc-update-payment-gateway'] = array(
-		'label'        => __( 'Update WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Updates a WooCommerce payment gateway by id, changing only the fields you send: enabled state, title, description, or display order. Returns the updated gateway shape with secrets redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'woocommerce',
-		'args_builder' => 'aafm_args_wc_update_payment_gateway',
-	);
+/**
+ * The WooCommerce payment gateway registry rows, keyed by ability name. The single source of truth for
+ * these abilities' label, description, group, risk, and args builder — consumed by both the
+ * host-guarded live registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_wc_gateways_registry_definitions(): array {
+	return array(
+		'aafm/wc-list-payment-gateways'  => array(
+			'label'        => __( 'List WooCommerce payment gateways', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Lists all registered WooCommerce payment gateways with their id, title, and enabled state. Secret or credential settings are never returned. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_list_payment_gateways',
+		),
 
-	return $registry;
+		'aafm/wc-get-payment-gateway'    => array(
+			'label'        => __( 'Get WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads one WooCommerce payment gateway by id, including its title, description, enabled state, order, and non-secret settings. Credential and key fields are always redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_get_payment_gateway',
+		),
+
+		'aafm/wc-update-payment-gateway' => array(
+			'label'        => __( 'Update WooCommerce payment gateway', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Updates a WooCommerce payment gateway by id, changing only the fields you send: enabled state, title, description, or display order. Returns the updated gateway shape with secrets redacted. Requires the manage-WooCommerce capability.', 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'woocommerce',
+			'args_builder' => 'aafm_args_wc_update_payment_gateway',
+		),
+	);
 }
 
 // =============================================================================

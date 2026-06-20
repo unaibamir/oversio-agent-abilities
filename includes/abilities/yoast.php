@@ -18,6 +18,7 @@ declare( strict_types=1 );
 defined( 'ABSPATH' ) || exit;
 
 add_filter( 'aafm_abilities_registry', 'aafm_register_yoast_definitions' );
+add_filter( 'aafm_abilities_registry_integrations', 'aafm_register_yoast_full_definitions' );
 
 /**
  * Contribute the Yoast definitions to the registry, but only when Yoast is active. Host inactive:
@@ -31,32 +32,57 @@ function aafm_register_yoast_definitions( array $registry ): array {
 		return $registry; // Host inactive: contribute nothing.
 	}
 
-	$registry['aafm/yoast-get-post']    = array(
-		'label'        => __( 'Get post SEO (Yoast)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Reads a post's Yoast SEO fields (title, description, focus keyword, canonical, social, and the three robots directives) from its _yoast_wpseo_* post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'yoast',
-		'args_builder' => 'aafm_args_yoast_get_post',
-	);
-	$registry['aafm/yoast-update-post'] = array(
-		'label'        => __( 'Update post SEO (Yoast)', 'agent-abilities-for-mcp' ),
-		'description'  => __( "Writes a post's Yoast SEO fields to its _yoast_wpseo_* post meta. URL fields are sanitized as URLs and the robots directives are validated. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
-		'group'        => 'writes',
-		'risk'         => 'write',
-		'subject'      => 'yoast',
-		'args_builder' => 'aafm_args_yoast_update_post',
-	);
-	$registry['aafm/yoast-get-head']    = array(
-		'label'        => __( 'Get post SEO head (Yoast)', 'agent-abilities-for-mcp' ),
-		'description'  => __( 'Reads the rendered SEO head markup for a post from Yoast, best-effort (empty when no head API is available). Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
-		'group'        => 'reads',
-		'risk'         => 'read',
-		'subject'      => 'yoast',
-		'args_builder' => 'aafm_args_yoast_get_head',
-	);
+	return array_merge( $registry, aafm_yoast_registry_definitions() );
+}
 
-	return $registry;
+/**
+ * Contribute the Yoast definitions to the guard-independent full registry view.
+ *
+ * Unguarded by design: the full view (aafm_get_abilities_registry_full()) enumerates every Yoast
+ * ability even when Yoast is inactive, for the Integrations tab and the manifest. The live
+ * registration path never reads this filter, so an inactive host still exposes zero tools.
+ *
+ * @param array<string,array<string,mixed>> $registry Integration rows accumulator.
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_register_yoast_full_definitions( array $registry ): array {
+	return array_merge( $registry, aafm_yoast_registry_definitions() );
+}
+
+/**
+ * The Yoast registry rows, keyed by ability name. The single source of truth for these abilities'
+ * label, description, group, risk, and args builder — consumed by both the host-guarded live
+ * registration callback and the unguarded full-view callback.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function aafm_yoast_registry_definitions(): array {
+	return array(
+		'aafm/yoast-get-post'    => array(
+			'label'        => __( 'Get post SEO (Yoast)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Reads a post's Yoast SEO fields (title, description, focus keyword, canonical, social, and the three robots directives) from its _yoast_wpseo_* post meta. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'yoast',
+			'args_builder' => 'aafm_args_yoast_get_post',
+		),
+		'aafm/yoast-update-post' => array(
+			'label'        => __( 'Update post SEO (Yoast)', 'agent-abilities-for-mcp' ),
+			'description'  => __( "Writes a post's Yoast SEO fields to its _yoast_wpseo_* post meta. URL fields are sanitized as URLs and the robots directives are validated. Requires edit access to that post.", 'agent-abilities-for-mcp' ),
+			'group'        => 'writes',
+			'risk'         => 'write',
+			'subject'      => 'yoast',
+			'args_builder' => 'aafm_args_yoast_update_post',
+		),
+		'aafm/yoast-get-head'    => array(
+			'label'        => __( 'Get post SEO head (Yoast)', 'agent-abilities-for-mcp' ),
+			'description'  => __( 'Reads the rendered SEO head markup for a post from Yoast, best-effort (empty when no head API is available). Requires the edit-posts capability and edit access to that post.', 'agent-abilities-for-mcp' ),
+			'group'        => 'reads',
+			'risk'         => 'read',
+			'subject'      => 'yoast',
+			'args_builder' => 'aafm_args_yoast_get_head',
+		),
+	);
 }
 
 /**
