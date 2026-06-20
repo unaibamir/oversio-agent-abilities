@@ -616,11 +616,27 @@ function aafm_integration_manifest(): array {
  * @return int
  */
 function aafm_available_ability_count(): int {
-	$manifest       = aafm_integration_manifest();
-	$manifest_slugs = array_keys( $manifest );
+	$manifest_total = 0;
+	foreach ( aafm_integration_manifest() as $counts ) {
+		$manifest_total += (int) $counts['total'];
+	}
 
-	// Core = registry entries whose subject is not an integration slug. The registry always holds
-	// every core ability regardless of host activation, so this is stable.
+	return aafm_core_ability_count() + $manifest_total;
+}
+
+/**
+ * The number of core (non-integration) abilities in the catalog.
+ *
+ * Core = registry entries whose subject is not an integration slug. The registry always holds
+ * every core ability regardless of host activation, so this is stable and host-independent. This
+ * is the honest "core abilities" figure the readme advertises, and the readme tripwire asserts
+ * against it so the number can never silently drift.
+ *
+ * @return int
+ */
+function aafm_core_ability_count(): int {
+	$manifest_slugs = array_keys( aafm_integration_manifest() );
+
 	$core     = 0;
 	$registry = aafm_get_abilities_registry();
 	foreach ( $registry as $meta ) {
@@ -629,10 +645,5 @@ function aafm_available_ability_count(): int {
 		}
 	}
 
-	$manifest_total = 0;
-	foreach ( $manifest as $counts ) {
-		$manifest_total += (int) $counts['total'];
-	}
-
-	return $core + $manifest_total;
+	return $core;
 }
