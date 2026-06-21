@@ -690,32 +690,29 @@ function aafm_format_admin_datetime( string $utc ): string {
 /**
  * Render the Connection tab.
  *
+ * Layout (OAuth-first):
+ *   1. Endpoint card — single canonical endpoint display.
+ *   2. OAuth card (Recommended) — guided browser-approval flow when OAuth is enabled;
+ *      a short notice when it is turned off.
+ *   3. App-Password fallback — the existing three-step wizard wrapped in a <details>
+ *      element, collapsed by default when OAuth is on, open when OAuth is off.
+ *
  * @return void
  */
 function aafm_render_connection_tab(): void {
-	$url = aafm_endpoint_url();
+	$url        = aafm_endpoint_url();
+	$oauth_on   = aafm_oauth_enabled();
+	$is_local   = aafm_site_is_local();
+	$kses_code  = array( 'code' => array() );
 
 	echo '<div class="aafm-connection">';
 
-	// ---- OAuth card (additive, gated; rendered first) ----
-	// When OAuth is on this card explains the paste-your-URL flow, but it no longer repeats the
-	// endpoint field — the canonical endpoint card below is the single place the URL is shown
-	// (the same field the Help tab and Dashboard reference), so it is never rendered twice.
-	if ( aafm_oauth_enabled() ) {
-		echo '<section class="aafm-card aafm-card-pad aafm-oauth-card">';
-		echo '<h2>' . esc_html__( 'Connect with OAuth', 'agent-abilities-for-mcp' ) . '</h2>';
-		echo '<p class="sub">' . esc_html__( 'Paste your site URL into your agent (the MCP endpoint is shown below). Your agent gets access through a browser approval, so there is no secret to copy.', 'agent-abilities-for-mcp' ) . '</p>';
-		aafm_render_oauth_management();
-		echo '</section>';
-	}
-
-	// ---- Endpoint card (the single canonical endpoint display) ----
+	// ---- 1. Endpoint card (the single canonical endpoint display) ----
 	echo '<section class="aafm-card aafm-card-pad aafm-endpoint-card">';
 	echo '<div class="aafm-stat-label">' . esc_html__( 'MCP endpoint', 'agent-abilities-for-mcp' ) . '</div>';
 	echo '<div class="aafm-field-mono">';
 	printf( '<span class="aafm-endpoint">%s</span>', esc_html( $url ) );
 	printf(
-		// aria-label disambiguates this from the snippet copy buttons for screen-reader users.
 		'<button type="button" class="aafm-btn aafm-btn-secondary aafm-copy" data-copy="%1$s" aria-label="%4$s">%2$s<span class="aafm-copy-label">%3$s</span></button>',
 		esc_attr( $url ),
 		aafm_icon( 'copy' ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
@@ -725,9 +722,140 @@ function aafm_render_connection_tab(): void {
 	echo '</div>';
 	echo '</section>';
 
+	// ---- 2. OAuth card ----
+	echo '<section class="aafm-card aafm-card-pad aafm-oauth-card">';
+	echo '<div class="aafm-oauth-card-head">';
+	echo '<h2>' . esc_html__( 'Connect with OAuth', 'agent-abilities-for-mcp' ) . '</h2>';
+	echo '<span class="aafm-pill aafm-pill-info aafm-recommended-pill">' . esc_html__( 'Recommended', 'agent-abilities-for-mcp' ) . '</span>';
+	echo '</div>';
+
+	if ( $oauth_on ) {
+		echo '<p class="sub">' . esc_html__( 'Paste your site\'s MCP endpoint URL into your agent. It opens a browser tab for approval — no secret to copy or store.', 'agent-abilities-for-mcp' ) . '</p>';
+
+		// OAuth client picker: OS tabs + client grid + per-client instructions and bridge snippet.
+		echo '<div class="aafm-connect-controls aafm-oauth-picker">';
+
+		echo '<div class="aafm-connect-os">';
+		echo '<div class="aafm-stat-label">' . esc_html__( 'Your operating system', 'agent-abilities-for-mcp' ) . '</div>';
+		echo '<div class="aafm-seg aafm-os-tabs" role="tablist">';
+		printf(
+			'<button type="button" class="aafm-os-tab is-active on" data-os="unix" role="tab" aria-selected="true">%s</button>',
+			esc_html__( 'macOS / Linux', 'agent-abilities-for-mcp' )
+		);
+		printf(
+			'<button type="button" class="aafm-os-tab" data-os="windows" role="tab" aria-selected="false">%s</button>',
+			esc_html__( 'Windows', 'agent-abilities-for-mcp' )
+		);
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div class="aafm-connect-client">';
+		echo '<div class="aafm-stat-label">' . esc_html__( 'Your client', 'agent-abilities-for-mcp' ) . '</div>';
+		echo '<div class="aafm-client-grid" id="aafm-oauth-clients">';
+		$first = true;
+		foreach ( aafm_quickstart_clients() as $slug => $label ) {
+			printf(
+				'<div class="aafm-client%1$s" data-client="%2$s"><span class="ci">%3$s</span>%4$s</div>',
+				$first ? ' on' : '',
+				esc_attr( $slug ),
+				aafm_icon( 'client-' . $slug ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
+				esc_html( $label )
+			);
+			$first = false;
+		}
+		echo '</div>';
+		echo '</div>';
+
+		echo '</div>'; // .aafm-oauth-picker
+
+		// Per-client OAuth instructions + bridge snippet: hidden data cards the JS swaps in.
+		// Native-mode clients lead with the URL paste note; bridge-mode clients lead with the snippet.
+		echo '<div class="aafm-oauth-panels">';
+		foreach ( aafm_quickstart_clients() as $slug => $label ) {
+			$mode = aafm_oauth_client_mode( $slug );
+			$note = aafm_oauth_client_note( $slug );
+
+			$unix_oauth    = aafm_oauth_client_snippet( $slug, 'unix' );
+			$windows_oauth = aafm_oauth_client_snippet( $slug, 'windows' );
+
+			printf(
+				'<div class="aafm-oauth-panel" data-client="%s"%s>',
+				esc_attr( $slug ),
+				'claude-desktop' === $slug ? '' : ' hidden'
+			);
+
+			if ( 'native' === $mode ) {
+				// Native: lead with URL-paste instructions, offer bridge as secondary.
+				if ( '' !== $note ) {
+					echo '<p class="aafm-oauth-note">' . esc_html( $note ) . '</p>';
+				}
+				// Local cert notice for native-mode clients when the site is local.
+				if ( $is_local ) {
+					$local_note = __( 'Your site looks local. If the client throws a certificate error, use the bridge snippet below and point NODE_EXTRA_CA_CERTS at your mkcert root CA.', 'agent-abilities-for-mcp' );
+					echo '<p class="aafm-oauth-local-note">' . esc_html( $local_note ) . '</p>';
+				}
+				echo '<details class="aafm-bridge-alt">';
+				echo '<summary>' . esc_html__( 'Need a local server instead? Use the mcp-remote bridge.', 'agent-abilities-for-mcp' ) . '</summary>';
+			} else {
+				// Bridge-mode clients: lead straight with the snippet.
+				if ( '' !== $note ) {
+					echo '<p class="aafm-oauth-note">' . esc_html( $note ) . '</p>';
+				}
+				echo '<div class="aafm-bridge-alt">';
+			}
+
+			// Bridge snippet (shown for both modes; inside <details> for native clients).
+			echo '<div class="aafm-codeblock aafm-snippet" data-os="unix">';
+			printf( '<pre>%s</pre>', esc_html( $unix_oauth ) );
+			printf(
+				'<button type="button" class="aafm-btn aafm-btn-secondary aafm-btn-sm copy-fab aafm-copy" data-copy="%1$s">%2$s<span class="aafm-copy-label">%3$s</span></button>',
+				esc_attr( $unix_oauth ),
+				aafm_icon( 'copy' ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
+				esc_html__( 'Copy', 'agent-abilities-for-mcp' )
+			);
+			echo '</div>';
+
+			echo '<div class="aafm-codeblock aafm-snippet" data-os="windows" hidden>';
+			printf( '<pre>%s</pre>', esc_html( $windows_oauth ) );
+			printf(
+				'<button type="button" class="aafm-btn aafm-btn-secondary aafm-btn-sm copy-fab aafm-copy" data-copy="%1$s">%2$s<span class="aafm-copy-label">%3$s</span></button>',
+				esc_attr( $windows_oauth ),
+				aafm_icon( 'copy' ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
+				esc_html__( 'Copy', 'agent-abilities-for-mcp' )
+			);
+			echo '</div>';
+
+			if ( 'native' === $mode ) {
+				echo '</details>'; // .aafm-bridge-alt
+			} else {
+				echo '</div>'; // .aafm-bridge-alt
+			}
+
+			echo '</div>'; // .aafm-oauth-panel
+		}
+		echo '</div>'; // .aafm-oauth-panels
+
+		// OAuth management tables (registered clients + active grants).
+		aafm_render_oauth_management();
+
+	} else {
+		// OAuth is off — short notice instead of the picker.
+		echo '<p class="sub">' . esc_html__(
+			'OAuth is turned off. Enable it under Settings to use the browser-approval flow, or connect with an Application Password below.',
+			'agent-abilities-for-mcp'
+		) . '</p>';
+	}
+
+	echo '</section>';
+
+	// ---- 3. App-Password fallback: existing three-step wizard inside <details> ----
+	// Open by default when OAuth is off so the wizard is immediately visible; collapsed when
+	// OAuth is on because most operators will use the OAuth path above.
+	$open_attr = $oauth_on ? '' : ' open';
+	printf( '<details class="aafm-app-password-fallback"%s>', esc_attr( $open_attr ) );
+	echo '<summary>' . esc_html__( 'OAuth not working? Connect with an Application Password', 'agent-abilities-for-mcp' ) . '</summary>';
+
 	// ---- Step 1: create a dedicated agent user ----
-	// The default agent login the snippets point at. If it already exists, render step 1 in a
-	// completed "done" state with an edit link rather than a create form that can only error.
 	$default_agent_login = 'mcp-agent';
 	$existing_agent_id   = (int) username_exists( $default_agent_login );
 	$agent_exists        = $existing_agent_id > 0;
@@ -771,7 +899,7 @@ function aafm_render_connection_tab(): void {
 	echo '</div></div>';
 	echo '</div>';
 
-	// ---- Step 2: connect your client ----
+	// ---- Step 2: connect your client (App Password path) ----
 	echo '<div class="aafm-step aafm-conn-step">';
 	echo '<div class="aafm-step-head"><span class="aafm-sidx">2</span><div>';
 	echo '<h2>' . esc_html__( 'Connect your client', 'agent-abilities-for-mcp' ) . '</h2>';
@@ -844,12 +972,10 @@ function aafm_render_connection_tab(): void {
 	echo '</div>';
 
 	// Windows / certificate notices.
-	$kses_code = array( 'code' => array() );
-
 	$windows_note = __( 'On Windows the launcher is wrapped in <code>cmd /c</code> so the <code>npx</code> command resolves — use the Windows tab above.', 'agent-abilities-for-mcp' );
 
 	$cert_note = __( 'If your site uses a self-signed or locally-trusted certificate (DDEV, Local, Valet), Node rejects it by default; add <code>"NODE_TLS_REJECT_UNAUTHORIZED": "0"</code> to <code>env</code> for local testing only, never on a production site.', 'agent-abilities-for-mcp' );
-	if ( aafm_site_is_local() ) {
+	if ( $is_local ) {
 		$cert_note .= ' ' . __( 'This site looks local, so that line is already included above.', 'agent-abilities-for-mcp' );
 	}
 
