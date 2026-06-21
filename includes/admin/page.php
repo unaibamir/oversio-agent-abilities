@@ -397,6 +397,53 @@ function aafm_sanitize_denied_user_meta_keys_input( array $posted ): array {
 }
 
 /**
+ * Parse the exposed-term-meta textarea into a clean list.
+ *
+ * Mirrors aafm_sanitize_exposed_user_meta_keys_input() but term-scoped (the term/post-meta
+ * hard-block applies). KEEPS the `*` wildcard, splits on newlines, trims, sanitize_text_field
+ * (never sanitize_key, which would strip `*`), drops empties and any hard-blocked key
+ * (best-effort — aafm_allowed_term_meta_keys() re-floors anyway), and de-duplicates.
+ *
+ * @param array<string,mixed> $posted Raw $_POST payload (slashes handled by the caller).
+ * @return list<string>
+ */
+function aafm_sanitize_exposed_term_meta_keys_input( array $posted ): array {
+	$raw  = isset( $posted['aafm_exposed_term_meta_keys'] ) ? (string) $posted['aafm_exposed_term_meta_keys'] : '';
+	$keys = array();
+	foreach ( (array) preg_split( '/\r\n|\r|\n/', $raw ) as $line ) {
+		$key = sanitize_text_field( trim( (string) $line ) );
+		if ( '' === $key || ( '*' !== $key && aafm_hard_blocked_meta_key( $key ) ) ) {
+			continue;
+		}
+		$keys[] = $key;
+	}
+	return array_values( array_unique( $keys ) );
+}
+
+/**
+ * Parse the denied-term-meta textarea into a clean list.
+ *
+ * Like aafm_sanitize_denied_user_meta_keys_input() but term-scoped: KEEPS `*` (deny-all) and
+ * does NOT strip hard-blocked keys. Splits on newlines, trims, sanitize_text_field, drops
+ * empties, de-duplicates.
+ *
+ * @param array<string,mixed> $posted Raw $_POST payload (slashes handled by the caller).
+ * @return list<string>
+ */
+function aafm_sanitize_denied_term_meta_keys_input( array $posted ): array {
+	$raw  = isset( $posted['aafm_denied_term_meta_keys'] ) ? (string) $posted['aafm_denied_term_meta_keys'] : '';
+	$keys = array();
+	foreach ( (array) preg_split( '/\r\n|\r|\n/', $raw ) as $line ) {
+		$key = sanitize_text_field( trim( (string) $line ) );
+		if ( '' === $key ) {
+			continue;
+		}
+		$keys[] = $key;
+	}
+	return array_values( array_unique( $keys ) );
+}
+
+/**
  * Sample up to 50 distinct, non-hard-blocked meta keys present on posts of the allowlisted
  * types — the "Detected on your exposed types" chip source for the selector.
  *
@@ -477,6 +524,29 @@ function aafm_ajax_save_user_meta_keys(): void {
 		array(
 			'exposed_user_meta_keys' => $exposed,
 			'denied_user_meta_keys'  => $denied,
+		)
+	);
+}
+
+/**
+ * AJAX: save BOTH the exposed and denied term-meta lists in one request.
+ *
+ * @return void
+ */
+function aafm_ajax_save_term_meta_keys(): void {
+	check_ajax_referer( 'aafm_admin', 'nonce' );
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'agent-abilities-for-mcp' ) ), 403 );
+	}
+	$posted  = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+	$exposed = aafm_sanitize_exposed_term_meta_keys_input( $posted );
+	$denied  = aafm_sanitize_denied_term_meta_keys_input( $posted );
+	update_option( 'aafm_exposed_term_meta_keys', $exposed );
+	update_option( 'aafm_denied_term_meta_keys', $denied );
+	wp_send_json_success(
+		array(
+			'exposed_term_meta_keys' => $exposed,
+			'denied_term_meta_keys'  => $denied,
 		)
 	);
 }
@@ -988,6 +1058,10 @@ function aafm_render_abilities_tab(): void {
 			aafm_render_user_meta_keys_selector();
 		}
 
+		if ( 'taxonomies' === $slug ) {
+			aafm_render_term_meta_keys_selector();
+		}
+
 		echo '</div>';
 	}
 
@@ -1295,6 +1369,48 @@ function aafm_render_user_meta_keys_selector(): void {
 	echo '<p class="description" id="' . esc_attr( 'aafm-denied-user-meta-keys-hint' ) . '">' . esc_html__( 'Denied keys win over exposed, even with *. One per line.', 'agent-abilities-for-mcp' ) . '</p>';
 
 	echo '<p><button type="button" id="aafm-user-meta-keys-save" class="aafm-btn aafm-btn-primary">' . esc_html__( 'Save user meta keys', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-user-meta-keys-status" aria-live="polite"></span></p>';
+	echo '</div>';
+}
+
+/**
+ * Render the exposed/denied term-meta selector for the Taxonomies & Terms sub-tab.
+ *
+ * Mirrors aafm_render_user_meta_keys_selector() but for term meta: a plain <div> (never a
+ * nested <form>) with two textareas (exposed above denied) and a type="button" save, so the
+ * one outer abilities <form> is never closed early. The deny list always wins over the exposed
+ * list, even when the exposed list uses *.
+ *
+ * @return void
+ */
+function aafm_render_term_meta_keys_selector(): void {
+	$exposed = aafm_allowed_term_meta_keys();
+	$denied  = aafm_denied_term_meta_keys();
+
+	echo '<div id="aafm-term-meta-keys-form" class="aafm-card aafm-card-pad aafm-meta-keys">';
+	echo '<h3 id="' . esc_attr( 'aafm-exposed-term-meta-keys-label' ) . '">' . esc_html__( 'Exposed term meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<p class="description">' . esc_html__( 'These are the only term meta keys an agent can read or write on a term it can already edit. Denied keys always win, even when the exposed list uses *.', 'agent-abilities-for-mcp' ) . '</p>';
+	aafm_render_notice( 'warning', __( 'Term meta can hold private data. Only expose keys whose values are safe for an agent to read and write. Protected keys (anything starting with an underscore) and authentication keys are blocked for good and cannot be added.', 'agent-abilities-for-mcp' ) );
+
+	printf(
+		'<textarea name="aafm_exposed_term_meta_keys" id="%1$s" rows="6" class="large-text code" aria-labelledby="%2$s" aria-describedby="%3$s">%4$s</textarea>',
+		esc_attr( 'aafm-exposed-term-meta-keys' ),
+		esc_attr( 'aafm-exposed-term-meta-keys-label' ),
+		esc_attr( 'aafm-exposed-term-meta-keys-hint' ),
+		esc_textarea( implode( "\n", $exposed ) )
+	);
+	echo '<p class="description" id="' . esc_attr( 'aafm-exposed-term-meta-keys-hint' ) . '">' . esc_html__( 'One key per line. * matches any key.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	echo '<h3 id="' . esc_attr( 'aafm-denied-term-meta-keys-label' ) . '">' . esc_html__( 'Denied term meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
+	printf(
+		'<textarea name="aafm_denied_term_meta_keys" id="%1$s" rows="4" class="large-text code" aria-labelledby="%2$s" aria-describedby="%3$s">%4$s</textarea>',
+		esc_attr( 'aafm-denied-term-meta-keys' ),
+		esc_attr( 'aafm-denied-term-meta-keys-label' ),
+		esc_attr( 'aafm-denied-term-meta-keys-hint' ),
+		esc_textarea( implode( "\n", $denied ) )
+	);
+	echo '<p class="description" id="' . esc_attr( 'aafm-denied-term-meta-keys-hint' ) . '">' . esc_html__( 'Denied keys win over exposed, even with *. One per line.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	echo '<p><button type="button" id="aafm-term-meta-keys-save" class="aafm-btn aafm-btn-primary">' . esc_html__( 'Save term meta keys', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-term-meta-keys-status" aria-live="polite"></span></p>';
 	echo '</div>';
 }
 

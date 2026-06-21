@@ -93,6 +93,25 @@ final class MetaKeysSaveTest extends TestCase {
 	}
 
 	/**
+	 * The Taxonomies sub-tab renders its own exposed + denied term-meta textareas, mirroring
+	 * the Content pair, and never opens a nested form.
+	 */
+	public function test_taxonomies_selector_renders_exposed_and_deny_textareas(): void {
+		ob_start();
+		aafm_render_term_meta_keys_selector();
+		$html = ob_get_clean();
+
+		$exposed_pos = strpos( $html, 'name="aafm_exposed_term_meta_keys"' );
+		$deny_pos    = strpos( $html, 'name="aafm_denied_term_meta_keys"' );
+
+		$this->assertNotFalse( $exposed_pos, 'Exposed textarea must render.' );
+		$this->assertNotFalse( $deny_pos, 'Deny textarea must render.' );
+		$this->assertLessThan( $deny_pos, $exposed_pos, 'Exposed must render above Deny.' );
+		$this->assertStringContainsString( 'aafm-btn aafm-btn-primary', $html );
+		$this->assertSame( 0, substr_count( $html, '<form' ) );
+	}
+
+	/**
 	 * Assert a textarea has non-empty aria-labelledby + aria-describedby, and that each
 	 * referenced id is actually present as an id="" in the markup (so the accessible name and
 	 * description resolve). WCAG 1.3.1 / 3.3.2 / 4.1.2.
@@ -152,8 +171,21 @@ final class MetaKeysSaveTest extends TestCase {
 	}
 
 	/**
-	 * The full abilities tab wires the Users selector into the users panel, still inside the
-	 * single outer form (no second form opened by either meta selector).
+	 * Both term meta-key textareas expose a programmatic label + description, resolving to ids
+	 * that exist in the markup.
+	 */
+	public function test_taxonomies_selector_textareas_are_labelled_for_assistive_tech(): void {
+		ob_start();
+		aafm_render_term_meta_keys_selector();
+		$html = ob_get_clean();
+
+		$this->assert_textarea_is_labelled( $html, 'aafm_exposed_term_meta_keys' );
+		$this->assert_textarea_is_labelled( $html, 'aafm_denied_term_meta_keys' );
+	}
+
+	/**
+	 * The full abilities tab wires the Users AND Taxonomies selectors into their panels, still
+	 * inside the single outer form (no second form opened by any meta selector).
 	 */
 	public function test_abilities_tab_wires_users_selector_in_single_form(): void {
 		ob_start();
@@ -164,5 +196,7 @@ final class MetaKeysSaveTest extends TestCase {
 		$this->assertStringContainsString( 'name="aafm_exposed_user_meta_keys"', $html );
 		$this->assertStringContainsString( 'name="aafm_denied_user_meta_keys"', $html );
 		$this->assertStringContainsString( 'name="aafm_deny_meta_keys"', $html );
+		$this->assertStringContainsString( 'name="aafm_exposed_term_meta_keys"', $html );
+		$this->assertStringContainsString( 'name="aafm_denied_term_meta_keys"', $html );
 	}
 }

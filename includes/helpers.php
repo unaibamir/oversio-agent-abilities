@@ -292,40 +292,108 @@ function aafm_sanitize_meta_value( string $key, $value ) {
 }
 
 /**
- * Default-deny term-meta allowlist. Empty by default — opt-in via the
- * aafm_allowed_term_meta_keys filter (Wave-4 SEO integrations populate it). Hard-blocked
- * keys are stripped AFTER the filter, so a rogue filter can never expose a protected key.
- * Mirrors aafm_allowed_meta_keys() but is term-scoped and filter-only (no option).
+ * Default-deny term-meta allowlist (option-backed, with the legacy filter layered on as a
+ * UNION). Empty by default — opt-in via the aafm_exposed_term_meta_keys option (admin textarea)
+ * and/or the aafm_allowed_term_meta_keys filter (Wave-4 SEO integrations populate the filter).
+ *
+ * Merge order (must not change): option base -> filter UNION -> re-floor the merged set against
+ * the post-meta hard-block (shared) -> strip the `*` sentinel -> de-dupe. The option base is
+ * passed as the filter's default, then array_merge'd back, so the filter can only ADD keys — a
+ * legacy or malicious filter that returns [] yields option ∪ [] = option and can never shrink an
+ * admin's exposed list, and a filter that adds a protected/auth key is a no-op (re-floored after).
  *
  * @return list<string>
  */
 function aafm_allowed_term_meta_keys(): array {
-	/**
-	 * Filters the term-meta keys exposed to AI agents. Re-floored against the hard-block
-	 * after this filter, so adding a blocked key is a no-op.
-	 *
-	 * @param list<string> $keys Allowlisted term-meta keys (empty by default).
-	 */
-	$filtered = (array) apply_filters( 'aafm_allowed_term_meta_keys', array() );
+	$base = get_option( 'aafm_exposed_term_meta_keys', array() );
+	$base = is_array( $base ) ? array_map( 'strval', $base ) : array();
 
+	/**
+	 * Filters the term-meta keys exposed to AI agents. UNIONed with the option base (never
+	 * replaces it) and re-floored against the hard-block after, so it can only ADD keys and
+	 * can never re-admit a protected/auth key.
+	 *
+	 * @param array<string> $base Option-backed exposed term-meta keys.
+	 */
+	$filtered = (array) apply_filters( 'aafm_allowed_term_meta_keys', $base );
+	$merged   = array_merge( $base, array_map( 'strval', $filtered ) );
+
+	// '*' is a wildcard SENTINEL, never a literal key — strip it here (surfaced separately via
+	// aafm_term_meta_allow_has_star()), and re-floor the merged set against the hard-block.
 	return array_values(
 		array_unique(
-			array_filter( array_map( 'strval', $filtered ), static fn( $k ) => '' !== $k && ! aafm_hard_blocked_meta_key( $k ) )
+			array_filter( $merged, static fn( $k ) => '' !== $k && '*' !== $k && ! aafm_hard_blocked_meta_key( $k ) )
 		)
 	);
 }
 
 /**
- * Validate a term-meta key: must be allowlisted AND not hard-blocked. Reuses the
- * post-agnostic hard-block floor (aafm_hard_blocked_meta_key). One generic error for both
- * failure modes so a caller cannot distinguish "blocked" from "not allowlisted".
+ * The list of explicitly DENIED term-meta keys. Deny always beats exposed (including exposed-`*`).
+ *
+ * Read from the aafm_denied_term_meta_keys option, string-coerced, with empties and the `*`
+ * sentinel dropped (the star is surfaced separately via aafm_term_meta_deny_has_star()). Does
+ * NOT re-floor against the hard-block: denying an already-blocked key is a harmless no-op.
+ *
+ * @return list<string>
+ */
+function aafm_denied_term_meta_keys(): array {
+	$stored = get_option( 'aafm_denied_term_meta_keys', array() );
+	$stored = is_array( $stored ) ? array_map( 'strval', $stored ) : array();
+
+	return array_values(
+		array_unique(
+			array_filter( $stored, static fn( $k ) => '' !== $k && '*' !== $k )
+		)
+	);
+}
+
+/**
+ * Whether the term-meta EXPOSED option carries the `*` wildcard (allow-all-but-blocked-or-denied).
+ *
+ * Reads the RAW option, not the filtered getter (the getter strips the sentinel).
+ *
+ * @return bool
+ */
+function aafm_term_meta_allow_has_star(): bool {
+	$raw = get_option( 'aafm_exposed_term_meta_keys', array() );
+	return is_array( $raw ) && in_array( '*', array_map( 'strval', $raw ), true );
+}
+
+/**
+ * Whether the term-meta DENY option carries the `*` wildcard (deny-all kill switch).
+ *
+ * Reads the RAW option, not the filtered getter (the getter strips the sentinel).
+ *
+ * @return bool
+ */
+function aafm_term_meta_deny_has_star(): bool {
+	$raw = get_option( 'aafm_denied_term_meta_keys', array() );
+	return is_array( $raw ) && in_array( '*', array_map( 'strval', $raw ), true );
+}
+
+/**
+ * Validate a term-meta key against the absolute precedence chain: hard-block -> deny -> allow/`*`.
+ *
+ * Mirrors aafm_validate_meta_key() but term-scoped (reuses the post-agnostic hard-block floor,
+ * aafm_hard_blocked_meta_key). A key is exposed only when ALL hold (hard-block computed FIRST so
+ * every reject is the same generic error — no oracle distinguishing the reject reason):
+ *   - it is non-empty and NOT hard-blocked (floor 1, absolute — survives `*` and explicit allow);
+ *   - the deny-`*` kill switch is off AND the key is not in the explicit deny list (floor 2);
+ *   - the allow-`*` wildcard is set OR the key is in the explicit allow list (floor 3).
  *
  * @param string $key Requested term-meta key.
  * @return string|WP_Error
  */
 function aafm_validate_term_meta_key( string $key ) {
-	$key = trim( (string) $key );
-	if ( '' === $key || aafm_hard_blocked_meta_key( $key ) || ! in_array( $key, aafm_allowed_term_meta_keys(), true ) ) {
+	$key     = trim( (string) $key );
+	$exposed = '' !== $key
+		&& '*' !== $key                                              // floor 1: the sentinel is never addressable.
+		&& ! aafm_hard_blocked_meta_key( $key )                      // floor 1 (absolute).
+		&& ! aafm_term_meta_deny_has_star()                          // floor 2: deny-all kill switch.
+		&& ! in_array( $key, aafm_denied_term_meta_keys(), true )    // floor 2: explicit deny.
+		&& ( aafm_term_meta_allow_has_star() || in_array( $key, aafm_allowed_term_meta_keys(), true ) ); // floor 3.
+
+	if ( ! $exposed ) {
 		return new WP_Error( 'aafm_term_meta_key_not_allowed', __( 'This term meta key is not available to agents.', 'agent-abilities-for-mcp' ) );
 	}
 	return $key;

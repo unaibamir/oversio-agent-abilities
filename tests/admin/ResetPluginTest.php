@@ -33,6 +33,8 @@ final class ResetPluginTest extends TestCase {
 				'aafm_denied_meta_keys',
 				'aafm_exposed_user_meta_keys',
 				'aafm_denied_user_meta_keys',
+				'aafm_exposed_term_meta_keys',
+				'aafm_denied_term_meta_keys',
 			) as $expected
 		) {
 			$this->assertContains( $expected, $names );
@@ -52,12 +54,16 @@ final class ResetPluginTest extends TestCase {
 		update_option( 'aafm_denied_meta_keys', array( 'secret_key' ) );
 		update_option( 'aafm_exposed_user_meta_keys', array( 'profile_color' ) );
 		update_option( 'aafm_denied_user_meta_keys', array( 'private_note' ) );
+		update_option( 'aafm_exposed_term_meta_keys', array( 'seo_title' ) );
+		update_option( 'aafm_denied_term_meta_keys', array( 'term_secret' ) );
 
 		aafm_reset_plugin();
 
 		$this->assertFalse( get_option( 'aafm_denied_meta_keys', false ) );
 		$this->assertFalse( get_option( 'aafm_exposed_user_meta_keys', false ) );
 		$this->assertFalse( get_option( 'aafm_denied_user_meta_keys', false ) );
+		$this->assertFalse( get_option( 'aafm_exposed_term_meta_keys', false ) );
+		$this->assertFalse( get_option( 'aafm_denied_term_meta_keys', false ) );
 	}
 
 	/**
