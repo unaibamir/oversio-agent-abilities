@@ -217,20 +217,31 @@ function aafm_oauth_list_clients(): array {
 		return array();
 	}
 
+	// One grouped pass over the tokens table builds a client_id => active-token-count map, so
+	// the listing never runs a COUNT per client (an N+1 that scanned the token table once per row).
+	$suppressed = $wpdb->suppress_errors();
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$count_rows = $wpdb->get_results(
+		$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is an internal constant; the value is bound.
+			"SELECT client_id, COUNT(*) AS active_tokens FROM {$tokens_table} WHERE is_active = 1 AND ( expires_at IS NULL OR expires_at > %s ) GROUP BY client_id",
+			$now
+		),
+		ARRAY_A
+	);
+	$wpdb->suppress_errors( $suppressed );
+
+	$counts = array();
+	if ( is_array( $count_rows ) ) {
+		foreach ( $count_rows as $count_row ) {
+			$counts[ (string) $count_row['client_id'] ] = (int) $count_row['active_tokens'];
+		}
+	}
+
 	$out = array();
 	foreach ( $rows as $row ) {
 		$decoded = json_decode( (string) $row['redirect_uris'], true );
 		$uris    = is_array( $decoded ) ? array_values( array_filter( $decoded, 'is_string' ) ) : array();
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$active_tokens = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is an internal constant.
-				"SELECT COUNT(*) FROM {$tokens_table} WHERE client_id = %s AND is_active = 1 AND ( expires_at IS NULL OR expires_at > %s )",
-				(string) $row['client_id'],
-				$now
-			)
-		);
 
 		$out[] = array(
 			'client_id'     => (string) $row['client_id'],
@@ -238,7 +249,7 @@ function aafm_oauth_list_clients(): array {
 			'redirect_uris' => $uris,
 			'created_at'    => (string) $row['created_at'],
 			'is_active'     => 1 === (int) $row['is_active'],
-			'active_tokens' => $active_tokens,
+			'active_tokens' => $counts[ (string) $row['client_id'] ] ?? 0,
 		);
 	}
 
