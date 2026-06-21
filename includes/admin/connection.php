@@ -700,10 +700,10 @@ function aafm_format_admin_datetime( string $utc ): string {
  * @return void
  */
 function aafm_render_connection_tab(): void {
-	$url        = aafm_endpoint_url();
-	$oauth_on   = aafm_oauth_enabled();
-	$is_local   = aafm_site_is_local();
-	$kses_code  = array( 'code' => array() );
+	$url       = aafm_endpoint_url();
+	$oauth_on  = aafm_oauth_enabled();
+	$is_local  = aafm_site_is_local();
+	$kses_code = array( 'code' => array() );
 
 	echo '<div class="aafm-connection">';
 

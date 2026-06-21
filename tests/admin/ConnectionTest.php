@@ -252,8 +252,6 @@ final class ConnectionTest extends TestCase {
 		$this->assertSame( 3, substr_count( $html, 'aafm-conn-step' ) );
 	}
 
-	// ---- Task 1: OAuth client-guidance helpers ----
-
 	public function test_oauth_client_snippet_carries_no_credentials(): void {
 		$snippet = aafm_oauth_client_snippet( 'claude-desktop', 'unix' );
 		$this->assertStringContainsString( 'mcp-remote', $snippet );
@@ -306,8 +304,6 @@ final class ConnectionTest extends TestCase {
 		$this->assertSame( '', aafm_oauth_client_note( 'does-not-exist' ) );
 	}
 
-	// ---- Task 3: OAuth-first render smoke tests ----
-
 	public function test_connection_tab_leads_with_oauth_when_enabled(): void {
 		update_option( 'aafm_oauth_enabled', '1' );
 		ob_start();
@@ -331,6 +327,6 @@ final class ConnectionTest extends TestCase {
 		$this->assertStringContainsString( 'Application Password', $html );
 		// The fallback renders open when OAuth is off.
 		$this->assertMatchesRegularExpression( '/<details[^>]*\bopen\b/', $html );
-		update_option( 'aafm_oauth_enabled', '1' ); // restore
+		update_option( 'aafm_oauth_enabled', '1' ); // Restore default state.
 	}
 }

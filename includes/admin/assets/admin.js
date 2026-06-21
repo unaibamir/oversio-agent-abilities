@@ -46,6 +46,7 @@
 			this.#bindCopy();
 			this.#bindOsTabs();
 			this.#bindClientPicker();
+			this.#bindOauthClientPicker();
 			this.#bindSubjectTabs();
 			this.#bindSectionToggles();
 			this.#bindIntegrationToggles();
@@ -144,6 +145,33 @@
 							if ( copy ) {
 								copy.dataset.copy = next;
 							}
+						} );
+				} );
+			} );
+		}
+
+		/**
+		 * Wire the OAuth client picker (the .aafm-client cards in #aafm-oauth-clients).
+		 *
+		 * Clicking a card marks it .on (clearing its siblings) and shows the matching
+		 * .aafm-oauth-panel[data-client] while hiding all others. The panels already
+		 * contain the correct pre-rendered snippet for each client, so no DOM rewriting
+		 * is needed beyond the visibility toggle.
+		 */
+		#bindOauthClientPicker() {
+			const cards = document.querySelectorAll( '#aafm-oauth-clients .aafm-client' );
+			if ( ! cards.length ) {
+				return;
+			}
+			cards.forEach( ( card ) => {
+				card.addEventListener( 'click', () => {
+					cards.forEach( ( c ) => c.classList.toggle( 'on', c === card ) );
+
+					const client = card.dataset.client ?? '';
+					document
+						.querySelectorAll( '.aafm-oauth-panel[data-client]' )
+						.forEach( ( panel ) => {
+							panel.hidden = panel.dataset.client !== client;
 						} );
 				} );
 			} );
