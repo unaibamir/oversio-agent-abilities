@@ -13,9 +13,11 @@ if ( ! defined( 'AAFM_OAUTH_SCHEMA_VERSION' ) ) {
 	// v2 adds the refresh_parent_id index on the access-tokens table. v3 widens the
 	// resource (audience) column on the codes and access-tokens tables from VARCHAR(191)
 	// to VARCHAR(2048) so a long endpoint URL is not truncated, which would break the
-	// later audience check. Bumping the version makes aafm_maybe_upgrade_oauth_tables()
-	// re-run dbDelta so existing installs pick the change up.
-	define( 'AAFM_OAUTH_SCHEMA_VERSION', '3' );
+	// later audience check. v4 adds a client_id index on the access-tokens table so the
+	// admin client listing and the revoke-by-client queries do not scan the whole table.
+	// Bumping the version makes aafm_maybe_upgrade_oauth_tables() re-run dbDelta so existing
+	// installs pick the change up.
+	define( 'AAFM_OAUTH_SCHEMA_VERSION', '4' );
 }
 
 /**
@@ -90,7 +92,8 @@ function aafm_install_oauth_tables(): void {
 		PRIMARY KEY  (id),
 		UNIQUE KEY token_hash (token_hash),
 		UNIQUE KEY refresh_hash (refresh_hash),
-		KEY refresh_parent_id (refresh_parent_id)
+		KEY refresh_parent_id (refresh_parent_id),
+		KEY client_id (client_id)
 	) {$charset_collate};";
 
 	$consents = "CREATE TABLE {$prefix}aafm_oauth_consents (

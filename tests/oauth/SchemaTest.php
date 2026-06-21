@@ -150,13 +150,29 @@ class SchemaTest extends TestCase {
 	}
 
 	/**
-	 * Install records the current schema version (v3 widens the resource column).
+	 * The access-tokens table carries an index on client_id.
+	 *
+	 * The admin client listing's grouped token count and the revoke-by-client queries filter
+	 * WHERE client_id = ...; without this index those are full table scans. dbDelta adds the KEY
+	 * on a fresh install and on re-run for existing installs once the schema version bumps to '4'.
+	 */
+	public function test_access_tokens_indexes_client_id(): void {
+		aafm_install_oauth_tables();
+
+		$this->assertTrue(
+			$this->index_exists( 'aafm_oauth_access_tokens', 'client_id' ),
+			'Expected a client_id index on the access-tokens table.'
+		);
+	}
+
+	/**
+	 * Install records the current schema version (v4 adds the access-tokens client_id index).
 	 */
 	public function test_install_records_schema_version(): void {
 		aafm_install_oauth_tables();
 
-		$this->assertSame( '3', get_option( 'aafm_oauth_schema_version' ) );
-		$this->assertSame( '3', AAFM_OAUTH_SCHEMA_VERSION );
+		$this->assertSame( '4', get_option( 'aafm_oauth_schema_version' ) );
+		$this->assertSame( '4', AAFM_OAUTH_SCHEMA_VERSION );
 	}
 
 	/**

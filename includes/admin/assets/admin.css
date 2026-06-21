@@ -1295,6 +1295,45 @@
 		}
 	}
 
+	/* ---------- Activity count headline + clarifier ---------- */
+	.aafm-activity-count {
+		.aafm-count-num {
+			color: var(--aafm-text);
+			font-weight: 700;
+		}
+
+		.aafm-count-note {
+			color: var(--aafm-text-subtle);
+		}
+	}
+
+	/* ---------- Activity log pager (Prev / Page X of Y / Next) ---------- */
+	.aafm-pager {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-block-start: 14px;
+
+		.aafm-pager-status {
+			color: var(--aafm-text-subtle);
+			font-size: 13px;
+		}
+
+		.aafm-btn[disabled] {
+			opacity: 0.5;
+			cursor: default;
+		}
+	}
+
+	/* The completed step-1 done line: a success pill plus a plain sentence and edit link. */
+	.aafm-agent-done {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
 	/* ---------- Code block ---------- */
 	.aafm-codeblock {
 		position: relative;
@@ -1759,6 +1798,54 @@
 		.aafm-section-body {
 			padding-block: 0 16px;
 			padding-inline: 18px;
+		}
+	}
+
+	/* ---------- OAuth client/grant management (Connections OAuth card) ---------- */
+	.aafm-oauth-manage {
+		margin-block-start: 20px;
+
+		h3 {
+			margin-block: 18px 4px;
+			font-size: 14px;
+		}
+
+		.sub {
+			margin-block: 0 12px;
+			color: var(--aafm-text-muted);
+			font-size: 13px;
+		}
+
+		.aafm-table-wrap {
+			margin-block-end: 8px;
+		}
+
+		.aafm-oauth-table {
+			code {
+				font-size: 12px;
+			}
+
+			a {
+				word-break: break-all;
+			}
+
+			.aafm-btn {
+				white-space: nowrap;
+			}
+		}
+
+		.aafm-muted {
+			color: var(--aafm-text-subtle);
+		}
+
+		.aafm-empty-state {
+			margin-block: 0 8px;
+			padding: 14px 16px;
+			border: 1px dashed var(--aafm-border-strong);
+			border-radius: var(--aafm-radius);
+			color: var(--aafm-text-muted);
+			background: var(--aafm-surface-2);
+			font-size: 13px;
 		}
 	}
 }

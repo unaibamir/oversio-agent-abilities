@@ -119,8 +119,18 @@ function aafm_create_agent_user( string $login ) {
 	if ( '' === $login ) {
 		return new WP_Error( 'aafm_bad_login', __( 'Invalid username.', 'agent-abilities-for-mcp' ) );
 	}
-	if ( username_exists( $login ) ) {
-		return new WP_Error( 'aafm_user_exists', __( 'That username already exists.', 'agent-abilities-for-mcp' ) );
+	$existing_id = username_exists( $login );
+	if ( $existing_id ) {
+		// The user is already there — hand back a friendly message plus the existing user's
+		// id and edit link so the caller can offer "Edit user" instead of a dead-end error.
+		return new WP_Error(
+			'aafm_user_exists',
+			__( 'That user already exists, so there is nothing to create. You can edit it instead.', 'agent-abilities-for-mcp' ),
+			array(
+				'user_id'  => (int) $existing_id,
+				'edit_url' => (string) get_edit_user_link( (int) $existing_id ),
+			)
+		);
 	}
 
 	$user_id = wp_insert_user(
@@ -263,9 +273,88 @@ function aafm_ajax_create_agent_user(): void {
 	$login  = isset( $_POST['login'] ) ? sanitize_user( wp_unslash( (string) $_POST['login'] ), true ) : '';
 	$result = aafm_create_agent_user( $login );
 	if ( is_wp_error( $result ) ) {
-		wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		$payload = array( 'message' => $result->get_error_message() );
+		// On a duplicate username, carry the existing user's id + edit link so the JS can
+		// render an "Edit user" link rather than a bare error string.
+		$data = $result->get_error_data();
+		if ( is_array( $data ) && ! empty( $data['user_id'] ) ) {
+			$payload['user_id']  = (int) $data['user_id'];
+			$payload['edit_url'] = isset( $data['edit_url'] ) ? esc_url_raw( (string) $data['edit_url'] ) : '';
+		}
+		wp_send_json_error( $payload );
 	}
 	wp_send_json_success( $result );
+}
+
+/**
+ * AJAX: revoke an OAuth client from the Connections management table.
+ *
+ * Deactivates the client and revokes its active tokens, so it is locked out at once.
+ * Nonce + manage_options gated; the client_id is the only client-supplied value and
+ * it is sanitized as plain text before use.
+ *
+ * @return void
+ */
+function aafm_ajax_oauth_revoke_client(): void {
+	check_ajax_referer( 'aafm_admin', 'nonce' );
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'agent-abilities-for-mcp' ) ), 403 );
+	}
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+	$client_id = isset( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['client_id'] ) ) : '';
+	if ( '' === $client_id ) {
+		wp_send_json_error( array( 'message' => __( 'Missing client.', 'agent-abilities-for-mcp' ) ) );
+	}
+
+	aafm_oauth_deactivate_client( $client_id );
+	$revoked = aafm_oauth_revoke_client_tokens( $client_id );
+	// Drop any pending (not-yet-redeemed) authorization codes too, or one could still mint
+	// fresh tokens within its short window after the client is revoked.
+	aafm_oauth_revoke_client_codes( $client_id );
+
+	wp_send_json_success(
+		array(
+			'client_id'      => $client_id,
+			'revoked_tokens' => $revoked,
+		)
+	);
+}
+
+/**
+ * AJAX: revoke an OAuth grant (user consent) from the Connections management table.
+ *
+ * Deletes the user's consent for the client and revokes that user+client's active
+ * tokens, so the user must re-approve to reconnect. Nonce + manage_options gated;
+ * user_id is cast with absint and client_id sanitized as plain text.
+ *
+ * @return void
+ */
+function aafm_ajax_oauth_revoke_grant(): void {
+	check_ajax_referer( 'aafm_admin', 'nonce' );
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'agent-abilities-for-mcp' ) ), 403 );
+	}
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+	$user_id = isset( $_POST['user_id'] ) ? absint( wp_unslash( $_POST['user_id'] ) ) : 0;
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+	$client_id = isset( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['client_id'] ) ) : '';
+	if ( $user_id <= 0 || '' === $client_id ) {
+		wp_send_json_error( array( 'message' => __( 'Missing grant.', 'agent-abilities-for-mcp' ) ) );
+	}
+
+	aafm_oauth_delete_consent( $user_id, $client_id );
+	$revoked = aafm_oauth_revoke_user_client_tokens( $user_id, $client_id );
+	// Drop any pending (not-yet-redeemed) authorization codes for this user+client too, or one
+	// could still mint fresh tokens after the consent and existing tokens are gone.
+	aafm_oauth_revoke_user_client_codes( $user_id, $client_id );
+
+	wp_send_json_success(
+		array(
+			'user_id'        => $user_id,
+			'client_id'      => $client_id,
+			'revoked_tokens' => $revoked,
+		)
+	);
 }
 
 /**
@@ -338,6 +427,171 @@ function aafm_ajax_test_connection(): void {
 }
 
 /**
+ * Render the OAuth management UI: a Registered Clients table and an Active Grants table.
+ *
+ * Both read from the plugin's own OAuth tables and render fully escaped, using the same
+ * widefat striped / aafm-pill / aafm-btn styling as the rest of the admin. Each table
+ * shows a one-line empty state when it has no rows. Revoke buttons are wired in admin.js
+ * (confirm + nonce-checked AJAX); the nonce field printed here is what those calls read.
+ *
+ * Only ever called from inside the capability-gated Connection tab, within the
+ * aafm_oauth_enabled() card.
+ *
+ * @return void
+ */
+function aafm_render_oauth_management(): void {
+	$clients = aafm_oauth_list_clients();
+	$grants  = aafm_oauth_list_grants();
+
+	echo '<div class="aafm-oauth-manage">';
+	wp_nonce_field( 'aafm_admin', 'aafm_oauth_admin_nonce' );
+
+	// ---- Registered clients ----
+	echo '<h3>' . esc_html__( 'Registered clients', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<p class="sub">' . esc_html__( 'Apps that have registered to connect over OAuth. Revoking a client turns it off and ends its active sessions right away.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	if ( empty( $clients ) ) {
+		echo '<p class="aafm-empty-state">' . esc_html__( 'No clients have registered yet.', 'agent-abilities-for-mcp' ) . '</p>';
+	} else {
+		echo '<div class="aafm-table-wrap">';
+		echo '<table class="widefat striped aafm-oauth-table aafm-clients-table"><thead><tr>';
+		echo '<th>' . esc_html__( 'Client', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Client ID', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Redirect URIs', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Created', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Active tokens', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Status', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Action', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '</tr></thead><tbody>';
+
+		foreach ( $clients as $client ) {
+			$full_id  = $client['client_id'];
+			$short_id = strlen( $full_id ) > 14 ? substr( $full_id, 0, 14 ) . '…' : $full_id;
+			$name     = '' !== $client['client_name'] ? $client['client_name'] : __( '(unnamed client)', 'agent-abilities-for-mcp' );
+
+			printf( '<tr data-client-row="%s">', esc_attr( $full_id ) );
+			printf( '<td>%s</td>', esc_html( $name ) );
+			printf( '<td><code title="%1$s">%2$s</code></td>', esc_attr( $full_id ), esc_html( $short_id ) );
+
+			echo '<td>';
+			if ( empty( $client['redirect_uris'] ) ) {
+				echo '<span class="aafm-muted">' . esc_html__( 'None', 'agent-abilities-for-mcp' ) . '</span>';
+			} else {
+				$links = array();
+				foreach ( $client['redirect_uris'] as $uri ) {
+					$links[] = '<a href="' . esc_url( $uri ) . '" target="_blank" rel="noreferrer noopener">' . esc_html( $uri ) . '</a>';
+				}
+				echo implode( '<br>', $links ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- each URI escaped above.
+			}
+			echo '</td>';
+
+			printf( '<td>%s</td>', esc_html( aafm_format_admin_datetime( $client['created_at'] ) ) );
+			printf( '<td class="aafm-client-tokens">%s</td>', esc_html( number_format_i18n( $client['active_tokens'] ) ) );
+
+			echo '<td class="aafm-status-cell">';
+			if ( $client['is_active'] ) {
+				echo '<span class="aafm-pill aafm-pill-success">' . esc_html__( 'Active', 'agent-abilities-for-mcp' ) . '</span>';
+			} else {
+				echo '<span class="aafm-pill aafm-pill-neutral">' . esc_html__( 'Revoked', 'agent-abilities-for-mcp' ) . '</span>';
+			}
+			echo '</td>';
+
+			echo '<td>';
+			if ( $client['is_active'] ) {
+				printf(
+					'<button type="button" class="aafm-btn aafm-btn-secondary aafm-revoke-client" data-client-id="%s">%s</button>',
+					esc_attr( $full_id ),
+					esc_html__( 'Revoke', 'agent-abilities-for-mcp' )
+				);
+			} else {
+				echo '<span class="aafm-muted">' . esc_html__( 'Revoked', 'agent-abilities-for-mcp' ) . '</span>';
+			}
+			echo '</td>';
+			echo '</tr>';
+		}
+
+		echo '</tbody></table>';
+		echo '</div>';
+	}
+
+	// ---- Active grants ----
+	echo '<h3>' . esc_html__( 'Active grants', 'agent-abilities-for-mcp' ) . '</h3>';
+	echo '<p class="sub">' . esc_html__( 'People who have approved an app to act as them. Revoking a grant ends that connection; they would need to approve again to reconnect.', 'agent-abilities-for-mcp' ) . '</p>';
+
+	if ( empty( $grants ) ) {
+		echo '<p class="aafm-empty-state">' . esc_html__( 'No one has approved an OAuth connection yet.', 'agent-abilities-for-mcp' ) . '</p>';
+	} else {
+		$scope_hint = __( 'The app can only do what this user\'s role allows and what you have turned on under Abilities.', 'agent-abilities-for-mcp' );
+
+		echo '<div class="aafm-table-wrap">';
+		echo '<table class="widefat striped aafm-oauth-table aafm-grants-table"><thead><tr>';
+		echo '<th>' . esc_html__( 'User', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Client', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Scope', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Granted', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '<th>' . esc_html__( 'Action', 'agent-abilities-for-mcp' ) . '</th>';
+		echo '</tr></thead><tbody>';
+
+		foreach ( $grants as $grant ) {
+			$client_name = '' !== $grant['client_name'] ? $grant['client_name'] : __( '(unnamed client)', 'agent-abilities-for-mcp' );
+
+			printf(
+				'<tr data-grant-row="%1$s|%2$s">',
+				esc_attr( (string) $grant['user_id'] ),
+				esc_attr( $grant['client_id'] )
+			);
+			printf(
+				/* translators: 1: user display name, 2: user login. */
+				'<td>%1$s <span class="aafm-muted">(%2$s)</span></td>',
+				esc_html( $grant['user_display'] ),
+				esc_html( $grant['user_login'] )
+			);
+			printf( '<td>%s</td>', esc_html( $client_name ) );
+			printf(
+				'<td><span title="%1$s">%2$s</span></td>',
+				esc_attr( $scope_hint ),
+				esc_html__( 'Full access', 'agent-abilities-for-mcp' )
+			);
+			printf( '<td>%s</td>', esc_html( aafm_format_admin_datetime( $grant['granted_at'] ) ) );
+			printf(
+				'<td><button type="button" class="aafm-btn aafm-btn-secondary aafm-revoke-grant" data-user-id="%1$s" data-client-id="%2$s">%3$s</button></td>',
+				esc_attr( (string) $grant['user_id'] ),
+				esc_attr( $grant['client_id'] ),
+				esc_html__( 'Revoke', 'agent-abilities-for-mcp' )
+			);
+			echo '</tr>';
+		}
+
+		echo '</tbody></table>';
+		echo '</div>';
+	}
+
+	echo '</div>'; // .aafm-oauth-manage
+}
+
+/**
+ * Format a stored UTC datetime for admin display, falling back to the raw value.
+ *
+ * The OAuth tables store created_at/granted_at as UTC 'Y-m-d H:i:s'. This renders them
+ * with the site's date+time format so the management tables read consistently with the
+ * rest of the admin. An unparseable value is returned as-is (already escaped by the caller).
+ *
+ * @param string $utc Stored UTC datetime string.
+ * @return string Formatted local datetime, or the original string when it cannot be parsed.
+ */
+function aafm_format_admin_datetime( string $utc ): string {
+	if ( '' === $utc ) {
+		return '';
+	}
+	$ts = strtotime( $utc . ' UTC' );
+	if ( false === $ts ) {
+		return $utc;
+	}
+	$formatted = wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $ts );
+	return false === $formatted ? $utc : $formatted;
+}
+
+/**
  * Render the Connection tab.
  *
  * @return void
@@ -355,6 +609,7 @@ function aafm_render_connection_tab(): void {
 		echo '<section class="aafm-card aafm-card-pad aafm-oauth-card">';
 		echo '<h2>' . esc_html__( 'Connect with OAuth', 'agent-abilities-for-mcp' ) . '</h2>';
 		echo '<p class="sub">' . esc_html__( 'Paste your site URL into your agent (the MCP endpoint is shown below). Your agent gets access through a browser approval, so there is no secret to copy.', 'agent-abilities-for-mcp' ) . '</p>';
+		aafm_render_oauth_management();
 		echo '</section>';
 	}
 
@@ -375,14 +630,48 @@ function aafm_render_connection_tab(): void {
 	echo '</section>';
 
 	// ---- Step 1: create a dedicated agent user ----
-	echo '<div class="aafm-step aafm-conn-step">';
-	echo '<div class="aafm-step-head"><span class="aafm-sidx">1</span><div>';
+	// The default agent login the snippets point at. If it already exists, render step 1 in a
+	// completed "done" state with an edit link rather than a create form that can only error.
+	$default_agent_login = 'mcp-agent';
+	$existing_agent_id   = (int) username_exists( $default_agent_login );
+	$agent_exists        = $existing_agent_id > 0;
+
+	printf(
+		'<div class="aafm-step aafm-conn-step%s">',
+		$agent_exists ? ' aafm-step-done' : ''
+	);
+	echo '<div class="aafm-step-head"><span class="aafm-sidx">';
+	if ( $agent_exists ) {
+		echo aafm_icon( 'check' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
+	} else {
+		echo '1';
+	}
+	echo '</span><div>';
 	echo '<h2>' . esc_html__( 'Create a dedicated agent user', 'agent-abilities-for-mcp' ) . '</h2>';
 	echo '<p class="sub">' . esc_html__( 'Give the agent its own user with the least privilege it needs. It can only do what that user\'s role allows, and every ability is off until you turn it on.', 'agent-abilities-for-mcp' ) . '</p>';
 	echo '</div></div>';
 	echo '<div class="aafm-step-rail"><div class="aafm-card aafm-card-pad">';
 	wp_nonce_field( 'aafm_admin', 'aafm_conn_nonce' );
-	echo '<p><input type="text" id="aafm-agent-login" value="mcp-agent" class="regular-text"> <button type="button" class="aafm-btn aafm-btn-secondary" id="aafm-create-user">' . esc_html__( 'Create agent user', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-user-status" aria-live="polite"></span></p>';
+	if ( $agent_exists ) {
+		$edit_url = (string) get_edit_user_link( $existing_agent_id );
+		echo '<p class="aafm-agent-done">';
+		echo '<span class="aafm-pill aafm-pill-success">' . esc_html__( 'Done', 'agent-abilities-for-mcp' ) . '</span> ';
+		printf(
+			/* translators: %s: the agent user's login. */
+			esc_html__( 'The %s user already exists, so you can move straight to connecting your client.', 'agent-abilities-for-mcp' ),
+			'<strong>' . esc_html( $default_agent_login ) . '</strong>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- login escaped above.
+		);
+		if ( '' !== $edit_url ) {
+			printf(
+				' <a href="%1$s">%2$s</a>',
+				esc_url( $edit_url ),
+				esc_html__( 'Edit user', 'agent-abilities-for-mcp' )
+			);
+		}
+		echo '</p>';
+	} else {
+		echo '<p><input type="text" id="aafm-agent-login" value="' . esc_attr( $default_agent_login ) . '" class="regular-text"> <button type="button" class="aafm-btn aafm-btn-secondary" id="aafm-create-user">' . esc_html__( 'Create agent user', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-user-status" aria-live="polite"></span></p>';
+	}
 	echo '</div></div>';
 	echo '</div>';
 

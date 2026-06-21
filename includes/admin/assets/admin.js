@@ -61,8 +61,10 @@
 			this.#bindCreateUser();
 			this.#bindTestConnection();
 			this.#bindClearLog();
+			this.#bindLogPaginationAndFilters();
 			this.#bindResetPlugin();
 			this.#bindQuickstarts();
+			this.#bindOauthRevoke();
 		}
 
 		#bindQuickstarts() {
@@ -621,6 +623,9 @@
 				const status = form.querySelector( '.aafm-save-status' );
 				const rate = form.querySelector( 'input[name="aafm_rate_limit_per_min"]' );
 				const title = form.querySelector( 'input[name="aafm_max_title_len"]' );
+				const retention = form.querySelector(
+					'input[name="aafm_log_retention_days"]'
+				);
 				const draft = form.querySelector( 'input[name="aafm_force_draft"]' );
 				const allowlist = form.querySelector( 'textarea[name="aafm_ip_allowlist"]' );
 
@@ -629,6 +634,7 @@
 				body.append( 'nonce', this.#nonce );
 				body.append( 'aafm_rate_limit_per_min', rate?.value ?? '0' );
 				body.append( 'aafm_max_title_len', title?.value ?? '0' );
+				body.append( 'aafm_log_retention_days', retention?.value ?? '30' );
 				if ( draft?.checked ) {
 					body.append( 'aafm_force_draft', '1' );
 				}
@@ -729,6 +735,8 @@
 				if ( ! status ) {
 					return;
 				}
+				// Reset to plain text each attempt; a prior run may have appended an Edit link.
+				status.textContent = '';
 				if ( json?.success ) {
 					status.textContent = this.#format(
 						this.#t(
@@ -738,10 +746,17 @@
 						json.data.user_id
 					);
 				} else {
-					status.textContent = this.#format(
-						this.#t( 'errorWithMessage', 'Error: %s' ),
-						json?.data?.message ?? this.#t( 'errorUnknown', 'unknown' )
-					);
+					// On a duplicate username the server returns the existing user's edit URL;
+					// show the friendly message plus a real "Edit user" link built via the DOM
+					// (textContent + href only — never innerHTML), so nothing untrusted is parsed.
+					status.textContent = json?.data?.message ?? this.#t( 'errorUnknown', 'unknown' );
+					const editUrl = json?.data?.edit_url;
+					if ( editUrl ) {
+						const link = document.createElement( 'a' );
+						link.href = editUrl;
+						link.textContent = this.#t( 'editUser', 'Edit user' );
+						status.append( ' ', link );
+					}
 				}
 			} );
 		}
@@ -800,11 +815,294 @@
 						: this.#t( 'error', 'Error' );
 				}
 				if ( json?.success ) {
-					document
-						.querySelectorAll( '.aafm-log-table tbody tr' )
-						.forEach( ( r ) => r.remove() );
+					// Empty the table, reset the count, and collapse the pager to page 1 of 1.
+					this.#renderLogRows( [] );
+					const num = document.querySelector( '.aafm-count-num' );
+					if ( num ) {
+						num.textContent = '0';
+					}
+					const wrap = document.querySelector( '#aafm-log-table-wrap' );
+					if ( wrap ) {
+						wrap.dataset.page = '1';
+						wrap.dataset.totalPages = '1';
+						this.#updatePager( 1, 1 );
+					}
 				}
 			} );
+		}
+
+		/**
+		 * Wire the activity log's status filter (segmented buttons) and Prev/Next pager.
+		 *
+		 * Both are server-side: only one page of rows is ever in the DOM, so a filter or a
+		 * page change re-queries the aafm_get_log_page action and re-renders the tbody. The
+		 * table wrapper (#aafm-log-table-wrap) holds the current page/filter/total-pages as
+		 * data-* state so this stays the single source of truth. Rows are built with the DOM
+		 * (textContent only), never innerHTML, so the response is never an HTML sink.
+		 */
+		#bindLogPaginationAndFilters() {
+			const wrap = document.querySelector( '#aafm-log-table-wrap' );
+			if ( ! wrap ) {
+				return;
+			}
+			const segButtons = document.querySelectorAll(
+				'.aafm-activity .aafm-seg-btn[data-filter]'
+			);
+			const prev = document.querySelector( '.aafm-pager-prev' );
+			const next = document.querySelector( '.aafm-pager-next' );
+
+			const load = async ( page, filter ) => {
+				const pagerStatus = document.querySelector( '.aafm-pager-status' );
+				if ( pagerStatus ) {
+					pagerStatus.textContent = this.#t( 'loadingPage', 'Loading…' );
+				}
+				const json = await this.#post( 'aafm_get_log_page', {
+					page,
+					filter,
+				} );
+				if ( ! json?.success ) {
+					// Leave the current view in place and restore the pager label.
+					this.#updatePager(
+						Number( wrap.dataset.page ) || 1,
+						Number( wrap.dataset.totalPages ) || 1
+					);
+					return;
+				}
+				const data = json.data ?? {};
+				this.#renderLogRows( Array.isArray( data.rows ) ? data.rows : [] );
+				wrap.dataset.page = String( data.page ?? 1 );
+				wrap.dataset.filter = String( data.filter ?? filter );
+				wrap.dataset.totalPages = String( data.total_pages ?? 1 );
+				this.#updatePager(
+					Number( data.page ) || 1,
+					Number( data.total_pages ) || 1
+				);
+				const num = document.querySelector( '.aafm-count-num' );
+				if ( num && typeof data.total === 'number' ) {
+					num.textContent = new Intl.NumberFormat().format( data.total );
+				}
+			};
+
+			segButtons.forEach( ( btn ) => {
+				btn.addEventListener( 'click', () => {
+					const filter = btn.dataset.filter ?? 'all';
+					segButtons.forEach( ( b ) => {
+						const on = b === btn;
+						b.classList.toggle( 'is-active', on );
+						b.classList.toggle( 'on', on );
+						b.setAttribute( 'aria-pressed', on ? 'true' : 'false' );
+					} );
+					// A filter change always restarts at page 1.
+					load( 1, filter );
+				} );
+			} );
+
+			if ( prev ) {
+				prev.addEventListener( 'click', () => {
+					const page = ( Number( wrap.dataset.page ) || 1 ) - 1;
+					if ( page >= 1 ) {
+						load( page, wrap.dataset.filter ?? 'all' );
+					}
+				} );
+			}
+			if ( next ) {
+				next.addEventListener( 'click', () => {
+					const page = ( Number( wrap.dataset.page ) || 1 ) + 1;
+					const totalPages = Number( wrap.dataset.totalPages ) || 1;
+					if ( page <= totalPages ) {
+						load( page, wrap.dataset.filter ?? 'all' );
+					}
+				} );
+			}
+		}
+
+		/**
+		 * Replace the activity table body with a page of rows, built cell-by-cell with
+		 * textContent (never innerHTML). An empty set renders a single "no activity" row.
+		 *
+		 * @param {Array<Object>} rows Row objects from the aafm_get_log_page response.
+		 */
+		#renderLogRows( rows ) {
+			const tbody = document.querySelector( '.aafm-log-table tbody' );
+			if ( ! tbody ) {
+				return;
+			}
+			tbody.replaceChildren();
+
+			if ( ! rows.length ) {
+				const tr = document.createElement( 'tr' );
+				const td = document.createElement( 'td' );
+				td.colSpan = 5;
+				td.textContent = this.#t( 'noActivity', 'No activity recorded yet.' );
+				tr.append( td );
+				tbody.append( tr );
+				return;
+			}
+
+			rows.forEach( ( row ) => {
+				const tr = document.createElement( 'tr' );
+
+				const cell = ( text ) => {
+					const td = document.createElement( 'td' );
+					td.textContent = text ?? '';
+					return td;
+				};
+
+				tr.append( cell( row.time ) );
+				tr.append( cell( row.principal ) );
+				tr.append( cell( row.ability ) );
+
+				const statusTd = document.createElement( 'td' );
+				const pill = document.createElement( 'span' );
+				const variant = String( row.variant ?? 'neutral' );
+				const status = String( row.status ?? '' );
+				pill.className = `aafm-pill aafm-pill-${ variant } aafm-status aafm-status-${ status }`;
+				pill.textContent = status;
+				statusTd.append( pill );
+				tr.append( statusTd );
+
+				tr.append( cell( row.arg_keys ) );
+				tbody.append( tr );
+			} );
+		}
+
+		/**
+		 * Update the pager label and enable/disable Prev/Next for the current page.
+		 *
+		 * @param {number} page       Current 1-based page.
+		 * @param {number} totalPages Total number of pages (at least 1).
+		 */
+		#updatePager( page, totalPages ) {
+			const label = document.querySelector( '.aafm-pager-status' );
+			if ( label ) {
+				const fmt = new Intl.NumberFormat();
+				label.textContent = this.#format(
+					this.#t( 'pagerStatus', 'Page %1$s of %2$s' ),
+					fmt.format( page ),
+					fmt.format( totalPages )
+				);
+			}
+			const prev = document.querySelector( '.aafm-pager-prev' );
+			const next = document.querySelector( '.aafm-pager-next' );
+			if ( prev ) {
+				prev.disabled = page <= 1;
+			}
+			if ( next ) {
+				next.disabled = page >= totalPages;
+			}
+		}
+
+		/**
+		 * Wire the OAuth management tables' Revoke buttons (Registered clients +
+		 * Active grants). Clicks are delegated off the .aafm-oauth-manage container so
+		 * a single listener covers both tables. Each revoke confirms first, then POSTs
+		 * the nonce-checked AJAX action; on success the row is updated in place — the
+		 * client's Status pill flips to Revoked and its button is removed, and a grant
+		 * row is removed entirely. Every DOM change is textContent / class / attribute
+		 * only, never innerHTML, so the response is never an HTML sink.
+		 */
+		#bindOauthRevoke() {
+			const root = document.querySelector( '.aafm-oauth-manage' );
+			if ( ! root ) {
+				return;
+			}
+			root.addEventListener( 'click', async ( e ) => {
+				const clientBtn = e.target.closest( '.aafm-revoke-client' );
+				const grantBtn = e.target.closest( '.aafm-revoke-grant' );
+				const btn = clientBtn ?? grantBtn;
+				if ( ! btn || ! root.contains( btn ) ) {
+					return;
+				}
+
+				const isGrant = Boolean( grantBtn );
+				const confirmMsg = isGrant
+					? this.#t(
+							'revokeGrantConfirm',
+							'Revoke this grant? The user will have to approve again to reconnect.'
+					  )
+					: this.#t(
+							'revokeClientConfirm',
+							'Revoke this client? It is turned off and its active sessions end right away.'
+					  );
+				if ( ! window.confirm( confirmMsg ) ) {
+					return;
+				}
+
+				const clientId = btn.dataset.clientId ?? '';
+				btn.disabled = true;
+
+				let json;
+				if ( isGrant ) {
+					json = await this.#post( 'aafm_oauth_revoke_grant', {
+						user_id: btn.dataset.userId ?? '',
+						client_id: clientId,
+					} );
+				} else {
+					json = await this.#post( 'aafm_oauth_revoke_client', {
+						client_id: clientId,
+					} );
+				}
+
+				if ( ! json?.success ) {
+					btn.disabled = false;
+					window.alert(
+						json?.data?.message ??
+							this.#t( 'revokeFailed', 'Could not revoke. Please try again.' )
+					);
+					return;
+				}
+
+				const row = btn.closest( 'tr' );
+				if ( ! row ) {
+					return;
+				}
+				const revoked = Number( json?.data?.revoked_tokens ) || 0;
+				if ( isGrant ) {
+					// The grant is gone: drop its row, and lower the owning client's active-token
+					// count by the tokens we just revoked so it does not read stale.
+					this.#adjustClientTokens( root, clientId, -revoked );
+					row.remove();
+				} else {
+					// The client and all its tokens are revoked: its active-token count is now 0.
+					const tokensCell = row.querySelector( '.aafm-client-tokens' );
+					if ( tokensCell ) {
+						tokensCell.textContent = '0';
+					}
+					// Flip the Status pill to Revoked and replace the button with plain text.
+					const pill = row.querySelector( '.aafm-status-cell .aafm-pill' );
+					if ( pill ) {
+						pill.classList.remove( 'aafm-pill-success' );
+						pill.classList.add( 'aafm-pill-neutral' );
+						pill.textContent = this.#t( 'statusRevoked', 'Revoked' );
+					}
+					const cell = btn.parentElement;
+					btn.remove();
+					if ( cell ) {
+						const note = document.createElement( 'span' );
+						note.className = 'aafm-muted';
+						note.textContent = this.#t( 'statusRevoked', 'Revoked' );
+						cell.append( note );
+					}
+				}
+			} );
+		}
+
+		// Adjust a client's "Active tokens" cell in place after a revoke, so the count stays
+		// truthful without a page reload. Matches the row by dataset (no selector injection).
+		#adjustClientTokens( root, clientId, delta ) {
+			if ( ! clientId || ! delta ) {
+				return;
+			}
+			const clientRow = Array.from(
+				root.querySelectorAll( '[data-client-row]' )
+			).find( ( el ) => el.dataset.clientRow === clientId );
+			const cell = clientRow?.querySelector( '.aafm-client-tokens' );
+			if ( ! cell ) {
+				return;
+			}
+			const current =
+				parseInt( ( cell.textContent || '' ).replace( /[^0-9]/g, '' ), 10 ) || 0;
+			cell.textContent = String( Math.max( 0, current + delta ) );
 		}
 
 		#bindResetPlugin() {
