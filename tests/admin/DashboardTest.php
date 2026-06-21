@@ -193,9 +193,24 @@ final class DashboardTest extends TestCase {
 	}
 
 	public function test_setup_steps_reflect_real_state(): void {
+		// Fresh fixture: nothing enabled, no grant, no agent user, no activity.
 		update_option( 'aafm_enabled_abilities', array() );
 		$steps = aafm_setup_steps();
-		$this->assertFalse( $steps[1]['done'] ); // No abilities enabled.
+		$this->assertCount( 3, $steps );
+		$this->assertFalse( $steps[0]['done'] ); // abilities — none enabled
+		$this->assertFalse( $steps[1]['done'] ); // connect — no grant, no agent user
+		$this->assertFalse( $steps[2]['done'] ); // first call — no activity
+	}
+
+	public function test_connect_step_done_via_agent_user(): void {
+		$uid = self::factory()->user->create( array( 'role' => 'subscriber' ) );
+		WP_Application_Passwords::create_new_application_password( $uid, array( 'name' => 'test' ) );
+		$steps = aafm_setup_steps();
+		$this->assertTrue( $steps[1]['done'] );
+	}
+
+	public function test_has_oauth_grant_false_without_grants(): void {
+		$this->assertFalse( aafm_has_oauth_grant() );
 	}
 
 	public function test_default_tab_is_dashboard(): void {

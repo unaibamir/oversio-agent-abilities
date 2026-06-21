@@ -119,15 +119,27 @@ function aafm_recent_agent_count(): int {
 }
 
 /**
+ * Whether any user has approved an OAuth connection (a live grant exists).
+ *
+ * Read-only; returns false when OAuth is disabled or nobody has approved yet so
+ * callers never need to guard around the OAuth functions existing.
+ *
+ * @return bool
+ */
+function aafm_has_oauth_grant(): bool {
+	return function_exists( 'aafm_oauth_list_grants' ) && ! empty( aafm_oauth_list_grants() );
+}
+
+/**
  * The three setup steps, each derived from real, observable site state — never a
  * faked "connected" signal. Step done-ness comes straight from the data helpers:
  *
- *   [0] an agent user exists  — aafm_agent_user_candidates() is non-empty
- *   [1] abilities are enabled — aafm_enabled_ability_count() > 0
+ *   [0] abilities are enabled — aafm_enabled_ability_count() > 0
+ *   [1] agent is connected    — aafm_has_oauth_grant() || aafm_agent_user_candidates() non-empty
  *   [2] a call has been made  — aafm_activity_count() > 0 (logged for real)
  *
- * The zero-based index is the contract callers rely on: $steps[1] is always the
- * abilities step.
+ * The zero-based index is the contract callers rely on: $steps[0] is always the
+ * abilities step, $steps[1] is always the connect step.
  *
  * @return array<int,array{title:string,desc:string,done:bool,href:string}>
  */
@@ -144,19 +156,19 @@ function aafm_setup_steps(): array {
 
 	return array(
 		array(
-			'title' => __( 'Create a dedicated agent user', 'agent-abilities-for-mcp' ),
-			'desc'  => __( 'Give the agent its own low-privilege account with an Application Password, so its reach stays capped by that role.', 'agent-abilities-for-mcp' ),
-			'done'  => ! empty( aafm_agent_user_candidates() ),
-			'href'  => $tab_url( 'connection' ),
-		),
-		array(
 			'title' => __( 'Enable the abilities you want', 'agent-abilities-for-mcp' ),
 			'desc'  => __( 'Nothing is exposed until you turn it on. Pick the abilities the agent should have on the Abilities tab.', 'agent-abilities-for-mcp' ),
 			'done'  => aafm_enabled_ability_count() > 0,
 			'href'  => $tab_url( 'abilities' ),
 		),
 		array(
-			'title' => __( 'Connect your client and make a call', 'agent-abilities-for-mcp' ),
+			'title' => __( 'Connect your agent', 'agent-abilities-for-mcp' ),
+			'desc'  => __( 'Approve it in the browser over OAuth, or set up an Application Password for a dedicated agent user. Either way its reach stays capped by what you turn on.', 'agent-abilities-for-mcp' ),
+			'done'  => aafm_has_oauth_grant() || ! empty( aafm_agent_user_candidates() ),
+			'href'  => $tab_url( 'connection' ),
+		),
+		array(
+			'title' => __( 'Make your first call', 'agent-abilities-for-mcp' ),
 			'desc'  => __( 'Point your MCP client at the endpoint and run one request. It shows up here once the activity log records it.', 'agent-abilities-for-mcp' ),
 			'done'  => aafm_activity_count() > 0,
 			'href'  => $tab_url( 'connection' ),
