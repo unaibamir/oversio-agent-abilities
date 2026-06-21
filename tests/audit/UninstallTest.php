@@ -39,6 +39,8 @@ final class UninstallTest extends TestCase {
 		update_option( 'aafm_denied_meta_keys', array( 'secret_key' ) );
 		update_option( 'aafm_exposed_user_meta_keys', array( 'profile_color' ) );
 		update_option( 'aafm_denied_user_meta_keys', array( 'private_note' ) );
+		update_option( 'aafm_exposed_term_meta_keys', array( 'seo_title' ) );
+		update_option( 'aafm_denied_term_meta_keys', array( 'term_secret' ) );
 		set_transient( 'aafm_detected_meta_keys', array( 'x' ), HOUR_IN_SECONDS );
 
 		aafm_uninstall_site();

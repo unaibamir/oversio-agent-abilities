@@ -163,6 +163,8 @@ function aafm_config_option_names(): array {
 		'aafm_denied_meta_keys',
 		'aafm_exposed_user_meta_keys',
 		'aafm_denied_user_meta_keys',
+		'aafm_exposed_term_meta_keys',
+		'aafm_denied_term_meta_keys',
 	);
 }
 

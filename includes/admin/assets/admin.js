@@ -56,6 +56,7 @@
 			this.#bindSaveMetaKeys();
 			this.#bindSaveDeniedMetaKeys();
 			this.#bindSaveUserMetaKeys();
+			this.#bindSaveTermMetaKeys();
 			this.#bindSaveSettings();
 			this.#bindMetaChips();
 			this.#bindCreateUser();
@@ -591,6 +592,47 @@
 				body.append( 'nonce', this.#nonce );
 				body.append( 'aafm_exposed_user_meta_keys', exposed?.value ?? '' );
 				body.append( 'aafm_denied_user_meta_keys', deny?.value ?? '' );
+				if ( status ) {
+					status.textContent = this.#t( 'saving', 'Saving…' );
+				}
+				let json;
+				try {
+					const res = await fetch( this.#ajaxUrl, {
+						method: 'POST',
+						body,
+						credentials: 'same-origin',
+					} );
+					json = await res.json();
+				} catch {
+					json = { success: false };
+				}
+				if ( status ) {
+					status.textContent = json?.success
+						? this.#t( 'saved', 'Saved' )
+						: this.#t( 'errorSaving', 'Error saving' );
+				}
+			} );
+		}
+
+		#bindSaveTermMetaKeys() {
+			const btn = document.querySelector( '#aafm-term-meta-keys-save' );
+			const root = document.querySelector( '#aafm-term-meta-keys-form' );
+			if ( ! btn || ! root ) {
+				return;
+			}
+			btn.addEventListener( 'click', async () => {
+				const status = root.querySelector( '.aafm-term-meta-keys-status' );
+				const exposed = root.querySelector(
+					'textarea[name="aafm_exposed_term_meta_keys"]'
+				);
+				const deny = root.querySelector(
+					'textarea[name="aafm_denied_term_meta_keys"]'
+				);
+				const body = new URLSearchParams();
+				body.append( 'action', 'aafm_save_term_meta_keys' );
+				body.append( 'nonce', this.#nonce );
+				body.append( 'aafm_exposed_term_meta_keys', exposed?.value ?? '' );
+				body.append( 'aafm_denied_term_meta_keys', deny?.value ?? '' );
 				if ( status ) {
 					status.textContent = this.#t( 'saving', 'Saving…' );
 				}
