@@ -8,23 +8,23 @@ Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Give an AI agent scoped, audited access to your WordPress site over the Model Context Protocol — least privilege by design, off by default.
+Give an AI agent scoped, audited access to your WordPress site over the Model Context Protocol. Least privilege by design, off by default.
 
 == Description ==
 
-Give an AI agent access to your WordPress site without handing it the keys. Agent Abilities for MCP connects agents over the Model Context Protocol as a WordPress user you choose — point it at a dedicated low-privilege account and it can only ever do what that account is allowed to do. Everything is off until you turn it on, and every action is logged. No admin-equivalent key, no custom transport, no custom OAuth — it is built on the WordPress Abilities API and the official MCP Adapter.
+Give an AI agent access to your WordPress site without handing it the keys. Agent Abilities for MCP connects agents over the Model Context Protocol as a WordPress user you choose. Point it at a dedicated low-privilege account and it can only ever do what that account is allowed to do. Everything is off until you turn it on, and every action is logged. There is no admin-equivalent key and no custom transport to trust: it runs on the WordPress Abilities API and the official MCP Adapter.
 
 Eighty-three core abilities cover reading and, when you allow it, writing posts, pages, terms, comments, media, post meta, and site structure, plus revision history and a search that spans every post type at once. You decide, per ability, what an agent can touch.
 
 Highlights:
 
-* Least privilege by design — the agent connects as a real, scoped WordPress user through Application Passwords. No admin-equivalent key.
-* Off by default — nothing is exposed until you enable it; updates never silently widen access.
-* Two-layer capability gating — a connection only sees the tools its user can call, and every call re-checks the user's capability before it runs.
-* Honest audit log — every call is recorded, including denied attempts, with the principal and the argument keys (never the values).
-* Safe by construction — no arbitrary option or meta access, no URL fetch, no user creation, no code execution. Deletes go to Trash, not gone. Uploads are decoded from inline data, sniffed by their real bytes against an image allow-list, and never fetched from a URL.
-* Optional safety controls — switch on a per-minute rate limit, an IP allowlist, a force-to-draft mode, or a title-length cap. All four stay off until you set them.
-* Guided setup — create the agent user, copy a client config, and run a connection check from one screen.
+* Least privilege by design. The agent connects as a real, scoped WordPress user through Application Passwords, not an admin-equivalent key.
+* Off by default. Nothing is exposed until you enable it, and updates never silently widen access.
+* Two-layer capability gating. A connection only sees the tools its user can call, and every call re-checks the user's capability before it runs.
+* Honest audit log. Every call is recorded, including denied attempts, with the principal and the argument keys (never the values).
+* Safe by construction. No arbitrary option or meta access, no URL fetch, no user creation, no code execution. Deletes go to Trash, not gone. Uploads are decoded from inline data, checked by their real bytes against an image allow-list, and never fetched from a URL.
+* Optional safety controls. Switch on a per-minute rate limit, an IP allowlist, a force-to-draft mode, or a title-length cap. All four stay off until you set them.
+* Guided setup. Create the agent user, copy a client config, and run a connection check from one screen.
 
 == Installation ==
 
