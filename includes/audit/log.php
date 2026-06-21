@@ -235,6 +235,33 @@ function aafm_query_activity( array $args ): array {
 }
 
 /**
+ * Count activity rows, optionally narrowed to a single status.
+ *
+ * Mirrors the WHERE clause of aafm_query_activity() (minus paging) so a filtered view can
+ * compute its own total and page count. A null or empty status counts every row. Runs as one
+ * prepared, index-backed COUNT(*) against this plugin's own audit table.
+ *
+ * @param string|null $status One of success|error|denied, or null/empty for all rows.
+ * @return int Non-negative row count for the (optionally filtered) set.
+ */
+function aafm_activity_count_filtered( ?string $status = null ): int {
+	global $wpdb;
+	// The table name is an internal constant ($wpdb->prefix . 'aafm_activity_log'),
+	// never user input; esc_sql() makes that explicit for the static analyzers.
+	$table = esc_sql( aafm_activity_log_table() );
+
+	if ( null === $status || '' === $status ) {
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+		$count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+		return max( 0, (int) $count );
+	}
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+	$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE status = %s", $status ) );
+	return max( 0, (int) $count );
+}
+
+/**
  * Delete every activity row.
  *
  * @return void

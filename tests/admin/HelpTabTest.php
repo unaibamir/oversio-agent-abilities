@@ -40,8 +40,8 @@ final class HelpTabTest extends TestCase {
 		aafm_render_help_tab();
 		$html = (string) ob_get_clean();
 
-		// One <details> accordion per documented issue (15 total).
-		$this->assertSame( 15, substr_count( $html, '<details class="aafm-help-entry">' ) );
+		// One <details> accordion per documented issue (19 total).
+		$this->assertSame( 19, substr_count( $html, '<details class="aafm-help-entry">' ) );
 
 		// Spot-check the load-bearing technical fixes are present and accurate.
 		$this->assertStringContainsString( 'rest_route=/agent-abilities-for-mcp/mcp', $html );

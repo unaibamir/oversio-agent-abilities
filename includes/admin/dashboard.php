@@ -354,15 +354,18 @@ function aafm_render_dashboard_tab(): void {
 	printf(
 		'<div class="stat-value">%1$s <small>%2$s</small></div>',
 		esc_html( number_format_i18n( $log_rows ) ),
+		esc_html( _n( 'entry', 'entries', $log_rows, 'agent-abilities-for-mcp' ) )
+	);
+	printf(
+		'<div class="stat-sub">%s</div>',
 		esc_html(
 			sprintf(
-				/* translators: %s: maximum number of rows kept in the audit log. */
-				__( '/ %s rows', 'agent-abilities-for-mcp' ),
+				/* translators: %s: maximum number of rows the log keeps. */
+				__( 'Keeps the most recent %s entries, then drops the oldest.', 'agent-abilities-for-mcp' ),
 				number_format_i18n( $log_cap )
 			)
 		)
 	);
-	echo '<div class="stat-sub">' . esc_html__( 'Logging is on', 'agent-abilities-for-mcp' ) . '</div>';
 	echo '</div>';
 
 	// Agent users. The security signal is preserved: when an admin-capable agent exists,

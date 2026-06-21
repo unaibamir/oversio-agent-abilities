@@ -119,8 +119,18 @@ function aafm_create_agent_user( string $login ) {
 	if ( '' === $login ) {
 		return new WP_Error( 'aafm_bad_login', __( 'Invalid username.', 'agent-abilities-for-mcp' ) );
 	}
-	if ( username_exists( $login ) ) {
-		return new WP_Error( 'aafm_user_exists', __( 'That username already exists.', 'agent-abilities-for-mcp' ) );
+	$existing_id = username_exists( $login );
+	if ( $existing_id ) {
+		// The user is already there — hand back a friendly message plus the existing user's
+		// id and edit link so the caller can offer "Edit user" instead of a dead-end error.
+		return new WP_Error(
+			'aafm_user_exists',
+			__( 'That user already exists, so there is nothing to create. You can edit it instead.', 'agent-abilities-for-mcp' ),
+			array(
+				'user_id'  => (int) $existing_id,
+				'edit_url' => (string) get_edit_user_link( (int) $existing_id ),
+			)
+		);
 	}
 
 	$user_id = wp_insert_user(
@@ -263,7 +273,15 @@ function aafm_ajax_create_agent_user(): void {
 	$login  = isset( $_POST['login'] ) ? sanitize_user( wp_unslash( (string) $_POST['login'] ), true ) : '';
 	$result = aafm_create_agent_user( $login );
 	if ( is_wp_error( $result ) ) {
-		wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		$payload = array( 'message' => $result->get_error_message() );
+		// On a duplicate username, carry the existing user's id + edit link so the JS can
+		// render an "Edit user" link rather than a bare error string.
+		$data = $result->get_error_data();
+		if ( is_array( $data ) && ! empty( $data['user_id'] ) ) {
+			$payload['user_id']  = (int) $data['user_id'];
+			$payload['edit_url'] = isset( $data['edit_url'] ) ? esc_url_raw( (string) $data['edit_url'] ) : '';
+		}
+		wp_send_json_error( $payload );
 	}
 	wp_send_json_success( $result );
 }
@@ -375,14 +393,48 @@ function aafm_render_connection_tab(): void {
 	echo '</section>';
 
 	// ---- Step 1: create a dedicated agent user ----
-	echo '<div class="aafm-step aafm-conn-step">';
-	echo '<div class="aafm-step-head"><span class="aafm-sidx">1</span><div>';
+	// The default agent login the snippets point at. If it already exists, render step 1 in a
+	// completed "done" state with an edit link rather than a create form that can only error.
+	$default_agent_login = 'mcp-agent';
+	$existing_agent_id   = (int) username_exists( $default_agent_login );
+	$agent_exists        = $existing_agent_id > 0;
+
+	printf(
+		'<div class="aafm-step aafm-conn-step%s">',
+		$agent_exists ? ' aafm-step-done' : ''
+	);
+	echo '<div class="aafm-step-head"><span class="aafm-sidx">';
+	if ( $agent_exists ) {
+		echo aafm_icon( 'check' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static literal SVG.
+	} else {
+		echo '1';
+	}
+	echo '</span><div>';
 	echo '<h2>' . esc_html__( 'Create a dedicated agent user', 'agent-abilities-for-mcp' ) . '</h2>';
 	echo '<p class="sub">' . esc_html__( 'Give the agent its own user with the least privilege it needs. It can only do what that user\'s role allows, and every ability is off until you turn it on.', 'agent-abilities-for-mcp' ) . '</p>';
 	echo '</div></div>';
 	echo '<div class="aafm-step-rail"><div class="aafm-card aafm-card-pad">';
 	wp_nonce_field( 'aafm_admin', 'aafm_conn_nonce' );
-	echo '<p><input type="text" id="aafm-agent-login" value="mcp-agent" class="regular-text"> <button type="button" class="aafm-btn aafm-btn-secondary" id="aafm-create-user">' . esc_html__( 'Create agent user', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-user-status" aria-live="polite"></span></p>';
+	if ( $agent_exists ) {
+		$edit_url = (string) get_edit_user_link( $existing_agent_id );
+		echo '<p class="aafm-agent-done">';
+		echo '<span class="aafm-pill aafm-pill-success">' . esc_html__( 'Done', 'agent-abilities-for-mcp' ) . '</span> ';
+		printf(
+			/* translators: %s: the agent user's login. */
+			esc_html__( 'The %s user already exists, so you can move straight to connecting your client.', 'agent-abilities-for-mcp' ),
+			'<strong>' . esc_html( $default_agent_login ) . '</strong>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- login escaped above.
+		);
+		if ( '' !== $edit_url ) {
+			printf(
+				' <a href="%1$s">%2$s</a>',
+				esc_url( $edit_url ),
+				esc_html__( 'Edit user', 'agent-abilities-for-mcp' )
+			);
+		}
+		echo '</p>';
+	} else {
+		echo '<p><input type="text" id="aafm-agent-login" value="' . esc_attr( $default_agent_login ) . '" class="regular-text"> <button type="button" class="aafm-btn aafm-btn-secondary" id="aafm-create-user">' . esc_html__( 'Create agent user', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-user-status" aria-live="polite"></span></p>';
+	}
 	echo '</div></div>';
 	echo '</div>';
 

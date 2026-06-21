@@ -145,6 +145,11 @@ function aafm_enqueue_admin_assets( string $hook ): void {
 				'allowlistDropped'         => __( 'Saved. Dropped %d line(s) that were not a valid IP or range — check the allowlist.', 'agent-abilities-for-mcp' ),
 				/* translators: %d: the new agent user's numeric ID. */
 				'userCreated'              => __( 'Created user #%d. Now create its Application Password under Users → Profile.', 'agent-abilities-for-mcp' ),
+				'editUser'                 => __( 'Edit user', 'agent-abilities-for-mcp' ),
+				/* translators: 1: current page number, 2: total number of pages. */
+				'pagerStatus'              => __( 'Page %1$s of %2$s', 'agent-abilities-for-mcp' ),
+				'loadingPage'              => __( 'Loading…', 'agent-abilities-for-mcp' ),
+				'noActivity'               => __( 'No activity recorded yet.', 'agent-abilities-for-mcp' ),
 				/* translators: 1: HTTP status code, 2: number of tools visible in the admin view. */
 				'connectionOk'             => __( 'Reachable (HTTP %1$s) — %2$s tool(s) in your admin view.', 'agent-abilities-for-mcp' ),
 				/* translators: %s: HTTP status code returned by the endpoint. */
@@ -499,6 +504,90 @@ function aafm_ajax_clear_log(): void {
 	}
 	aafm_clear_activity_log();
 	wp_send_json_success();
+}
+
+/**
+ * AJAX: return one page of activity rows for a given page number and status filter.
+ *
+ * Server-side paging and filtering so the table never has to load tens of thousands of rows
+ * into the DOM. The incoming filter is sanitized against the known set (all|success|error|denied)
+ * and mapped to a query status; the page number is clamped to the filtered total. Returns the
+ * rendered <tr> HTML (every cell escaped by aafm_activity_rows_html()) plus the paging state the
+ * JS needs to update the pager. Read-only — never touches state.
+ *
+ * @return void
+ */
+function aafm_ajax_get_log_page(): void {
+	check_ajax_referer( 'aafm_admin', 'nonce' );
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'agent-abilities-for-mcp' ) ), 403 );
+	}
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+	$filter = isset( $_POST['filter'] ) ? sanitize_key( wp_unslash( (string) $_POST['filter'] ) ) : 'all';
+	if ( ! in_array( $filter, array( 'all', 'success', 'error', 'denied' ), true ) ) {
+		$filter = 'all';
+	}
+	$status = aafm_activity_filter_status( $filter );
+
+	$per_page    = aafm_activity_page_size();
+	$total       = aafm_activity_count_filtered( $status );
+	$total_pages = max( 1, (int) ceil( $total / $per_page ) );
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce verified above.
+	$page = isset( $_POST['page'] ) ? absint( wp_unslash( (string) $_POST['page'] ) ) : 1;
+	$page = min( max( 1, $page ), $total_pages );
+
+	$rows = aafm_query_activity(
+		array(
+			'per_page' => $per_page,
+			'page'     => $page,
+			'status'   => $status,
+		)
+	);
+
+	wp_send_json_success(
+		array(
+			'rows'        => aafm_activity_rows_data( $rows ),
+			'page'        => $page,
+			'total_pages' => $total_pages,
+			'total'       => $total,
+			'filter'      => $filter,
+		)
+	);
+}
+
+/**
+ * Normalize activity rows to a flat, JSON-safe shape for the client renderer.
+ *
+ * The JS builds each table cell with textContent (never innerHTML), so it needs plain values,
+ * not markup. Only the columns the table shows are exposed; the log holds argument KEYS (never
+ * values) plus a REMOTE_ADDR source IP, so there is no PII to strip beyond shaping.
+ *
+ * @param array<int,array<string,mixed>> $rows Rows from aafm_query_activity().
+ * @return array<int,array{time:string,principal:string,ability:string,status:string,variant:string,arg_keys:string}>
+ */
+function aafm_activity_rows_data( array $rows ): array {
+	$status_variants = array(
+		'success' => 'success',
+		'error'   => 'danger',
+		'denied'  => 'warn',
+		'started' => 'neutral',
+	);
+
+	$out = array();
+	foreach ( $rows as $row ) {
+		$status = (string) ( $row['status'] ?? '' );
+		$out[]  = array(
+			'time'      => (string) ( $row['created_at'] ?? '' ),
+			'principal' => (string) ( $row['principal_login'] ?? '' ) . ' (#' . (int) ( $row['principal_user_id'] ?? 0 ) . ')',
+			'ability'   => (string) ( $row['ability'] ?? '' ),
+			'status'    => $status,
+			'variant'   => $status_variants[ $status ] ?? 'neutral',
+			'arg_keys'  => (string) ( $row['arg_keys'] ?? '' ),
+		);
+	}
+	return $out;
 }
 
 /**
@@ -1215,30 +1304,33 @@ function aafm_render_user_meta_keys_selector(): void {
  * @return void
  */
 function aafm_render_activity_tab(): void {
-	$rows = aafm_query_activity( array( 'per_page' => 100 ) );
+	$per_page = aafm_activity_page_size();
+	$rows     = aafm_query_activity( array( 'per_page' => $per_page ) );
+
+	$total       = aafm_activity_count();
+	$total_pages = max( 1, (int) ceil( $total / $per_page ) );
+	$log_cap     = defined( 'AAFM_LOG_MAX_ROWS' ) ? (int) AAFM_LOG_MAX_ROWS : 10000;
 
 	echo '<div class="aafm-activity">';
 	wp_nonce_field( 'aafm_admin', 'aafm_log_nonce' );
 
-	// Presentational status filter — static segmented control, no client-side wiring yet.
+	// Status filter — server-side: each button re-queries page 1 with its status (admin.js).
 	echo '<div class="aafm-activity-toolbar">';
 	echo '<div class="aafm-seg" role="group" aria-label="' . esc_attr__( 'Filter by status', 'agent-abilities-for-mcp' ) . '">';
-	echo '<button type="button" class="aafm-seg-btn is-active on" data-filter="all">' . esc_html__( 'All', 'agent-abilities-for-mcp' ) . '</button>';
-	echo '<button type="button" class="aafm-seg-btn" data-filter="success">' . esc_html__( 'Success', 'agent-abilities-for-mcp' ) . '</button>';
-	echo '<button type="button" class="aafm-seg-btn" data-filter="error">' . esc_html__( 'Errors', 'agent-abilities-for-mcp' ) . '</button>';
-	echo '<button type="button" class="aafm-seg-btn" data-filter="denied">' . esc_html__( 'Denied', 'agent-abilities-for-mcp' ) . '</button>';
+	echo '<button type="button" class="aafm-seg-btn is-active on" data-filter="all" aria-pressed="true">' . esc_html__( 'All', 'agent-abilities-for-mcp' ) . '</button>';
+	echo '<button type="button" class="aafm-seg-btn" data-filter="success" aria-pressed="false">' . esc_html__( 'Success', 'agent-abilities-for-mcp' ) . '</button>';
+	echo '<button type="button" class="aafm-seg-btn" data-filter="error" aria-pressed="false">' . esc_html__( 'Errors', 'agent-abilities-for-mcp' ) . '</button>';
+	echo '<button type="button" class="aafm-seg-btn" data-filter="denied" aria-pressed="false">' . esc_html__( 'Denied', 'agent-abilities-for-mcp' ) . '</button>';
 	echo '</div>';
 
-	// Row count: how many rows are stored against the cap the oldest rows drop at.
-	$log_rows = aafm_activity_count();
-	$log_cap  = defined( 'AAFM_LOG_MAX_ROWS' ) ? (int) AAFM_LOG_MAX_ROWS : 10000;
+	// Live count headline plus a plain clarifier that the log is a rolling window.
 	printf(
-		'<span class="aafm-activity-count">%s</span>',
+		'<span class="aafm-activity-count" aria-live="polite"><strong class="aafm-count-num">%1$s</strong> <span class="aafm-count-note">%2$s</span></span>',
+		esc_html( number_format_i18n( $total ) ),
 		esc_html(
 			sprintf(
-				/* translators: 1: number of rows stored, 2: maximum number of rows kept. */
-				__( '%1$s of %2$s rows', 'agent-abilities-for-mcp' ),
-				number_format_i18n( $log_rows ),
+				/* translators: %s: maximum number of entries the log keeps. */
+				__( 'entries — keeps the most recent %s, then drops the oldest', 'agent-abilities-for-mcp' ),
 				number_format_i18n( $log_cap )
 			)
 		)
@@ -1247,7 +1339,10 @@ function aafm_render_activity_tab(): void {
 	echo '<button type="button" class="aafm-btn aafm-btn-secondary" id="aafm-clear-log">' . esc_html__( 'Clear log', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-clear-status" aria-live="polite"></span>';
 	echo '</div>';
 
-	echo '<div class="aafm-table-wrap">';
+	printf(
+		'<div class="aafm-table-wrap" id="aafm-log-table-wrap" data-page="1" data-filter="all" data-total-pages="%s">',
+		esc_attr( (string) $total_pages )
+	);
 	echo '<table class="widefat striped aafm-log-table"><thead><tr>';
 	echo '<th>' . esc_html__( 'Time (UTC)', 'agent-abilities-for-mcp' ) . '</th>';
 	echo '<th>' . esc_html__( 'Principal', 'agent-abilities-for-mcp' ) . '</th>';
@@ -1256,9 +1351,70 @@ function aafm_render_activity_tab(): void {
 	echo '<th>' . esc_html__( 'Arg keys', 'agent-abilities-for-mcp' ) . '</th>';
 	echo '</tr></thead><tbody>';
 
+	echo aafm_activity_rows_html( $rows ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- each cell is escaped inside the helper.
+
+	echo '</tbody></table>';
+	echo '</div>'; // .aafm-table-wrap
+
+	// Pager: Prev / "Page X of Y" / Next. Disabled at the ends; updated by admin.js on filter/page.
+	echo '<div class="aafm-pager">';
+	echo '<button type="button" class="aafm-btn aafm-btn-secondary aafm-pager-prev" disabled>' . esc_html__( 'Previous', 'agent-abilities-for-mcp' ) . '</button>';
+	printf(
+		'<span class="aafm-pager-status" aria-live="polite">%s</span>',
+		esc_html(
+			sprintf(
+				/* translators: 1: current page number, 2: total number of pages. */
+				__( 'Page %1$s of %2$s', 'agent-abilities-for-mcp' ),
+				number_format_i18n( 1 ),
+				number_format_i18n( $total_pages )
+			)
+		)
+	);
+	printf(
+		'<button type="button" class="aafm-btn aafm-btn-secondary aafm-pager-next"%s>%s</button>',
+		$total_pages > 1 ? '' : ' disabled',
+		esc_html__( 'Next', 'agent-abilities-for-mcp' )
+	);
+	echo '</div>';
+
+	echo '</div>';
+}
+
+/**
+ * Number of activity rows shown per page in the admin table.
+ *
+ * @return int Positive page size, capped at the aafm_query_activity() ceiling (200).
+ */
+function aafm_activity_page_size(): int {
+	$size = (int) apply_filters( 'aafm_activity_page_size', 50 );
+	return min( 200, max( 1, $size ) );
+}
+
+/**
+ * Map a status-filter segment slug to a query status (or null for "all").
+ *
+ * @param string $filter One of all|success|error|denied (anything else falls back to all).
+ * @return string|null The status to query on, or null for no status filter.
+ */
+function aafm_activity_filter_status( string $filter ): ?string {
+	return in_array( $filter, array( 'success', 'error', 'denied' ), true ) ? $filter : null;
+}
+
+/**
+ * Render one page of activity rows as escaped <tr> HTML.
+ *
+ * Every cell is run through esc_html()/esc_attr(); the log only ever holds argument KEYS
+ * (never values) plus a REMOTE_ADDR source IP, so standard escaping is sufficient. An empty
+ * set renders a single "no activity" row so the table never collapses to a bare <tbody>.
+ *
+ * @param array<int,array<string,mixed>> $rows Rows from aafm_query_activity().
+ * @return string Escaped <tr>…</tr> markup.
+ */
+function aafm_activity_rows_html( array $rows ): string {
 	if ( empty( $rows ) ) {
-		echo '<tr><td colspan="5">' . esc_html__( 'No activity recorded yet.', 'agent-abilities-for-mcp' ) . '</td></tr>';
+		return '<tr><td colspan="5">' . esc_html__( 'No activity recorded yet.', 'agent-abilities-for-mcp' ) . '</td></tr>';
 	}
+
 	// Map each log status to a pill variant; the status word stays visible (never colour-only).
 	$status_variants = array(
 		'success' => 'success',
@@ -1266,10 +1422,12 @@ function aafm_render_activity_tab(): void {
 		'denied'  => 'warn',
 		'started' => 'neutral',
 	);
+
+	$html = '';
 	foreach ( $rows as $row ) {
 		$status  = (string) ( $row['status'] ?? '' );
 		$variant = $status_variants[ $status ] ?? 'neutral';
-		printf(
+		$html   .= sprintf(
 			'<tr><td>%1$s</td><td>%2$s</td><td>%3$s</td><td><span class="aafm-pill aafm-pill-%4$s aafm-status aafm-status-%5$s">%6$s</span></td><td>%7$s</td></tr>',
 			esc_html( (string) ( $row['created_at'] ?? '' ) ),
 			esc_html( (string) ( $row['principal_login'] ?? '' ) . ' (#' . (int) ( $row['principal_user_id'] ?? 0 ) . ')' ),
@@ -1280,9 +1438,7 @@ function aafm_render_activity_tab(): void {
 			esc_html( (string) ( $row['arg_keys'] ?? '' ) )
 		);
 	}
-	echo '</tbody></table>';
-	echo '</div>'; // .aafm-table-wrap
-	echo '</div>';
+	return $html;
 }
 
 /**
@@ -1461,6 +1617,17 @@ function aafm_render_help_tab(): void {
 		)
 	);
 
+	// Browser / OAuth clients: how a client connects without a copied secret.
+	aafm_render_help_entry(
+		__( 'Connecting a browser or OAuth client', 'agent-abilities-for-mcp' ),
+		wp_kses(
+			'<p>' . esc_html__( 'There are two ways for an agent to authenticate. Most desktop clients use an Application Password: create one for the agent user under Users → Profile → Application Passwords, then paste the generated config from Connection → Step 2. Keep the password\'s spaces when you copy it.', 'agent-abilities-for-mcp' ) . '</p>'
+			. '<p>' . esc_html__( 'OAuth is the other way, and it is off by default. Turn it on under Settings and the agent connects by browser approval instead of a copied secret: you paste your site URL into the client and approve the request in your browser. The Connection tab shows the OAuth card and the endpoint to use once it is enabled.', 'agent-abilities-for-mcp' ) . '</p>'
+			. '<p>' . esc_html__( 'For browser-based clients, the plugin already exposes the session and approval headers a browser needs to read across origins (the MCP session id, the protocol version, and the OAuth challenge), so a web client can complete the handshake. If a browser client still cannot read the session header, check that nothing in front of WordPress is stripping CORS response headers.', 'agent-abilities-for-mcp' ) . '</p>',
+			$inline
+		)
+	);
+
 	echo '</div>';
 
 	// Section 2 — Authentication.
@@ -1519,6 +1686,40 @@ function aafm_render_help_tab(): void {
 			. '<li>' . esc_html__( 'The agent user holds the WordPress capability that ability requires.', 'agent-abilities-for-mcp' ) . '</li>'
 			. '</ul>'
 			. '<p>' . esc_html__( 'If the toggle is on but the agent still gets refused, it is almost always the capability. Check the agent user\'s role.', 'agent-abilities-for-mcp' ) . '</p>',
+			$inline
+		)
+	);
+
+	// Meta governance: the allow/deny model and the * wildcard.
+	aafm_render_help_entry(
+		__( 'How the exposed and denied meta key lists work (and what * does)', 'agent-abilities-for-mcp' ),
+		wp_kses(
+			'<p>' . esc_html__( 'Meta is locked down by default: until you list a key under "Exposed meta keys" on the Abilities tab, an agent cannot read or write any post meta. Two keys are always off limits no matter what you list: keys starting with an underscore (protected meta) and authentication keys. Those stay blocked even if you try to add them.', 'agent-abilities-for-mcp' ) . '</p>'
+			. '<p>' . esc_html__( 'A single * in the exposed list means "allow every key except the ones that are blocked or denied". The order the plugin checks is fixed: blocked keys lose first, then the denied list, then the exposed list (or the * wildcard). So the deny list always wins. A key in "Denied meta keys" stays hidden even when the exposed list is set to *.', 'agent-abilities-for-mcp' ) . '</p>'
+			. '<p>' . esc_html__( 'One thing to know about * and reading all of a post\'s meta at once: a single-key read works for any key * covers, but the "read all meta" ability only returns the keys you spelled out by name. Under a bare *, with no named keys, it returns an empty set. List the keys you want returned in bulk.', 'agent-abilities-for-mcp' ) . '</p>',
+			$inline
+		)
+	);
+
+	// Term meta is filter-only (no admin field).
+	aafm_render_help_entry(
+		__( 'Exposing term (category and tag) meta', 'agent-abilities-for-mcp' ),
+		wp_kses(
+			'<p>' . esc_html__( 'Term meta has no field on the Abilities tab. It is off by default and you open it up with a small filter in your own code (a site-specific plugin or your theme\'s functions.php). Add the key names you want an agent to read or write on terms:', 'agent-abilities-for-mcp' ) . '</p>'
+			. aafm_help_copy_line( 'add_filter( \'aafm_allowed_term_meta_keys\', fn( $keys ) => array_merge( $keys, [ \'my_term_color\', \'my_term_icon\' ] ) );' )
+			. '<p>' . esc_html__( 'The same protections apply as for post meta: underscore-prefixed and authentication keys are stripped out even if your filter tries to add them.', 'agent-abilities-for-mcp' ) . '</p>',
+			$inline
+		)
+	);
+
+	// Widening the exposed post types.
+	aafm_render_help_entry(
+		__( 'My custom post type is not available to the agent', 'agent-abilities-for-mcp' ),
+		wp_kses(
+			'<p>' . esc_html__( 'Out of the box an agent can only touch posts and pages. Every other content type is off until you turn it on under "Exposed content types" on the Abilities tab. Only public, non-internal types show up there to choose from.', 'agent-abilities-for-mcp' ) . '</p>'
+			. '<p>' . esc_html__( 'If you would rather set this in code, the same list runs through a filter you can add to:', 'agent-abilities-for-mcp' ) . '</p>'
+			. aafm_help_copy_line( 'add_filter( \'aafm_allowed_post_types\', fn( $types ) => array_merge( $types, [ \'product\', \'event\' ] ) );' )
+			. '<p>' . esc_html__( 'After exposing a type, the agent still needs the WordPress capabilities for that type, and the relevant abilities still have to be turned on.', 'agent-abilities-for-mcp' ) . '</p>',
 			$inline
 		)
 	);
