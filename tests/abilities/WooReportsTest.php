@@ -726,6 +726,25 @@ final class WooReportsTest extends TestCase {
 	}
 
 	/**
+	 * Update gateway: display order persists to the woocommerce_gateway_order option, not just the
+	 * in-memory object (WooCommerce reads ordering from that option on the next request).
+	 */
+	public function test_update_payment_gateway_persists_display_order(): void {
+		$this->acting_as( 'administrator' );
+		$res = aafm_exec_wc_update_payment_gateway(
+			array(
+				'gateway_id' => 'paypal',
+				'order'      => 4,
+			)
+		);
+
+		$this->assertNotInstanceOf( WP_Error::class, $res );
+		$ordering = get_option( 'woocommerce_gateway_order' );
+		$this->assertIsArray( $ordering );
+		$this->assertSame( 4, (int) $ordering['paypal'] );
+	}
+
+	/**
 	 * Update gateway: audit-logs success.
 	 */
 	public function test_update_payment_gateway_logs_success(): void {
