@@ -251,4 +251,197 @@ final class ConnectionTest extends TestCase {
 		// left and right edges line up top to bottom.
 		$this->assertSame( 3, substr_count( $html, 'aafm-conn-step' ) );
 	}
+
+	public function test_oauth_client_snippet_carries_no_credentials(): void {
+		$snippet = aafm_oauth_client_snippet( 'claude-desktop', 'unix' );
+		$this->assertStringContainsString( 'mcp-remote', $snippet );
+		$this->assertStringContainsString( aafm_endpoint_url(), $snippet );
+		// OAuth = browser approval, never a stored secret.
+		$this->assertStringNotContainsString( 'WP_API_PASSWORD', $snippet );
+		$this->assertStringNotContainsString( 'WP_API_USERNAME', $snippet );
+		$this->assertStringNotContainsString( 'PASTE-APPLICATION-PASSWORD-HERE', $snippet );
+	}
+
+	public function test_oauth_client_snippet_local_adds_ca_placeholder(): void {
+		add_filter( 'aafm_site_is_local', '__return_true' );
+		$snippet = aafm_oauth_client_snippet( 'claude-desktop', 'unix' );
+		remove_filter( 'aafm_site_is_local', '__return_true' );
+		$this->assertStringContainsString( 'NODE_EXTRA_CA_CERTS', $snippet );
+		// Path is machine-specific — placeholder only, never a hardcoded real path.
+		$this->assertStringContainsString( 'PATH-TO-YOUR-mkcert-rootCA.pem', $snippet );
+	}
+
+	public function test_oauth_client_snippet_production_omits_env(): void {
+		add_filter( 'aafm_site_is_local', '__return_false' );
+		$snippet = aafm_oauth_client_snippet( 'claude-desktop', 'unix' );
+		remove_filter( 'aafm_site_is_local', '__return_false' );
+		$this->assertStringNotContainsString( 'NODE_EXTRA_CA_CERTS', $snippet );
+	}
+
+	public function test_oauth_client_snippet_windows_wraps_cmd(): void {
+		$snippet = aafm_oauth_client_snippet( 'claude-desktop', 'windows' );
+		$this->assertStringContainsString( 'cmd', $snippet );
+		$this->assertStringContainsString( '/c', $snippet );
+	}
+
+	public function test_oauth_client_snippet_vscode_uses_servers_key(): void {
+		$vscode  = aafm_oauth_client_snippet( 'vscode', 'unix' );
+		$generic = aafm_oauth_client_snippet( 'generic', 'unix' );
+		$this->assertStringContainsString( '"servers"', $vscode );
+		$this->assertStringContainsString( '"mcpServers"', $generic );
+	}
+
+	public function test_oauth_client_mode_known_for_every_client(): void {
+		foreach ( array_keys( aafm_quickstart_clients() ) as $slug ) {
+			$this->assertContains( aafm_oauth_client_mode( $slug ), array( 'native', 'bridge' ), $slug );
+		}
+	}
+
+	public function test_oauth_client_note_present_for_every_client(): void {
+		foreach ( array_keys( aafm_quickstart_clients() ) as $slug ) {
+			$this->assertNotSame( '', aafm_oauth_client_note( $slug ), $slug );
+		}
+		$this->assertSame( '', aafm_oauth_client_note( 'does-not-exist' ) );
+	}
+
+	public function test_connection_tab_leads_with_oauth_when_enabled(): void {
+		update_option( 'aafm_oauth_enabled', '1' );
+		ob_start();
+		aafm_render_connection_tab();
+		$html = (string) ob_get_clean();
+		// OAuth section is present and marked recommended.
+		$this->assertStringContainsString( 'Connect with OAuth', $html );
+		$this->assertStringContainsString( 'Recommended', $html );
+		// App Password path is present as a collapsed fallback (<details>).
+		$this->assertStringContainsString( '<details', $html );
+		$this->assertStringContainsString( 'Application Password', $html );
+		// Endpoint still shown once.
+		$this->assertStringContainsString( aafm_endpoint_url(), $html );
+	}
+
+	public function test_connection_tab_oauth_disabled_expands_app_password(): void {
+		update_option( 'aafm_oauth_enabled', '0' );
+		ob_start();
+		aafm_render_connection_tab();
+		$html = (string) ob_get_clean();
+		$this->assertStringContainsString( 'Application Password', $html );
+		// The fallback renders open when OAuth is off.
+		$this->assertMatchesRegularExpression( '/<details[^>]*\bopen\b/', $html );
+		update_option( 'aafm_oauth_enabled', '1' ); // Restore default state.
+	}
+
+	/**
+	 * Regression guard: the OAuth snippet section must never contain Application Password
+	 * credential placeholders, and the App-Password fallback must contain them.
+	 *
+	 * This locks the critical Defect 1 bug: the App-Password client picker used to overwrite
+	 * OAuth snippet content because it selected .aafm-snippet[data-os] globally.  The server-
+	 * rendered markup enforces the structural separation the JS scoping relies on.
+	 */
+	public function test_oauth_section_is_credential_free_and_app_password_section_carries_placeholder(): void {
+		update_option( 'aafm_oauth_enabled', '1' );
+		$html = $this->render_connection_tab();
+
+		// Isolate the OAuth card (everything inside .aafm-oauth-card).
+		$oauth_start = strpos( $html, 'aafm-oauth-card' );
+		$this->assertNotFalse( $oauth_start, 'OAuth card wrapper not found in rendered HTML.' );
+
+		// Isolate the App-Password fallback (everything inside .aafm-app-password-fallback).
+		$ap_start = strpos( $html, 'aafm-app-password-fallback' );
+		$this->assertNotFalse( $ap_start, 'App-Password fallback wrapper not found in rendered HTML.' );
+
+		// The two sections must be structurally separate — AP fallback follows OAuth card.
+		$this->assertGreaterThan( $oauth_start, $ap_start, 'App-Password fallback must come after the OAuth card.' );
+
+		// Extract the OAuth card region (up to where the app-password fallback starts).
+		$oauth_region = substr( $html, $oauth_start, $ap_start - $oauth_start );
+
+		// The OAuth region must be entirely credential-free.
+		$this->assertStringNotContainsString(
+			'WP_API_PASSWORD',
+			$oauth_region,
+			'OAuth card must not contain WP_API_PASSWORD — OAuth needs no stored secret.'
+		);
+		$this->assertStringNotContainsString(
+			'PASTE-APPLICATION-PASSWORD-HERE',
+			$oauth_region,
+			'OAuth card must not contain the app-password placeholder.'
+		);
+		$this->assertStringNotContainsString(
+			'WP_API_USERNAME',
+			$oauth_region,
+			'OAuth card must not contain WP_API_USERNAME.'
+		);
+
+		// The App-Password region must contain the credential placeholder.
+		$ap_region = substr( $html, $ap_start );
+		$this->assertStringContainsString(
+			'PASTE-APPLICATION-PASSWORD-HERE',
+			$ap_region,
+			'App-Password fallback must contain the credential paste placeholder.'
+		);
+	}
+
+	/**
+	 * Regression guard: the OAuth card must render BOTH OS snippet variants so the OAuth
+	 * OS toggle has something to switch to.
+	 *
+	 * Locks the regression where the OS-tab handler was scoped to .aafm-oauth-picker, which
+	 * holds only the tabs — the snippets live in the sibling .aafm-oauth-panels, so a Windows
+	 * user on the recommended OAuth path was shown the macOS/Linux command. Asserting both
+	 * variants render (npx for unix, cmd for windows) proves the toggle has valid targets in
+	 * the card the JS now scopes to (.aafm-oauth-card).
+	 */
+	public function test_oauth_card_renders_both_os_snippet_variants(): void {
+		update_option( 'aafm_oauth_enabled', '1' );
+		$html = $this->render_connection_tab();
+
+		$oauth_start = strpos( $html, 'aafm-oauth-card' );
+		$ap_start    = strpos( $html, 'aafm-app-password-fallback' );
+		$this->assertNotFalse( $oauth_start, 'OAuth card wrapper not found.' );
+		$this->assertNotFalse( $ap_start, 'App-Password fallback wrapper not found.' );
+		$oauth_region = substr( $html, $oauth_start, $ap_start - $oauth_start );
+
+		// Both OS variants must be present in the OAuth card.
+		$this->assertStringContainsString( 'data-os="unix"', $oauth_region, 'OAuth card missing the unix snippet variant.' );
+		$this->assertStringContainsString( 'data-os="windows"', $oauth_region, 'OAuth card missing the windows snippet variant.' );
+
+		// The two variants must genuinely differ: unix launches npx directly, windows wraps cmd.
+		$this->assertStringContainsString( 'npx', $oauth_region, 'OAuth unix snippet should launch npx.' );
+		$this->assertStringContainsString( 'cmd', $oauth_region, 'OAuth windows snippet should wrap the launcher in cmd.' );
+	}
+
+	/**
+	 * Regression guard: the <details> wrapper for the App-Password fallback must be
+	 * balanced — the number of <details> opens in the fallback region must equal the
+	 * number of </details> closes in that region.
+	 *
+	 * Finds the full <details ...aafm-app-password-fallback...> tag so the region
+	 * starts at the opening angle-bracket and includes the opening tag itself.
+	 */
+	public function test_app_password_fallback_details_element_is_balanced(): void {
+		update_option( 'aafm_oauth_enabled', '1' );
+		$html = $this->render_connection_tab();
+
+		// Find the <details that carries aafm-app-password-fallback.
+		// preg_match with PREG_OFFSET_CAPTURE gives us the byte offset of the match start.
+		$matched = preg_match( '/<details[^>]*aafm-app-password-fallback[^>]*>/', $html, $m, PREG_OFFSET_CAPTURE );
+		$this->assertSame( 1, $matched, 'Exactly one <details class="aafm-app-password-fallback"> must exist.' );
+
+		$region_start = $m[0][1]; // Byte offset of the match.
+		$ap_region    = substr( $html, $region_start );
+
+		$opens  = substr_count( $ap_region, '<details' );
+		$closes = substr_count( $ap_region, '</details>' );
+
+		$this->assertSame(
+			$opens,
+			$closes,
+			sprintf(
+				'<details> open/close mismatch in .aafm-app-password-fallback region: %d open(s), %d close(s). The outer </details> is likely missing.',
+				$opens,
+				$closes
+			)
+		);
+	}
 }

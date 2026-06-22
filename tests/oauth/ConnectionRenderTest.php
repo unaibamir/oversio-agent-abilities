@@ -60,14 +60,20 @@ class ConnectionRenderTest extends TestCase {
 	}
 
 	/**
-	 * With OAuth disabled, the card is omitted but the rest of the tab is intact.
+	 * With OAuth disabled, the card shows a notice instead of the picker, and the
+	 * App Password fallback renders open so it is immediately visible.
 	 */
-	public function test_oauth_card_omitted_when_disabled(): void {
+	public function test_oauth_card_shows_notice_when_disabled(): void {
 		update_option( 'aafm_oauth_enabled', '0' );
 
 		$html = $this->render_connection_tab();
 
-		$this->assertStringNotContainsString( 'Connect with OAuth', $html );
+		// Heading is always shown — the content switches to a short notice.
+		$this->assertStringContainsString( 'Connect with OAuth', $html );
+		$this->assertStringContainsString( 'OAuth is turned off', $html );
+
+		// The App Password fallback opens automatically when OAuth is off.
+		$this->assertMatchesRegularExpression( '/<details[^>]*\bopen\b/', $html );
 
 		// The existing pieces still render, proving the gate is purely additive.
 		$this->assertStringContainsString( 'MCP endpoint', $html );
