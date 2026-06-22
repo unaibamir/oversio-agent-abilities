@@ -381,9 +381,20 @@ function aafm_exec_wc_update_payment_gateway( array $input ): array|\WP_Error {
 		$desired['description'] = $desc_val;
 	}
 	if ( isset( $input['order'] ) ) {
-		// Display order is a gateway-ordering concern (WC stores it in the woocommerce_gateway_order
-		// option, not the per-gateway settings), so it is reflected on the object only.
-		$gateway->order = (int) $input['order'];
+		// Display order is not a per-gateway setting: WooCommerce keeps it in the
+		// woocommerce_gateway_order option (a gateway_id => position map). Persist it there so the
+		// change survives the next request, then reflect it on the object for the response.
+		$order_val               = (int) $input['order'];
+		$gateway->order          = $order_val;
+		$ordering                = get_option( 'woocommerce_gateway_order', array() );
+		$ordering                = is_array( $ordering ) ? $ordering : array();
+		$ordering[ $gateway_id ] = $order_val;
+		update_option( 'woocommerce_gateway_order', $ordering );
+
+		$saved_order = get_option( 'woocommerce_gateway_order', array() );
+		if ( ! is_array( $saved_order ) || (int) ( $saved_order[ $gateway_id ] ?? -1 ) !== $order_val ) {
+			return aafm_generic_error();
+		}
 	}
 	// Verify the persisted state matches what we asked for. get_option() reflects the gateway's
 	// in-memory settings, which update_option() already updated, so a mismatch here means the write
