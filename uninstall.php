@@ -27,22 +27,6 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/audit/log.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/oauth/schema.php';
 
 /**
- * Remove this plugin's data for the current blog.
- *
- * Combines the audit teardown (enabled-abilities option + activity log table) with
- * the OAuth teardown (four OAuth tables + schema-version option) so a single call
- * leaves no table or option behind. Run once per site by aafm_run_uninstall().
- *
- * @return void
- */
-function aafm_uninstall_site_data(): void {
-	aafm_uninstall_site();
-	aafm_drop_oauth_tables();
-	delete_option( 'aafm_oauth_schema_version' );
-	wp_clear_scheduled_hook( 'aafm_oauth_cleanup' );
-}
-
-/**
  * Remove this plugin's data from every site, on single-site and multisite alike.
  *
  * Wrapped in a prefixed function so its loop variables stay out of the global scope

@@ -33,7 +33,7 @@ const AAFM_SETTINGS_NUMERIC_MAX = 100000;
  *   stored non-empty list is always made up entirely of usable entries.
  *
  * @param array<string,mixed> $posted Raw $_POST payload (slashes handled by the caller).
- * @return array{aafm_rate_limit_per_min:int,aafm_max_title_len:int,aafm_log_retention_days:int,aafm_force_draft:bool,aafm_oauth_enabled:string,aafm_oauth_dcr_enabled:string,aafm_ip_allowlist:list<string>}
+ * @return array{aafm_rate_limit_per_min:int,aafm_max_title_len:int,aafm_log_retention_days:int,aafm_force_draft:bool,aafm_delete_data_on_uninstall:bool,aafm_oauth_enabled:string,aafm_oauth_dcr_enabled:string,aafm_ip_allowlist:list<string>}
  */
 function aafm_sanitize_settings_input( array $posted ): array {
 	$rate  = min( AAFM_SETTINGS_NUMERIC_MAX, max( 0, (int) ( $posted['aafm_rate_limit_per_min'] ?? 0 ) ) );
@@ -41,6 +41,7 @@ function aafm_sanitize_settings_input( array $posted ): array {
 	// Retention has its own tighter ceiling (ten years); 0 keeps every entry forever.
 	$retention = min( 3650, max( 0, (int) ( $posted['aafm_log_retention_days'] ?? 30 ) ) );
 	$draft     = ! empty( $posted['aafm_force_draft'] );
+	$delete_on = ! empty( $posted['aafm_delete_data_on_uninstall'] );
 
 	$oauth     = empty( $posted['aafm_oauth_enabled'] ) ? '0' : '1';
 	$oauth_dcr = empty( $posted['aafm_oauth_dcr_enabled'] ) ? '0' : '1';
@@ -56,13 +57,14 @@ function aafm_sanitize_settings_input( array $posted ): array {
 	}
 
 	return array(
-		'aafm_rate_limit_per_min' => $rate,
-		'aafm_max_title_len'      => $title,
-		'aafm_log_retention_days' => $retention,
-		'aafm_force_draft'        => $draft,
-		'aafm_oauth_enabled'      => $oauth,
-		'aafm_oauth_dcr_enabled'  => $oauth_dcr,
-		'aafm_ip_allowlist'       => array_values( array_unique( $lines ) ),
+		'aafm_rate_limit_per_min'       => $rate,
+		'aafm_max_title_len'            => $title,
+		'aafm_log_retention_days'       => $retention,
+		'aafm_force_draft'              => $draft,
+		'aafm_delete_data_on_uninstall' => $delete_on,
+		'aafm_oauth_enabled'            => $oauth,
+		'aafm_oauth_dcr_enabled'        => $oauth_dcr,
+		'aafm_ip_allowlist'             => array_values( array_unique( $lines ) ),
 	);
 }
 
@@ -119,21 +121,23 @@ function aafm_ajax_save_settings(): void {
 	update_option( 'aafm_max_title_len', $clean['aafm_max_title_len'] );
 	update_option( 'aafm_log_retention_days', $clean['aafm_log_retention_days'] );
 	update_option( 'aafm_force_draft', $clean['aafm_force_draft'] );
+	update_option( 'aafm_delete_data_on_uninstall', $clean['aafm_delete_data_on_uninstall'] );
 	update_option( 'aafm_oauth_enabled', $clean['aafm_oauth_enabled'] );
 	update_option( 'aafm_oauth_dcr_enabled', $clean['aafm_oauth_dcr_enabled'] );
 	update_option( 'aafm_ip_allowlist', $clean['aafm_ip_allowlist'] );
 
 	wp_send_json_success(
 		array(
-			'aafm_rate_limit_per_min' => $clean['aafm_rate_limit_per_min'],
-			'aafm_max_title_len'      => $clean['aafm_max_title_len'],
-			'aafm_log_retention_days' => $clean['aafm_log_retention_days'],
-			'aafm_force_draft'        => $clean['aafm_force_draft'],
-			'aafm_oauth_enabled'      => $clean['aafm_oauth_enabled'],
-			'aafm_oauth_dcr_enabled'  => $clean['aafm_oauth_dcr_enabled'],
-			'aafm_ip_allowlist'       => $clean['aafm_ip_allowlist'],
-			'aafm_ip_allowlist_text'  => implode( "\n", $clean['aafm_ip_allowlist'] ),
-			'aafm_ip_dropped'         => $dropped,
+			'aafm_rate_limit_per_min'       => $clean['aafm_rate_limit_per_min'],
+			'aafm_max_title_len'            => $clean['aafm_max_title_len'],
+			'aafm_log_retention_days'       => $clean['aafm_log_retention_days'],
+			'aafm_force_draft'              => $clean['aafm_force_draft'],
+			'aafm_delete_data_on_uninstall' => $clean['aafm_delete_data_on_uninstall'],
+			'aafm_oauth_enabled'            => $clean['aafm_oauth_enabled'],
+			'aafm_oauth_dcr_enabled'        => $clean['aafm_oauth_dcr_enabled'],
+			'aafm_ip_allowlist'             => $clean['aafm_ip_allowlist'],
+			'aafm_ip_allowlist_text'        => implode( "\n", $clean['aafm_ip_allowlist'] ),
+			'aafm_ip_dropped'               => $dropped,
 		)
 	);
 }
@@ -166,6 +170,32 @@ function aafm_config_option_names(): array {
 		'aafm_exposed_term_meta_keys',
 		'aafm_denied_term_meta_keys',
 	);
+}
+
+/**
+ * Remove this plugin's data for the current blog.
+ *
+ * Reads the per-site data-retention flag first. When the flag is not set (the default),
+ * data is kept and the function returns immediately so nothing is deleted. When the flag
+ * is explicitly turned on by the site admin, the full teardown runs: every configuration
+ * option, the activity-log table, and the four OAuth tables are all removed. The flag
+ * itself is deleted last so it cannot leak after uninstall.
+ *
+ * Called once per site by aafm_run_uninstall() in uninstall.php. Declared here (settings.php)
+ * so the PHPUnit suite can call it directly without bootstrapping the uninstall context.
+ *
+ * @return void
+ */
+function aafm_uninstall_site_data(): void {
+	if ( ! get_option( 'aafm_delete_data_on_uninstall', false ) ) {
+		return;
+	}
+
+	aafm_uninstall_site();
+	aafm_drop_oauth_tables();
+	delete_option( 'aafm_oauth_schema_version' );
+	wp_clear_scheduled_hook( 'aafm_oauth_cleanup' );
+	delete_option( 'aafm_delete_data_on_uninstall' );
 }
 
 /**
@@ -304,6 +334,17 @@ function aafm_render_settings_tab(): void {
 		)
 	);
 
+	// Delete data on uninstall. Same toggle-switch contract as force draft; the <input>
+	// name/value/checked() is what the save handler and uninstall.php bind to, not this markup.
+	aafm_render_set_row(
+		array(
+			'label'   => __( 'Delete data on uninstall', 'agent-abilities-for-mcp' ),
+			'control' => '<label class="aafm-switch"><input type="checkbox" id="aafm-delete-data-on-uninstall" name="aafm_delete_data_on_uninstall" value="1" ' . checked( (bool) get_option( 'aafm_delete_data_on_uninstall', false ), true, false ) . '><span class="aafm-switch-track"></span></label> '
+				. '<label for="aafm-delete-data-on-uninstall">' . esc_html__( 'Permanently remove all plugin data when the plugin is deleted.', 'agent-abilities-for-mcp' ) . '</label>',
+			'help'    => __( 'When this is off (the default), your settings, activity log, and OAuth data are kept if you delete the plugin, so a reinstall picks up your configuration. Turn it on only if you want everything removed. This cannot be undone.', 'agent-abilities-for-mcp' ),
+		)
+	);
+
 	$safety_body = (string) ob_get_clean();
 	aafm_render_section(
 		array(
@@ -377,6 +418,7 @@ function aafm_render_settings_tab(): void {
 	echo '<button type="button" id="aafm-reset-plugin" class="button button-link-delete">' . esc_html__( 'Reset plugin to defaults', 'agent-abilities-for-mcp' ) . '</button> <span class="aafm-reset-status" aria-live="polite"></span>';
 	echo '<p class="help">' . esc_html__( 'Clears every plugin setting — enabled abilities, exposed content types and meta keys, and all safety controls — and empties the activity log. Your agent user and anything it created (posts and other content) are left untouched. This cannot be undone.', 'agent-abilities-for-mcp' ) . '</p>';
 	echo '</div></div>';
+
 	echo '</div>';
 	echo '</section>';
 

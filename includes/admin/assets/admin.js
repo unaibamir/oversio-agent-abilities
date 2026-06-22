@@ -729,6 +729,9 @@
 					'input[name="aafm_log_retention_days"]'
 				);
 				const draft = form.querySelector( 'input[name="aafm_force_draft"]' );
+				const deleteOnUninstall = form.querySelector(
+					'input[name="aafm_delete_data_on_uninstall"]'
+				);
 				const allowlist = form.querySelector( 'textarea[name="aafm_ip_allowlist"]' );
 
 				const body = new URLSearchParams();
@@ -739,6 +742,9 @@
 				body.append( 'aafm_log_retention_days', retention?.value ?? '30' );
 				if ( draft?.checked ) {
 					body.append( 'aafm_force_draft', '1' );
+				}
+				if ( deleteOnUninstall?.checked ) {
+					body.append( 'aafm_delete_data_on_uninstall', '1' );
 				}
 				body.append( 'aafm_ip_allowlist', allowlist?.value ?? '' );
 
