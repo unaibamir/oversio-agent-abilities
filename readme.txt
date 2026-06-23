@@ -1,6 +1,6 @@
 === Agent Abilities for MCP ===
 Contributors: unaibamir
-Tags: mcp, mcp-server, ai, claude, chatgpt
+Tags: mcp, ai, claude, chatgpt, woocommerce-ai
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0

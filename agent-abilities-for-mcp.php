@@ -7,7 +7,7 @@
  * Requires at least: 6.9
  * Requires PHP:      8.0
  * Author:            Unaib Amir
- * Author URI:        https://github.com/unaibamir
+ * Author URI:        https://unaib.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       agent-abilities-for-mcp
