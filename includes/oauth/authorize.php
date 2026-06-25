@@ -300,7 +300,19 @@ function aafm_oauth_consent_csp( string $redirect_origin = '' ): string {
 		$form_action .= ' ' . $redirect_origin;
 	}
 
-	return "default-src 'none'; style-src 'self'; img-src data:; {$form_action}; base-uri 'none'; frame-ancestors 'none'";
+	// The consent stylesheet is enqueued from plugins_url(), whose origin derives from
+	// WP_CONTENT_URL and can differ from the page origin when assets are offloaded to a CDN
+	// or a separate host. There, 'self' alone would block it and the page would render
+	// unstyled, so add exactly that one asset origin (never a wildcard) when it differs from
+	// the page origin; on a default install the two match and the directive stays 'self'.
+	$style_src    = "style-src 'self'";
+	$asset_origin = aafm_oauth_redirect_uri_origin( plugins_url( 'assets/consent.css', AAFM_PLUGIN_FILE ) );
+	$page_origin  = aafm_oauth_redirect_uri_origin( home_url() );
+	if ( '' !== $asset_origin && $page_origin !== $asset_origin ) {
+		$style_src .= ' ' . $asset_origin;
+	}
+
+	return "default-src 'none'; {$style_src}; img-src data:; {$form_action}; base-uri 'none'; frame-ancestors 'none'";
 }
 
 /**

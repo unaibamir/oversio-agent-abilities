@@ -482,6 +482,26 @@ class AuthorizeTest extends TestCase {
 	}
 
 	/**
+	 * When the consent stylesheet is offloaded to a different origin (CDN / separate asset
+	 * host via plugins_url), 'self' alone would block it, so the CSP adds exactly that one
+	 * asset origin to style-src — never a wildcard, and only when it differs from the page.
+	 */
+	public function test_consent_csp_allows_offloaded_stylesheet_origin(): void {
+		$cdn = static function () {
+			return 'https://cdn.example.net/wp-content/plugins/agent-abilities-for-mcp/assets/consent.css';
+		};
+		add_filter( 'plugins_url', $cdn, 10, 0 );
+		$csp = aafm_oauth_consent_csp();
+		remove_filter( 'plugins_url', $cdn, 10 );
+
+		// The offloaded origin is whitelisted alongside 'self' so the stylesheet can load.
+		$this->assertStringContainsString( "style-src 'self' https://cdn.example.net;", $csp );
+		// Only the bare origin — never the path, never a wildcard.
+		$this->assertStringNotContainsString( '/consent.css', $csp );
+		$this->assertStringNotContainsString( '*', $csp );
+	}
+
+	/**
 	 * The local error page never redirects to the client, so its form-action stays at
 	 * 'self' alone with no client origin appended.
 	 */
