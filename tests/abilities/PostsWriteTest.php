@@ -4,7 +4,7 @@
  * trash, and the anti-escalation guards (author-forcing, type/status pinning,
  * content sanitization).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

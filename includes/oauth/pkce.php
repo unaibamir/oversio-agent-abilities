@@ -6,7 +6,7 @@
  * these from the authorization and token endpoints to enforce the S256 challenge
  * method (the only method this plugin supports).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

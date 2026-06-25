@@ -2,7 +2,7 @@
 /**
  * Per-ability disclosure map and Abilities-tab badge rendering.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -10,7 +10,7 @@
  * storage logic to the clients/codes/tokens modules. Every success response
  * carries `Cache-Control: no-store` so tokens are never cached.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -12,7 +12,7 @@
  * its credentials) on uninstall would be destructive and surprising. Removing the account is
  * the operator's call, made from the Users screen.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

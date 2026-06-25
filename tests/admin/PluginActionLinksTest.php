@@ -2,7 +2,7 @@
 /**
  * Plugins-screen row links: the plugin_action_links filter prepends our quick links.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

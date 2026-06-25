@@ -12,7 +12,7 @@
  * delete-block uses the Trash (wp_trash_post), guarded against trash-disabled sites, so no
  * force-delete primitive is added.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -2,7 +2,7 @@
 /**
  * Coexistence: the eager-load autoloader that wins the WP\MCP\ class-declaration race.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

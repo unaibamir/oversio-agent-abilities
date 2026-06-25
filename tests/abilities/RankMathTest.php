@@ -8,7 +8,7 @@
  * stub_rankmath(). The abilities read/write rank_math_* post meta with core get_post_meta/
  * update_post_meta — including the serialized robots array and the dynamic per-type schema keys.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

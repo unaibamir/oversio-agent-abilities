@@ -7,7 +7,7 @@
  * role change behind promote_users (with a last-admin demotion floor), and delete
  * requires a reassign target while refusing self-deletion and last-admin removal.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

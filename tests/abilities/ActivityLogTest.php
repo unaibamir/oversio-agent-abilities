@@ -6,7 +6,7 @@
  * the closed-schema rejection of a smuggled field, the status filter pass-through, and
  * that a denied read is itself audited.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

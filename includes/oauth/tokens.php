@@ -14,7 +14,7 @@
  * Every secret is matched by a DB lookup on an indexed SHA-256 hex column
  * (WHERE token_hash = %s), never by an in-PHP comparison of raw values.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

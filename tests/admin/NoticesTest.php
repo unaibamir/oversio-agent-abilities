@@ -2,7 +2,7 @@
 /**
  * Reusable admin notice component: variant mapping, escaping, and the html/icon args.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

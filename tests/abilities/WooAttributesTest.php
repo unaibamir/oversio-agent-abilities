@@ -8,7 +8,7 @@
  * and reached through wc_get_attribute_taxonomies() / wc_create_attribute() / wc_update_attribute() /
  * wc_delete_attribute().
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

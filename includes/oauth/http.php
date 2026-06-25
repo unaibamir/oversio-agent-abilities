@@ -6,7 +6,7 @@
  * primitives (environment type, the object cache, transients) plus oversio_source_ip()
  * from the audit log module.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

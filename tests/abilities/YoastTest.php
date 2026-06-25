@@ -7,7 +7,7 @@
  * defines the minimal host signal (WPSEO_VERSION + the rendered-head filter) via stub_yoast(). The
  * abilities read/write the _yoast_wpseo_* post meta with core get_post_meta/update_post_meta.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

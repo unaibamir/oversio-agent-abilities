@@ -2,7 +2,7 @@
 /**
  * Shared base test case.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

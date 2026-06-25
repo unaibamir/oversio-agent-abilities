@@ -2,7 +2,7 @@
 /**
  * Connection tab logic: diagnostics checks, agent-user creation, snippet building.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

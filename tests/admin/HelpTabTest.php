@@ -2,7 +2,7 @@
 /**
  * Help tab: renders the troubleshooting sections, and the tab router accepts ?tab=help.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

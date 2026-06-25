@@ -4,7 +4,7 @@
  * content-only update, and permanent (force) delete. Proves no email/IP ever leaks
  * and that author identity can never be spoofed through input.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

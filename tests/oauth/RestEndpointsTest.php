@@ -2,7 +2,7 @@
 /**
  * Tests for the OAuth REST endpoints: register, token, and revoke.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

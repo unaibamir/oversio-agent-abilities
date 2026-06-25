@@ -7,7 +7,7 @@
  * to the caller once and never stored in clear. Redemption is an atomic UPDATE
  * that marks the row used, so replay is safe under concurrency.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

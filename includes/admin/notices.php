@@ -2,7 +2,7 @@
 /**
  * Reusable admin notice/callout component (four WP-native variants).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

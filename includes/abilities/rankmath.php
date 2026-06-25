@@ -11,7 +11,7 @@
  * oversio_perm_seo_post_object(); the head ability uses the edit_posts floor at discovery, refined
  * per-object at execute. The schema writer reuses the relocated oversio_sanitize_schema_array().
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

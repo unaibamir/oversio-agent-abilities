@@ -7,7 +7,7 @@
  * passwords, capability/user-level keys, and 2FA/reset keys can never be read, written, or
  * deleted, even when a filter tries to allowlist them.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

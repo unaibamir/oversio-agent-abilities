@@ -11,7 +11,7 @@
  * backed by a plain static array — WC_Tax::get_tax_classes() / create / delete are intercepted
  * by the WC_Tax eval stub.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

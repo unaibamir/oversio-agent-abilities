@@ -2,7 +2,7 @@
 /**
  * Admin menu structure: shared tabs map, top-level menu, asset hook, and tab links.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

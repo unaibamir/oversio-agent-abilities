@@ -7,7 +7,7 @@
  * The metadata builders are pure array factories and the path matcher is a pure
  * predicate; the request wrapper layers headers, output, and exit on top.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

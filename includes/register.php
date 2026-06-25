@@ -2,7 +2,7 @@
 /**
  * Ability category registration + the audited registration wrapper.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

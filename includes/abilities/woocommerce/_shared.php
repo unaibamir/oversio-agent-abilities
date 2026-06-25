@@ -7,7 +7,7 @@
  * orders, customers, coupons, tax, and the rest: the manage_woocommerce permission floor, the
  * price sanitiser, and the date-to-string formatter. Registers no abilities and adds no filter.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

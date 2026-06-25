@@ -3,7 +3,7 @@
  * Comment abilities: reads, moderation, and the full CRUD set
  * (get / create / update / delete, plus the moderation queue and actions).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -2,7 +2,7 @@
 /**
  * Revision abilities: the list-revisions read path and its shared parent-editability gate.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -17,7 +17,7 @@
  * templates (which have no backing post) and only ever edits a wp_template post's content, which
  * is kses-hardened first — block delimiters survive, scripts are stripped.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

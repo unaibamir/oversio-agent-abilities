@@ -2,7 +2,7 @@
 /**
  * Safety option getters: filterable, bounded, default off/neutral.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -3,7 +3,7 @@
  * Tests for the OAuth token manager: hashed storage, validation, refresh
  * rotation, reuse detection, and revocation.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

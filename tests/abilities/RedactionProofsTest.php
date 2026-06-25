@@ -8,7 +8,7 @@
  * admin email. Each redactor here is asserted to omit those keys and to not
  * carry their values anywhere in the serialized payload.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

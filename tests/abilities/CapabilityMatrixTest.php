@@ -9,7 +9,7 @@
  * caps (edit_post, edit_comment) are covered in the per-ability write tests; this
  * file pins the coarse capability floor that decides who can reach an ability at all.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

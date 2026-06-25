@@ -2,7 +2,7 @@
 /**
  * Active-tab submenu highlighting: the submenu_file filter returns the tab-aware slug.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

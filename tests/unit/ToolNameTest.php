@@ -2,7 +2,7 @@
 /**
  * MCP-safe tool-name mapping must match the adapter's McpNameSanitizer.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

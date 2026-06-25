@@ -3,7 +3,7 @@
  * CPT write abilities: generic create/update over ALLOWLISTED custom post types.
  * Mirrors PostsWriteTest's harness; registers a throwaway CPT to prove allow + deny.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

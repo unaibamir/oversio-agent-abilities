@@ -2,7 +2,7 @@
 /**
  * Cross-type search ability (read). One query across every exposed content type.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -2,7 +2,7 @@
 /**
  * Per-site uninstall cleanup removes the option and the log table.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

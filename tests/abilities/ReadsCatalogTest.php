@@ -8,7 +8,7 @@
  * or the readonly/non-destructive annotations, this test fails loudly here rather than
  * letting the gap reach the MCP server.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -12,7 +12,7 @@
  * default-OFF, and audit are the governance, NOT a redactor (mirrors the Wave-2 "user email
  * exposed by default" locked decision).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

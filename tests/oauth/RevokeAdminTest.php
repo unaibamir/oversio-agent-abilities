@@ -3,7 +3,7 @@
  * Tests for the admin revoke helpers: deactivating a client, bulk-revoking a
  * client's tokens, deleting a consent, and bulk-revoking a user+client's tokens.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

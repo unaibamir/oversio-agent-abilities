@@ -11,7 +11,7 @@
  * a generic error rather than fataling. Schema is OMITTED (AIOSEO's schema column is internal,
  * undocumented JSON). SEO data is post content, so every per-object ability gates on edit_post($id).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -7,7 +7,7 @@
  * author plus closed-schema smuggle rejection, the per-object edit_block/delete_block gates,
  * and the trash-only delete-block with its trash-disabled refusal.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -13,7 +13,7 @@
  * Text Domain:       oversio-agent-abilities
  * Domain Path:       /languages
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 // Abort if this file is called directly.

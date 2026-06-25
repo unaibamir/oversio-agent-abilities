@@ -2,7 +2,7 @@
 /**
  * Registration wrapper: permission enforcement + audit logging on success/error/deny.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

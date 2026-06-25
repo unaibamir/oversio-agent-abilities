@@ -7,7 +7,7 @@
  * excerpt (Wave 1 enrichment) for a normal post, but withholds the body, excerpt, and
  * diff when the parent post is password-protected — see oversio_get_revision_payload().
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

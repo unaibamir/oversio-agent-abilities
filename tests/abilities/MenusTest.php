@@ -6,7 +6,7 @@
  * and its items by id, the redacted item shape (no email or other post fields), and that an
  * unknown menu id returns a generic error rather than leaking which ids exist.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

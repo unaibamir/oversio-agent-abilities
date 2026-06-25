@@ -9,7 +9,7 @@
  * of truth, no second hand-kept tally to drift. It is the count contract for the integration
  * surface, alongside oversio_available_ability_count() for the whole catalog.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

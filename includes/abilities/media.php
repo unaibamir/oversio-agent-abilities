@@ -3,7 +3,7 @@
  * Media abilities: the get-media read (Phase 3) plus the guarded writes
  * set-featured-image and the hardened base64 upload-media (Phase 4).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

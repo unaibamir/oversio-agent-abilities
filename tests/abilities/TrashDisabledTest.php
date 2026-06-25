@@ -8,7 +8,7 @@
  * content. The check lives behind oversio_trash_is_enabled(), which is filterable so
  * both branches are testable without redefining a PHP constant mid-suite.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

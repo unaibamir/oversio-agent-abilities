@@ -7,7 +7,7 @@
  * a per-plugin inventory of relative basename, name, version, and active state — never an
  * absolute filesystem path. The no-path-leak assertion is the load-bearing guarantee.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

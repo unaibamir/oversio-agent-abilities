@@ -8,7 +8,7 @@
  * exactly where competitors shipped SSRF, arbitrary-file-write, and RCE CVEs.
  * Every §6.2 control carries an explicit regression test here.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

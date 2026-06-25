@@ -2,7 +2,7 @@
 /**
  * Replace-in-post: literal find/replace in post_content, kses'd, per-object gated.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

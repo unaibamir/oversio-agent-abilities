@@ -3,7 +3,7 @@
  * Activity-log retention: the table is trimmed by a day-based window so old audit
  * rows do not accumulate forever, while a retention of 0 keeps everything.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -7,7 +7,7 @@
  * and ReadsCatalogTest, so any drift had to be edited in two places and could
  * silently diverge. This fixture holds the one copy each test consumes.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -3,7 +3,7 @@
  * Single-term read ability: returns the oversio_redact_term shape, default-denies a
  * nonexistent or cross-taxonomy id, and reads as a public read (read floor).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

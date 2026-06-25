@@ -2,7 +2,7 @@
 /**
  * Per-client quickstart snippets: the client roster and the per-client config shape.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

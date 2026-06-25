@@ -4,7 +4,7 @@
  * shared oversio_can_access_post_meta() gate: the post must be editable by the agent
  * (Unit 1 per-object resolver) AND the key must clear the hard-block + allowlist.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

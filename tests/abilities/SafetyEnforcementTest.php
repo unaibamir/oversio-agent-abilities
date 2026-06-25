@@ -3,7 +3,7 @@
  * Transport-gate safety enforcement: the IP allowlist denies blocked addresses
  * (audited) while leaving the logged-in and unauthenticated paths intact.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

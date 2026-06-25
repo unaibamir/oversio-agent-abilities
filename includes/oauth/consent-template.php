@@ -10,7 +10,7 @@
  * inline style block — system fonts only — so it renders under the strict consent
  * CSP set in includes/oauth/authorize.php.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

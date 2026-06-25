@@ -7,7 +7,7 @@
  * summed with the core (non-integration) count, must equal the catalog-lock total — a drift
  * catcher so a future ability addition that skips the manifest fails loudly here.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

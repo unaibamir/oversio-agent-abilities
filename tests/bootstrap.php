@@ -2,7 +2,7 @@
 /**
  * PHPUnit bootstrap: loads the WordPress test suite and our plugin.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

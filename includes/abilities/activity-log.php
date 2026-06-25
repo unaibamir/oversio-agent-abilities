@@ -9,7 +9,7 @@
  * deliberately OMITS source_ip: a network address is PII the admin panel does not show, so
  * it is never handed to an agent. Read-only: there is no write/clear ability here.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

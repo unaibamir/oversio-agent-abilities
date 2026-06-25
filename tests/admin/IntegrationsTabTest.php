@@ -4,7 +4,7 @@
  * card per integration with a detected status and the security disclaimer header,
  * reuses the shared design system, and ships zero Dashicons.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

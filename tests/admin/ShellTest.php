@@ -2,7 +2,7 @@
 /**
  * Page shell: header lede, status pill, and inline-SVG-prefixed nav tabs.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

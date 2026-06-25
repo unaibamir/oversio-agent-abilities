@@ -2,7 +2,7 @@
 /**
  * Proves the WordPress PHPUnit harness boots and the plugin loads.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

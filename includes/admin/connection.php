@@ -2,7 +2,7 @@
 /**
  * Connection tab: endpoint display, agent-user helper, connect wizard, diagnostics.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

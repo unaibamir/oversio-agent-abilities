@@ -3,7 +3,7 @@
  * Plugin reset: clears every configuration option and the activity log, while leaving the
  * agent user and any agent-created content (posts, etc.) untouched.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

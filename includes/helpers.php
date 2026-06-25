@@ -2,7 +2,7 @@
 /**
  * Shared validation, redaction, pagination, and error helpers.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

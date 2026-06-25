@@ -2,7 +2,7 @@
 /**
  * Validation allowlists + redaction + pagination + generic error.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -4,7 +4,7 @@
  * client registration"): their persistence through the settings save path, their
  * presence in the reset allowlist, and an additive-only render of the Settings tab.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

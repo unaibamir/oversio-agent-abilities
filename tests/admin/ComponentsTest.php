@@ -2,7 +2,7 @@
 /**
  * Shared admin section + set-row render helpers: markup, escaping, collapsible state.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

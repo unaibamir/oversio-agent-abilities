@@ -4,7 +4,7 @@
  * on edit_post AND the taxonomy's assign_terms cap + term-existence (reused C2 validator),
  * and returns the post's resulting terms in that taxonomy.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

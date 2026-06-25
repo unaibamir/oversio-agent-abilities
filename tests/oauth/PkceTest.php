@@ -2,7 +2,7 @@
 /**
  * Tests for the PKCE S256 verification helpers.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -2,7 +2,7 @@
 /**
  * Page abilities (reads and writes).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

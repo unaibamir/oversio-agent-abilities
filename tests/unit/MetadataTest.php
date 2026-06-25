@@ -2,7 +2,7 @@
 /**
  * Asserts the plugin headers declare the correct minimum environment.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -8,7 +8,7 @@
  * a constant — there is no dynamic data in it — so callers echo it through the
  * existing phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped pattern.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

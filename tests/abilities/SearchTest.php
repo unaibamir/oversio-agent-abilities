@@ -3,7 +3,7 @@
  * Cross-type search ability: spans the allowlist, redacted output, status guard,
  * per-type private-read containment, narrowing, and bounded pagination.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

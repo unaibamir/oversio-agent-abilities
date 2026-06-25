@@ -5,7 +5,7 @@
  * the no-op update guard, and the started -> success transition driven through a
  * real ability call (end-to-end, not just a hand-written row).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

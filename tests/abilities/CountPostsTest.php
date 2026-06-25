@@ -2,7 +2,7 @@
 /**
  * Count-posts: per-status counts behind the post-type allowlist.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

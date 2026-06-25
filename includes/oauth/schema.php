@@ -2,7 +2,7 @@
 /**
  * OAuth storage schema: table install and drop.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

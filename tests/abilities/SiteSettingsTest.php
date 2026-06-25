@@ -9,7 +9,7 @@
  * smuggled key, and the integer bounds are clamped server-side so a 0 or 99 can never
  * be persisted.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -15,7 +15,7 @@
  * Both abilities gate on manage_options — site settings are administrator data, so the
  * read is held to the same bar WordPress puts on the Settings screen.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -8,7 +8,7 @@
  * option/filter UNION: the legacy oversio_allowed_user_meta_keys filter can only ADD to the
  * option-backed exposed list, never shrink it, and can never re-admit a hard-blocked key.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

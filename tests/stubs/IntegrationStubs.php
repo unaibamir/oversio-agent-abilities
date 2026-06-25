@@ -13,7 +13,7 @@
  * This file lives under tests/ and never ships; the source-scan security rails only
  * walk includes/, so nothing here is in their scope.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

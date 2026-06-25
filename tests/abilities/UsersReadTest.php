@@ -7,7 +7,7 @@
  * is exposed by a locked decision (gated upstream by list_users + audited), but the
  * output never carries the login or the password hash.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

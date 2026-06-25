@@ -2,7 +2,7 @@
 /**
  * Tests for OAuth authorization codes: hashed storage, short TTL, one-time use.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

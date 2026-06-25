@@ -2,7 +2,7 @@
 /**
  * Post abilities (reads). Writes are appended in Phase 4.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

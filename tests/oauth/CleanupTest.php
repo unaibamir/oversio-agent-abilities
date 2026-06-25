@@ -2,7 +2,7 @@
 /**
  * Tests for the scheduled OAuth cleanup that prunes expired artifacts.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

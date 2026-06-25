@@ -2,7 +2,7 @@
 /**
  * Exposed-meta-keys sanitizer coverage.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

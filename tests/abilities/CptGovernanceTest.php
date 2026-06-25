@@ -2,7 +2,7 @@
 /**
  * CPT governance: read/write routing through the post-type allowlist gates.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

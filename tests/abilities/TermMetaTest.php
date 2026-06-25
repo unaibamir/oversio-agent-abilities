@@ -3,7 +3,7 @@
  * Governed term-meta: default-deny allowlist (oversio_allowed_term_meta_keys), the hard-block
  * floor (reused from post-meta), scalar-only values, and per-object edit_term gating.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

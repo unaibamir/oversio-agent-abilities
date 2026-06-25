@@ -10,7 +10,7 @@
  * post meta — so the read/write go through getPost()->set->save(), and the tests prove the write
  * targets the model store, never the _aioseo_* shadow meta, and never raw SQL.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

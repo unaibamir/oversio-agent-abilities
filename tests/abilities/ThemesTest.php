@@ -8,7 +8,7 @@
  * editor is denied and an administrator is allowed. No filesystem path may appear in any
  * output (the tests assert ABSPATH is absent from the JSON).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

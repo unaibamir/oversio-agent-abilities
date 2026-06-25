@@ -12,7 +12,7 @@
  * exclusivity). The shared SEO permission gates and the recursive JSON-LD sanitizer also
  * live here so the per-plugin ability files can reuse them.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

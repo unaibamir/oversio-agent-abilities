@@ -9,7 +9,7 @@
  * annotation, this test fails loudly here rather than letting the gap reach the
  * MCP server. It is the proof that the reads + writes catalog holds with no drift.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

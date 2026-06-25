@@ -6,7 +6,7 @@
  * trait), satisfying Generic.Files.OneObjectStructurePerFile. Required directly from the test
  * bootstrap alongside WcStubStore.php, never shipped.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

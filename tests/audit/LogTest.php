@@ -2,7 +2,7 @@
 /**
  * Audit log table + writer/query/clear.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -2,7 +2,7 @@
 /**
  * Activity log: table install, write, query, and clear.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -17,7 +17,7 @@
  * Both filters receive an array keyed by ability name and must return the same shape. Domain and
  * integration files in includes/abilities/ are the in-tree examples of registering against them.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

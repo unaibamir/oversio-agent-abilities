@@ -2,7 +2,7 @@
 /**
  * Tests for the OAuth storage schema installer.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

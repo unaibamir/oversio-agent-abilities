@@ -9,7 +9,7 @@
  * path — get_plugins() keys are already relative to the plugins directory, so no part of
  * the server's directory layout is disclosed.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

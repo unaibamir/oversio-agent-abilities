@@ -2,7 +2,7 @@
 /**
  * Tests for the OAuth discovery metadata builders and well-known routing.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

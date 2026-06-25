@@ -14,7 +14,7 @@
  * present-but-invalid OAuth token never hard-fails the request; it simply fails
  * to resolve a user, and the transport gate issues its own 401 downstream.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

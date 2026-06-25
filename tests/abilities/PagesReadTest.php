@@ -2,7 +2,7 @@
 /**
  * Page read abilities: redaction, status guard, per-object gating.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

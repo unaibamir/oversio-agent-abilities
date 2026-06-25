@@ -14,7 +14,7 @@
  * client_id/redirect_uri (or a local authorization failure such as a capability or
  * nonce error) renders a local error page instead of redirecting anywhere.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

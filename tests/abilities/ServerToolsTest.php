@@ -2,7 +2,7 @@
 /**
  * Server $tools builder: only enabled AND currently-callable abilities are listed.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

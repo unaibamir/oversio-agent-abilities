@@ -2,7 +2,7 @@
 /**
  * Settings tab: sanitizer bounds, IP validation, force-draft default, and render coverage.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -3,7 +3,7 @@
  * Governed post-meta abilities: the shared per-object + per-key gate, and the
  * scalar-only read path that refuses to leak arrays/serialized blobs.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

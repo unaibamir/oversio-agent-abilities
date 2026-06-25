@@ -2,7 +2,7 @@
 /**
  * Settings tab: optional safety controls (rate limit, IP allowlist, force-draft, max title).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

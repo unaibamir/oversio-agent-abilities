@@ -7,7 +7,7 @@
  * IntegrationStubs trait). The abilities list/read/create/update/delete through the WC CRUD layer
  * (wc_get_products / wc_get_product / WC_Product), all served by the WcStubStore.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

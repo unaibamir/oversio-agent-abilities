@@ -3,7 +3,7 @@
  * Get-all-post-meta: returns every allowlisted scalar meta value as a map,
  * gated per-object on edit_post; skips hard-blocked and non-scalar values.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

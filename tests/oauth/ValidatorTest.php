@@ -4,7 +4,7 @@
  * resolver, the access-token row resolver, and the rest_authentication_errors
  * pass-through.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

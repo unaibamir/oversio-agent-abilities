@@ -2,7 +2,7 @@
 /**
  * Tests for the OAuth HTTP helpers: rate limiter and transport-security policy.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

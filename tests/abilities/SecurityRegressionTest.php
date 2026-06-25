@@ -17,7 +17,7 @@
  *   - PII / user enumeration      → get-users requires list_users; redactors strip PII
  *   - Unauthenticated / over-broad → every ability has a real permission_callback; opt-in default
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

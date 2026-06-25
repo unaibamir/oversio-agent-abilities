@@ -9,7 +9,7 @@
  * and product counts rely on wp_count_posts() against real WP post fixtures inserted in
  * set_up(). Sales / top-sellers reports exercise the executor's SQL against the real temp DB.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

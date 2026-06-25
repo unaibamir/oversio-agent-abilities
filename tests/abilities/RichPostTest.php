@@ -2,7 +2,7 @@
 /**
  * Unit tests for oversio_rich_post() — the enriched post-assembly helper.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

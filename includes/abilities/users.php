@@ -10,7 +10,7 @@
  * promote_users and refuses to demote the sole remaining administrator. delete-user
  * requires a reassign target and refuses to delete the current user or the last admin.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

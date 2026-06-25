@@ -2,7 +2,7 @@
 /**
  * Term read ability: taxonomy allowlist, redaction, bounded listing.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

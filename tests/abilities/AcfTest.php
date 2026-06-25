@@ -7,7 +7,7 @@
  * trait). The abilities walk acf_get_field_groups()/acf_get_fields() for discovery and read/write
  * hydrated values through get_fields()/get_field()/update_field(), all served by the stub store.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

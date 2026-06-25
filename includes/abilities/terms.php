@@ -2,7 +2,7 @@
 /**
  * Term abilities: reads (get-terms) and guarded writes (create-term, update-term).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

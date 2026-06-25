@@ -3,7 +3,7 @@
  * Comment moderation write: capability gate, closed action allowlist, and
  * trash-not-delete semantics.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

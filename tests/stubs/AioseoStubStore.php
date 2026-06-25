@@ -9,7 +9,7 @@
  * following getPost($id) inside one test. Lives in its own file so the IntegrationStubs trait file
  * holds a single object structure. Required from the test bootstrap, never shipped.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

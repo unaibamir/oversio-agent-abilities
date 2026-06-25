@@ -9,7 +9,7 @@
  * predicate so a capable user SEES the tool, while the real permission_callback still
  * runs at execute time and still denies on objects the user can't act on.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

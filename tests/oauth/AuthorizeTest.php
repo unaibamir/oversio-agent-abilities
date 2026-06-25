@@ -8,7 +8,7 @@
  * here: oversio_oauth_validate_authorize_params(), the consent-row reader/writer, and the
  * consent-page renderer.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

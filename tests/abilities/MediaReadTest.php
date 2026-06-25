@@ -2,7 +2,7 @@
 /**
  * Media read ability: capability gating + inventory shape + path/PII redaction.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

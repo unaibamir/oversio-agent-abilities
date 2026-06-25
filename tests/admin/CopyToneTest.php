@@ -2,7 +2,7 @@
 /**
  * Copy tone: the visible Connection and Dashboard body leans least-privilege.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

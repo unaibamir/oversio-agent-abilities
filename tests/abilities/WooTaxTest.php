@@ -7,7 +7,7 @@
  * temp table (woocommerce_tax_rates) created in the test DB by WcTaxStubStore. Tax classes
  * are backed by WcTaxStubStore::$classes through the WC_Tax eval stub.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

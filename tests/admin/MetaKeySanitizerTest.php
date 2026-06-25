@@ -7,7 +7,7 @@
  * de-dupe. The DENY variants do NOT strip hard-blocked keys (denying a blocked key is a
  * harmless no-op and the deny list must be able to name anything an admin wants refused).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

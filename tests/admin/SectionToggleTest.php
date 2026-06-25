@@ -2,7 +2,7 @@
 /**
  * Per-section enable/disable-all control on the Abilities tab: render and localization.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

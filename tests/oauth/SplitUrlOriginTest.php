@@ -14,7 +14,7 @@
  * from site_url(). It is a regression guard, not a fix: it locks the invariant so a
  * future change that reaches for site_url() in the OAuth path fails loudly here.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -8,7 +8,7 @@
  * runtime, so they are declared here for analysis only. This file is never loaded by
  * WordPress.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

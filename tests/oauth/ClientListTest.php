@@ -4,7 +4,7 @@
  * Grants management tables: shape, active-token counts, redirect-URI decoding,
  * and the consent-to-client/user join.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -8,7 +8,7 @@
  * condition (OAuth on, 401, MCP route) and sets the header on the live response.
  * The 403 IP-block branch and the authenticated path stay byte-for-byte as before.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

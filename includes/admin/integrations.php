@@ -8,7 +8,7 @@
  * saved through the same oversio_save_abilities AJAX action. Integration abilities are bucketed
  * by their registry `subject` (one of the integration slugs), so this tab needs no new option.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -2,7 +2,7 @@
 /**
  * Coexistence: version-floor compatibility logic.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

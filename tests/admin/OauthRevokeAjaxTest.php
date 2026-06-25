@@ -3,7 +3,7 @@
  * Tests for the nonce- and capability-gated OAuth revoke AJAX endpoints that back
  * the Connections management tables.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

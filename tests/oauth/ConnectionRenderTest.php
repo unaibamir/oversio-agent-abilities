@@ -8,7 +8,7 @@
  * exactly as before. These assertions prove the gate is additive and leaves the
  * existing render untouched.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

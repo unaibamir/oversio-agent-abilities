@@ -79,7 +79,7 @@
  *
  * Exit code is the number of FAILed checks (0 = clean).
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

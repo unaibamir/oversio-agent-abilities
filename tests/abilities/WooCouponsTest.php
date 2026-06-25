@@ -7,7 +7,7 @@
  * provided by the IntegrationStubs trait backed by WcCouponStubStore. The seed_wc_coupons()
  * helper resets and seeds the store per test so each test starts with a clean, known state.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

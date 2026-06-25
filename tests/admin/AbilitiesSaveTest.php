@@ -2,7 +2,7 @@
 /**
  * Abilities tab save logic: sanitize, intersect with registry, default-off.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -2,7 +2,7 @@
 /**
  * Comment read abilities: PII redaction + moderation gating of unapproved bodies.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

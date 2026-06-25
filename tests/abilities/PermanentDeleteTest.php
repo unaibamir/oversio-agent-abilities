@@ -7,7 +7,7 @@
  * post/page is permanently gone after the call, the destructive annotation is honest,
  * a contributor is denied on another author's post, and delete-page refuses a non-page id.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

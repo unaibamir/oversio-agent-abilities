@@ -19,7 +19,7 @@
  * trash-bypass flag in our source — wp_delete_post() is called with no second argument, which
  * deletes the trash-less nav_menu_item directly without matching the banned ,true pattern.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

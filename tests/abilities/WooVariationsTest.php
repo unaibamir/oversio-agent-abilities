@@ -8,7 +8,7 @@
  * the abilities list/read/create/update/delete through the WC CRUD layer (wc_get_product /
  * WC_Product_Variation), all served by the WcStubStore with parent/children linkage.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

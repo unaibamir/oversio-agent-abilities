@@ -10,7 +10,7 @@
  * provided by the IntegrationStubs trait backed by WcOrderStubStore and the per-test note/refund stores
  * added by this slice.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

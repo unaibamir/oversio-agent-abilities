@@ -3,7 +3,7 @@
  * Term write abilities: cap gate, taxonomy allow-list, term/taxonomy confinement,
  * description sanitization, and the circular-hierarchy guard on reparenting.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

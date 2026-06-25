@@ -2,7 +2,7 @@
 /**
  * Confirms the bundled adapter autoloads.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

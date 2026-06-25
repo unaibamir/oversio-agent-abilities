@@ -7,7 +7,7 @@
  * list (including allow-`*`); the default-empty state is default-deny. Every reject returns
  * the SAME generic error code so a caller cannot tell deny from not-allowed from hard-block.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

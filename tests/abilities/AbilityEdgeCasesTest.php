@@ -8,7 +8,7 @@
  * and search filters, and pagination clamping at the query level) that the
  * permission gate does not exercise.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

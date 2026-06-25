@@ -5,7 +5,7 @@
  * Registers public OAuth clients (token_endpoint_auth_method "none", no secret) and
  * validates their redirect URIs against the strict allowlist the spec requires.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

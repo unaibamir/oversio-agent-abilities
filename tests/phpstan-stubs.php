@@ -9,7 +9,7 @@
  * This file is loaded ONLY by PHPStan (a bootstrapFile) and is excluded from analysis; WordPress
  * never loads it, and at runtime the real host plugin (or the test stub) supplies these symbols.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

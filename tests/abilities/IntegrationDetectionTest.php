@@ -5,7 +5,7 @@
  * single 'seo' slug into three per-plugin predicates (yoast / rankmath / aioseo), each
  * independently force-able.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

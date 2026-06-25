@@ -2,7 +2,7 @@
 /**
  * Activity tab renders rows including denials, escaped.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

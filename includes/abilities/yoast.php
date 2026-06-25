@@ -10,7 +10,7 @@
  * 0/1, adv a CSV of advanced directives), exposed distinctly here. Yoast persists no JSON-LD schema
  * object in meta, so there is no yoast schema ability.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

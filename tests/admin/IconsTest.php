@@ -2,7 +2,7 @@
 /**
  * Admin nav-tab icon coverage.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

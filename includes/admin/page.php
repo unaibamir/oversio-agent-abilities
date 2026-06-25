@@ -2,7 +2,7 @@
 /**
  * Admin settings page: menu, tab routing, Abilities + Activity tabs, AJAX handlers.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

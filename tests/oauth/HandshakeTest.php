@@ -12,7 +12,7 @@
  * and the frozen-invariant assertions confirm a present-but-invalid token never
  * hard-fails an unrelated route.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

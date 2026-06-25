@@ -2,7 +2,7 @@
 /**
  * Integration tests: the five read getters return the enriched rich-post shape.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

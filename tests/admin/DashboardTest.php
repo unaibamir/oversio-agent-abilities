@@ -2,7 +2,7 @@
 /**
  * Dashboard read-only data helpers: agent candidates, counts, protocol version.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

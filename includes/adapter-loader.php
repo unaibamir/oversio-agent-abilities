@@ -25,7 +25,7 @@
  * oversio_eager_load_adapter() — confirm it still covers the WP-CLI-only classes, and whether any new
  * runtime-only directory needs the same skip treatment.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

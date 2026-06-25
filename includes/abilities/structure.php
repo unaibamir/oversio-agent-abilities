@@ -2,7 +2,7 @@
 /**
  * Site-structure read abilities: public taxonomies, public post types, redacted site info.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

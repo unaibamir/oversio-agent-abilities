@@ -3,7 +3,7 @@
  * Dashboard read-only data helpers: agent user candidates, ability counts,
  * activity total, and the MCP protocol version. No output, no state changes.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

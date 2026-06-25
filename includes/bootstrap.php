@@ -2,7 +2,7 @@
 /**
  * MCP adapter bootstrap + coexistence guard.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

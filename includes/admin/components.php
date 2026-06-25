@@ -8,7 +8,7 @@
  * raw user data as `body`, `control`, or `pill`: those args are echoed verbatim.
  * Dynamic plain-text args (title/description/label/opt/help) ARE escaped here.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

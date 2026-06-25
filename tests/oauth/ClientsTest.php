@@ -2,7 +2,7 @@
 /**
  * Tests for the OAuth dynamic client registry.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

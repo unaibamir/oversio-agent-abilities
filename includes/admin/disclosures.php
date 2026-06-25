@@ -3,7 +3,7 @@
  * Plain-language disclosure line for every ability — what it can read or write,
  * and where its reach stops. Shown as helper text under each row on the Abilities tab.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

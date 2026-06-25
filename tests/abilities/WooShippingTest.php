@@ -9,7 +9,7 @@
  * provided by the IntegrationStubs trait backed by WcShippingStubStore. The seed_wc_shipping()
  * helper resets and seeds the store per test so each test starts with a clean, known state.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

@@ -10,7 +10,7 @@
  * adapter's Mcp-Session-Id / MCP-Protocol-Version to both sets, so the handshake
  * and every follow-up request survive the CORS round trip.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );

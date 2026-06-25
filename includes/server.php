@@ -2,7 +2,7 @@
 /**
  * MCP server registration and tool-name helpers.
  *
- * @package AgentAbilitiesForMCP
+ * @package OversioAgentAbilities
  */
 
 declare( strict_types=1 );
