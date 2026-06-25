@@ -3,11 +3,12 @@
  * OAuth consent screen: a standalone HTML document rendered on the front end.
  *
  * The authorize endpoint runs on `init`, outside wp-admin, so none of the admin CSS
- * is enqueued here. The page inlines its own <style> block (CSP allows style-src
- * 'unsafe-inline') and an inline <svg> logo (no external image fetch under img-src
- * data:). Everything is self-contained: no external scripts, no external styles, no
- * JavaScript at all, system fonts only — so it renders untouched under the strict
- * consent CSP set in includes/oauth/authorize.php.
+ * is enqueued here. The page builds its own <head> and links a single same-origin
+ * stylesheet (assets/consent.css) through the enqueue API (wp_enqueue_style +
+ * wp_print_styles), allowed under style-src 'self'; the <svg> logo is inlined (no
+ * external image fetch under img-src data:). There is no JavaScript at all and no
+ * inline style block — system fonts only — so it renders under the strict consent
+ * CSP set in includes/oauth/authorize.php.
  *
  * @package AgentAbilitiesForMCP
  */
