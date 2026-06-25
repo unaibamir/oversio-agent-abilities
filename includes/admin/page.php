@@ -19,7 +19,7 @@ function oversio_register_admin_menu(): void {
 
 	add_menu_page(
 		__( 'Oversio Agent Abilities', 'oversio-agent-abilities' ),
-		__( 'Agent Abilities', 'oversio-agent-abilities' ),
+		__( 'Oversio Agent Abilities', 'oversio-agent-abilities' ),
 		'manage_options',
 		'oversio-agent-abilities',
 		'oversio_render_admin_page',
