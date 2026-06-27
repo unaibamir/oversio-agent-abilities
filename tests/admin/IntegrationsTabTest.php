@@ -31,8 +31,24 @@ final class IntegrationsTabTest extends TestCase {
 		// WooProductsTest defines a WooCommerce marker class process-wide (a class cannot be
 		// undefined), so once that suite has run real WC detection reports active. Pin the
 		// aafm_woocommerce_active seam off — the same seam production detection passes through — so
-		// the "Not installed" state stays deterministic regardless of test order.
+		// each pinned card's status stays deterministic regardless of test order.
 		add_filter( 'aafm_woocommerce_active', '__return_false', 99 );
+
+		// Derive the status pill each pinned-off card should render from the real on-disk probe,
+		// under the same forced-inactive seams the render passes through — never hardcode
+		// "Not installed". This WP test install shares the developer's wp-content, so a host plugin
+		// file (e.g. wordpress-seo/wp-seo.php) can be physically present but inactive; that is the
+		// CORRECT "installed_inactive" → "Inactive" state. Asserting "Not installed" unconditionally
+		// would assert a false premise about this box (it would only hold on a clean install with no
+		// host plugin files), not a bug in the tab. Compute the expectation while the seams are
+		// still active so it matches what the render observes.
+		$expected_pills = array();
+		foreach ( array( 'yoast', 'rankmath', 'aioseo', 'woocommerce' ) as $slug ) {
+			$status = aafm_integration_status( $slug );
+			$this->assertNotSame( 'active', $status, "Forcing {$slug} inactive must defeat any leaked detection stub." );
+			$expected_pills[ 'not_installed' === $status ? 'Not installed' : 'Inactive' ] = true;
+		}
+
 		ob_start();
 		aafm_render_integrations_tab();
 		$html = (string) ob_get_clean();
@@ -48,8 +64,11 @@ final class IntegrationsTabTest extends TestCase {
 		}
 		// The security disclaimer appears in the header.
 		$this->assertStringContainsString( 'aafm-integrations-disclaimer', $html );
-		// Detected status: host plugins absent → "Not installed".
-		$this->assertStringContainsString( 'Not installed', $html );
+		// Detected status: each pinned-off card renders the status pill the box actually warrants
+		// ("Not installed" on a clean install, "Inactive" where the host file is present-but-off).
+		foreach ( array_keys( $expected_pills ) as $pill_label ) {
+			$this->assertStringContainsString( $pill_label, $html );
+		}
 		// Zero Dashicons (inline SVG only — the project icon rule).
 		$this->assertStringNotContainsString( 'dashicons', $html );
 	}
