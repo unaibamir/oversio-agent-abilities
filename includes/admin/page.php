@@ -1350,6 +1350,15 @@ function aafm_render_meta_keys_selector(): void {
 	$denied   = aafm_denied_meta_keys();
 	$detected = aafm_detected_meta_keys();
 
+	// The getters strip the '*' sentinel, so surface it in the textareas when the wildcard is
+	// set — otherwise the box renders empty and a re-save would silently wipe allow-all/deny-all.
+	if ( aafm_meta_allow_has_star() ) {
+		array_unshift( $allowed, '*' );
+	}
+	if ( aafm_meta_deny_has_star() ) {
+		array_unshift( $denied, '*' );
+	}
+
 	// Mirrors the post-types selector: a plain <div> (never a nested <form>) with a
 	// type="button" save, so the one outer abilities <form> is never closed early.
 	echo '<div id="aafm-meta-keys-form" class="aafm-card aafm-card-pad aafm-meta-keys">';
@@ -1411,6 +1420,15 @@ function aafm_render_user_meta_keys_selector(): void {
 	$exposed = aafm_allowed_user_meta_keys();
 	$denied  = aafm_denied_user_meta_keys();
 
+	// The getters strip the '*' sentinel, so surface it in the textareas when the wildcard is
+	// set — otherwise the box renders empty and a re-save would silently wipe allow-all/deny-all.
+	if ( aafm_user_meta_allow_has_star() ) {
+		array_unshift( $exposed, '*' );
+	}
+	if ( aafm_user_meta_deny_has_star() ) {
+		array_unshift( $denied, '*' );
+	}
+
 	echo '<div id="aafm-user-meta-keys-form" class="aafm-card aafm-card-pad aafm-meta-keys">';
 	echo '<h3 id="' . esc_attr( 'aafm-exposed-user-meta-keys-label' ) . '">' . esc_html__( 'Exposed user meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
 	echo '<p class="description">' . esc_html__( 'These are the only user meta keys an agent can read or write on a user it can already edit. Denied keys always win, even when the exposed list uses *.', 'agent-abilities-for-mcp' ) . '</p>';
@@ -1452,6 +1470,15 @@ function aafm_render_user_meta_keys_selector(): void {
 function aafm_render_term_meta_keys_selector(): void {
 	$exposed = aafm_allowed_term_meta_keys();
 	$denied  = aafm_denied_term_meta_keys();
+
+	// The getters strip the '*' sentinel, so surface it in the textareas when the wildcard is
+	// set — otherwise the box renders empty and a re-save would silently wipe allow-all/deny-all.
+	if ( aafm_term_meta_allow_has_star() ) {
+		array_unshift( $exposed, '*' );
+	}
+	if ( aafm_term_meta_deny_has_star() ) {
+		array_unshift( $denied, '*' );
+	}
 
 	echo '<div id="aafm-term-meta-keys-form" class="aafm-card aafm-card-pad aafm-meta-keys">';
 	echo '<h3 id="' . esc_attr( 'aafm-exposed-term-meta-keys-label' ) . '">' . esc_html__( 'Exposed term meta keys', 'agent-abilities-for-mcp' ) . '</h3>';
