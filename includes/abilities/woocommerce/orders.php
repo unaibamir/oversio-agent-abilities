@@ -1586,6 +1586,17 @@ function aafm_exec_wc_create_order_refund( array $input ) {
 			$refund_total = isset( $item['refund_total'] ) ? (string) $item['refund_total'] : '0.00';
 			$refund_tax   = isset( $item['refund_tax'] ) ? (string) $item['refund_tax'] : '0.00';
 
+			// MONEY SAFETY: the input schema constrains the per-line refund_total/refund_tax only to
+			// `type: string`, not to a non-negative number (unlike the top-level `amount`, which has a
+			// `^\d+(\.\d{1,2})?$` pattern). Reject a non-numeric or negative value here, before
+			// wc_create_refund() ever sees it, so a malformed line can never drive a garbage/negative
+			// refund amount.
+			if ( ! is_numeric( $refund_total ) || (float) $refund_total < 0
+				|| ! is_numeric( $refund_tax ) || (float) $refund_tax < 0
+			) {
+				return aafm_generic_error();
+			}
+
 			$refund_line = array( 'refund_total' => $refund_total );
 
 			// wc_create_refund() keys refund_tax by the *tax rate id*, not by position. A line

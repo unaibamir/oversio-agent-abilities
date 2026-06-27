@@ -455,6 +455,59 @@ final class WooOrderNotesRefundsTest extends TestCase {
 		$this->assertSame( $reason, $res['reason'], 'Refund reason must be returned verbatim (PII-adjacent, under disclaimer).' );
 	}
 
+	/**
+	 * The per-line refund_total/refund_tax are only `type: string` in the schema (no non-negative
+	 * pattern), so a malformed amount can reach execute. A negative line amount must be rejected
+	 * BEFORE wc_create_refund() is ever called.
+	 */
+	public function test_create_order_refund_rejects_negative_line_amount(): void {
+		$this->register_group_c();
+		$this->acting_as( 'administrator' );
+		WcOrderStubStore::seed_refunds( 5001, array() );
+
+		$res = wp_get_ability( 'aafm/wc-create-order-refund' )->execute(
+			array(
+				'order_id'   => 5001,
+				'amount'     => '5.00',
+				'line_items' => array(
+					array(
+						'line_item_id' => 1,
+						'refund_total' => '-5.00',
+					),
+				),
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $res, 'a negative per-line refund_total must be rejected.' );
+		$this->assertSame( array(), WcOrderStubStore::$last_refund_args, 'wc_create_refund() must not run on a bad refund amount.' );
+	}
+
+	/**
+	 * A non-numeric per-line refund amount must likewise be rejected before wc_create_refund().
+	 */
+	public function test_create_order_refund_rejects_non_numeric_line_amount(): void {
+		$this->register_group_c();
+		$this->acting_as( 'administrator' );
+		WcOrderStubStore::seed_refunds( 5001, array() );
+
+		$res = wp_get_ability( 'aafm/wc-create-order-refund' )->execute(
+			array(
+				'order_id'   => 5001,
+				'amount'     => '5.00',
+				'line_items' => array(
+					array(
+						'line_item_id' => 1,
+						'refund_total' => '0.00',
+						'refund_tax'   => 'not-a-number',
+					),
+				),
+			)
+		);
+
+		$this->assertInstanceOf( WP_Error::class, $res, 'a non-numeric per-line refund_tax must be rejected.' );
+		$this->assertSame( array(), WcOrderStubStore::$last_refund_args, 'wc_create_refund() must not run on a bad refund amount.' );
+	}
+
 	public function test_create_order_refund_unknown_order_returns_error(): void {
 		$this->register_group_c();
 		$this->acting_as( 'administrator' );
