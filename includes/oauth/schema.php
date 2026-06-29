@@ -154,10 +154,9 @@ function aafm_truncate_oauth_tables(): void {
 	global $wpdb;
 
 	foreach ( aafm_oauth_table_suffixes() as $suffix ) {
-		// Internal constant table name; esc_sql() makes the safety explicit for analyzers.
-		$table = esc_sql( $wpdb->prefix . $suffix );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "DELETE FROM {$table}" );
+		// Internal table name bound as a SQL identifier via %i (available since WP 6.2).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i', $wpdb->prefix . $suffix ) );
 	}
 }
 
@@ -303,9 +302,8 @@ function aafm_drop_oauth_tables(): void {
 	global $wpdb;
 
 	foreach ( aafm_oauth_table_suffixes() as $suffix ) {
-		// Internal constant table name; esc_sql() makes the safety explicit for analyzers.
-		$table = esc_sql( $wpdb->prefix . $suffix );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+		// Internal table name bound as a SQL identifier via %i (available since WP 6.2).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $wpdb->prefix . $suffix ) );
 	}
 }
